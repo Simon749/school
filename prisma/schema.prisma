@@ -1,0 +1,114 @@
+// EduTrack Kenya — Prisma Schema
+// Phase 0.2 scope only: schools, users, academic_years
+// Source of truth: SYSTEM_DESIGN.md §4 (Database Design — PostgreSQL Schema)
+//
+// IMPORTANT: This file intentionally implements ONLY the Phase 0.2 tables.
+// Do not add tables from later phases here until PROGRESS_TRACKER.md marks
+// that phase as current — see AGENTS.md §6 (No Product Scope Creep).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// SCHOOL
+// Every other table in the eventual full schema hangs off this.
+// Kept single-tenant in *usage* for the pilot (per the tracker's
+// own post-launch backlog item "Multi-tenancy"), but the schema
+// itself is multi-tenant-shaped from day one so we never have to
+// retrofit school_id onto existing tables later.
+// ============================================================
+model School {
+  id                      String    @id @default(uuid())
+  name                    String    @db.VarChar(200)
+  knecCode                String?   @unique @map("knec_code") @db.VarChar(20)
+  address                 String?
+  county                  String?   @db.VarChar(50)
+  subCounty               String?   @map("sub_county") @db.VarChar(50)
+  latitude                Decimal?  @db.Decimal(10, 8)
+  longitude               Decimal?  @db.Decimal(11, 8)
+  geofenceRadius          Int       @default(150) @map("geofence_radius") // metres
+  phone                   String?   @db.VarChar(20)
+  email                   String?   @db.VarChar(100)
+  logoUrl                 String?   @map("logo_url")
+  onboardingCompleted     Boolean   @default(false) @map("onboarding_completed")
+  onboardingStep          Int       @default(0) @map("onboarding_step")
+  subscriptionStatus      String    @default("trial") @map("subscription_status") @db.VarChar(20)
+  subscriptionExpiresAt   DateTime? @map("subscription_expires_at")
+  gracePeriodEndsAt       DateTime? @map("grace_period_ends_at")
+  smsBalance              Int       @default(0) @map("sms_balance")
+  settings                Json      @default("{}")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+  deletedAt               DateTime? @map("deleted_at") // soft delete — see AGENTS.md §17
+
+  users         User[]
+  academicYears AcademicYear[]
+
+  @@map("schools")
+}
+
+// ============================================================
+// USERS
+// Auth identity/session is handled by Clerk (documented deviation
+// from SYSTEM_DESIGN.md, which specified NextAuth v5 — see
+// DEVIATIONS.md). This table is EduTrack's own profile/role record,
+// keyed to the Clerk user via clerkId. Clerk is the source of truth
+// for "who are you" (authentication); this table plus role is the
+// source of truth for "what can you do, at which school"
+// (authorization) — see AGENTS.md §10.
+// ============================================================
+model User {
+  id                  String    @id @default(uuid())
+  clerkId             String    @unique @map("clerk_id") // Clerk's user.id
+  schoolId            String    @map("school_id")
+  email               String?   @unique @db.VarChar(200)
+  phone               String?   @db.VarChar(20) // 254XXXXXXXXX
+  role                UserRole
+  firstName           String    @map("first_name") @db.VarChar(100)
+  lastName            String    @map("last_name") @db.VarChar(100)
+  nationalId          String?   @unique @map("national_id") @db.VarChar(20)
+  isActive            Boolean   @default(true) @map("is_active")
+  lastLoginAt         DateTime? @map("last_login_at")
+  notificationPref    String    @default("immediate") @map("notification_pref") @db.VarChar(20)
+  // immediate | daily_digest | urgent_only | none — see SYSTEM_DESIGN.md §10
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at") // soft delete — see AGENTS.md §17
+
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId], map: "idx_users_school")
+  @@map("users")
+}
+
+enum UserRole {
+  admin
+  deputy
+  teacher
+  bursar
+  parent
+  it_admin
+}
+
+// ============================================================
+// ACADEMIC CALENDAR — academic_years
+// terms and school_calendar_days are Phase 1 scope; not added yet.
+// ============================================================
+model AcademicYear {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  name      String   @db.VarChar(20) // "2025"
+  isCurrent Boolean  @default(false) @map("is_current")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId], map: "idx_academic_years_school")
+  @@map("academic_years")
+}
