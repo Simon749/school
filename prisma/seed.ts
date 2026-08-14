@@ -11,6 +11,29 @@ import { PrismaClient, UserRole } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
+
+  // ── CLEAR EXISTING DATA (reverse dependency order) ──
+  await prisma.$transaction([
+    prisma.auditLog.deleteMany(),
+    prisma.studentLessonAttendance.deleteMany(),
+    prisma.studentDailyAttendance.deleteMany(),
+    prisma.teacherAttendance.deleteMany(),
+    prisma.classroomQrToken.deleteMany(),
+    prisma.timetableSlot.deleteMany(),
+    prisma.timetablePeriod.deleteMany(),
+    prisma.guardian.deleteMany(),
+    prisma.student.deleteMany(),
+    prisma.teacher.deleteMany(),
+    prisma.user.deleteMany(),
+    prisma.stream.deleteMany(),
+    prisma.grade.deleteMany(),
+    prisma.learningArea.deleteMany(),
+    prisma.term.deleteMany(),
+    prisma.academicYear.deleteMany(),
+    prisma.schoolCalendarDay.deleteMany(),
+    prisma.school.deleteMany(),
+  ]);
+  console.log("🧹 Cleared existing seed data\n");
   console.log("🌱 Seeding EduTrack Kenya (Phase 1.1)...\n");
 
   // ── 1. TEST SCHOOL ─────────────────────────────────────────

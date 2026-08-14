@@ -18,45 +18,45 @@ datasource db {
 // SCHOOL
 // ============================================================
 model School {
-  id                    String   @id @default(uuid())
-  name                  String   @db.VarChar(200)
-  knecCode              String?  @unique @map("knec_code") @db.VarChar(20)
+  id                    String    @id @default(uuid())
+  name                  String    @db.VarChar(200)
+  knecCode              String?   @unique @map("knec_code") @db.VarChar(20)
   address               String?
-  county                String?  @db.VarChar(50)
-  subCounty             String?  @map("sub_county") @db.VarChar(50)
-  latitude              Decimal? @db.Decimal(10, 8)
-  longitude             Decimal? @db.Decimal(11, 8)
-  geofenceRadius        Int      @default(150) @map("geofence_radius")
-  phone                 String?  @db.VarChar(20)
-  email                 String?  @db.VarChar(100)
-  logoUrl               String?  @map("logo_url")
-  onboardingCompleted   Boolean  @default(false) @map("onboarding_completed")
-  onboardingStep        Int      @default(0) @map("onboarding_step")
-  subscriptionStatus    String   @default("trial") @map("subscription_status") @db.VarChar(20)
+  county                String?   @db.VarChar(50)
+  subCounty             String?   @map("sub_county") @db.VarChar(50)
+  latitude              Decimal?  @db.Decimal(10, 8)
+  longitude             Decimal?  @db.Decimal(11, 8)
+  geofenceRadius        Int       @default(150) @map("geofence_radius")
+  phone                 String?   @db.VarChar(20)
+  email                 String?   @db.VarChar(100)
+  logoUrl               String?   @map("logo_url")
+  onboardingCompleted   Boolean   @default(false) @map("onboarding_completed")
+  onboardingStep        Int       @default(0) @map("onboarding_step")
+  subscriptionStatus    String    @default("trial") @map("subscription_status") @db.VarChar(20)
   subscriptionExpiresAt DateTime? @map("subscription_expires_at")
   gracePeriodEndsAt     DateTime? @map("grace_period_ends_at")
-  smsBalance            Int      @default(0) @map("sms_balance")
-  settings              Json     @default("{}")
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
+  smsBalance            Int       @default(0) @map("sms_balance")
+  settings              Json      @default("{}")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
   deletedAt             DateTime? @map("deleted_at")
 
-  users                     User[]
-  academicYears             AcademicYear[]
-  terms                     Term[]
-  schoolCalendarDays        SchoolCalendarDay[]
-  grades                    Grade[]
-  streams                   Stream[]
-  teachers                  Teacher[]
-  students                  Student[]
-  learningAreas             LearningArea[]
-  timetablePeriods          TimetablePeriod[]
-  timetableSlots            TimetableSlot[]
-  classroomQrTokens         ClassroomQrToken[]
-  teacherAttendances        TeacherAttendance[]
-  studentDailyAttendances   StudentDailyAttendance[]
-  studentLessonAttendances  StudentLessonAttendance[]
-  auditLogs                 AuditLog[]
+  users                    User[]
+  academicYears            AcademicYear[]
+  terms                    Term[]
+  schoolCalendarDays       SchoolCalendarDay[]
+  grades                   Grade[]
+  streams                  Stream[]
+  teachers                 Teacher[]
+  students                 Student[]
+  learningAreas            LearningArea[]
+  timetablePeriods         TimetablePeriod[]
+  timetableSlots           TimetableSlot[]
+  classroomQrTokens        ClassroomQrToken[]
+  teacherAttendances       TeacherAttendance[]
+  studentDailyAttendances  StudentDailyAttendance[]
+  studentLessonAttendances StudentLessonAttendance[]
+  auditLogs                AuditLog[]
 
   @@map("schools")
 }
@@ -79,17 +79,17 @@ model AcademicYear {
 }
 
 model Term {
-  id           String   @id @default(uuid())
-  schoolId     String   @map("school_id")
-  academicYearId String @map("academic_year_id")
-  termNumber   Int      @map("term_number")
-  name         String?  @db.VarChar(50)
-  startDate    DateTime @map("start_date") @db.Date
-  endDate      DateTime @map("end_date") @db.Date
-  midTermStart DateTime? @map("mid_term_start") @db.Date
-  midTermEnd   DateTime? @map("mid_term_end") @db.Date
-  isCurrent    Boolean  @default(false) @map("is_current")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id             String    @id @default(uuid())
+  schoolId       String    @map("school_id")
+  academicYearId String    @map("academic_year_id")
+  termNumber     Int       @map("term_number")
+  name           String?   @db.VarChar(50)
+  startDate      DateTime  @map("start_date") @db.Date
+  endDate        DateTime  @map("end_date") @db.Date
+  midTermStart   DateTime? @map("mid_term_start") @db.Date
+  midTermEnd     DateTime? @map("mid_term_end") @db.Date
+  isCurrent      Boolean   @default(false) @map("is_current")
+  createdAt      DateTime  @default(now()) @map("created_at")
 
   school             School              @relation(fields: [schoolId], references: [id])
   academicYear       AcademicYear        @relation(fields: [academicYearId], references: [id])
@@ -101,18 +101,18 @@ model Term {
 }
 
 model SchoolCalendarDay {
-  id             String   @id @default(uuid())
-  schoolId       String   @map("school_id")
-  termId         String?  @map("term_id")
-  date           DateTime @db.Date
-  dayType        String   @map("day_type") @db.VarChar(30)
-  eventName      String?  @map("event_name") @db.VarChar(100)
-  timetableType  String   @default("normal") @map("timetable_type") @db.VarChar(20)
-  notes          String?
-  createdAt      DateTime @default(now()) @map("created_at")
+  id            String   @id @default(uuid())
+  schoolId      String   @map("school_id")
+  termId        String?  @map("term_id")
+  date          DateTime @db.Date
+  dayType       String   @map("day_type") @db.VarChar(30)
+  eventName     String?  @map("event_name") @db.VarChar(100)
+  timetableType String   @default("normal") @map("timetable_type") @db.VarChar(20)
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  school School  @relation(fields: [schoolId], references: [id])
-  term   Term?   @relation(fields: [termId], references: [id])
+  school School @relation(fields: [schoolId], references: [id])
+  term   Term?  @relation(fields: [termId], references: [id])
 
   @@unique([schoolId, date], map: "idx_calendar_day_unique")
   @@index([schoolId, date, dayType], map: "idx_calendar_days")
@@ -145,11 +145,11 @@ model Stream {
   capacity  Int      @default(40)
   createdAt DateTime @default(now()) @map("created_at")
 
-  school      School     @relation(fields: [schoolId], references: [id])
-  grade       Grade      @relation(fields: [gradeId], references: [id])
-  students    Student[]
+  school         School          @relation(fields: [schoolId], references: [id])
+  grade          Grade           @relation(fields: [gradeId], references: [id])
+  students       Student[]
   timetableSlots TimetableSlot[]
-  classTeacher Teacher?  @relation("StreamClassTeacher")
+  classTeacher   Teacher?        @relation("StreamClassTeacher")
 
   @@unique([gradeId, name], map: "idx_stream_grade_name")
   @@index([schoolId], map: "idx_streams_school")
@@ -160,23 +160,23 @@ model Stream {
 // USERS
 // ============================================================
 model User {
-  id                String   @id @default(uuid())
-  clerkId           String   @unique @map("clerk_id")
-  schoolId          String   @map("school_id")
-  email             String?  @unique @db.VarChar(200)
-  phone             String?  @db.VarChar(20)
-  role              UserRole
-  firstName         String   @map("first_name") @db.VarChar(100)
-  lastName          String   @map("last_name") @db.VarChar(100)
-  nationalId        String?  @unique @map("national_id") @db.VarChar(20)
-  isActive          Boolean  @default(true) @map("is_active")
-  lastLoginAt       DateTime? @map("last_login_at")
-  notificationPref  String   @default("immediate") @map("notification_pref") @db.VarChar(20)
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-  deletedAt         DateTime? @map("deleted_at")
+  id               String    @id @default(uuid())
+  clerkId          String    @unique @map("clerk_id")
+  schoolId         String    @map("school_id")
+  email            String?   @unique @db.VarChar(200)
+  phone            String?   @db.VarChar(20)
+  role             UserRole
+  firstName        String    @map("first_name") @db.VarChar(100)
+  lastName         String    @map("last_name") @db.VarChar(100)
+  nationalId       String?   @unique @map("national_id") @db.VarChar(20)
+  isActive         Boolean   @default(true) @map("is_active")
+  lastLoginAt      DateTime? @map("last_login_at")
+  notificationPref String    @default("immediate") @map("notification_pref") @db.VarChar(20)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
 
-  school    School      @relation(fields: [schoolId], references: [id])
+  school    School     @relation(fields: [schoolId], references: [id])
   teacher   Teacher?
   guardians Guardian[]
   auditLogs AuditLog[]
@@ -209,12 +209,12 @@ model Teacher {
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
 
-  user             User              @relation(fields: [userId], references: [id])
-  school           School            @relation(fields: [schoolId], references: [id])
-  classTeacherStream Stream?        @relation("StreamClassTeacher", fields: [classTeacherStreamId], references: [id])
-  timetableSlots   TimetableSlot[]
+  user               User                @relation(fields: [userId], references: [id])
+  school             School              @relation(fields: [schoolId], references: [id])
+  classTeacherStream Stream?             @relation("StreamClassTeacher", fields: [classTeacherStreamId], references: [id])
+  timetableSlots     TimetableSlot[]
   teacherAttendances TeacherAttendance[]
-  substituteFor    TeacherAttendance[] @relation("SubstituteTeacher")
+  substituteFor      TeacherAttendance[] @relation("SubstituteTeacher")
 
   @@index([schoolId], map: "idx_teachers_school")
   @@map("teachers")
@@ -224,31 +224,31 @@ model Teacher {
 // STUDENTS
 // ============================================================
 model Student {
-  id                    String   @id @default(uuid())
-  schoolId              String   @map("school_id")
-  nemisNumber           String   @unique @map("nemis_number") @db.VarChar(20)
-  admissionNumber       String?  @map("admission_number") @db.VarChar(20)
-  firstName             String   @map("first_name") @db.VarChar(100)
-  lastName              String   @map("last_name") @db.VarChar(100)
+  id                    String    @id @default(uuid())
+  schoolId              String    @map("school_id")
+  nemisNumber           String    @unique @map("nemis_number") @db.VarChar(20)
+  admissionNumber       String?   @map("admission_number") @db.VarChar(20)
+  firstName             String    @map("first_name") @db.VarChar(100)
+  lastName              String    @map("last_name") @db.VarChar(100)
   dateOfBirth           DateTime? @map("date_of_birth") @db.Date
-  gender                String?  @db.VarChar(10)
-  streamId              String   @map("stream_id")
-  enrollmentDate        DateTime @default(now()) @map("enrollment_date") @db.Date
-  isBoarding            Boolean  @default(false) @map("is_boarding")
-  photoUrl              String?  @map("photo_url")
-  medicalNotes          String?  @map("medical_notes")
-  transitionScore       Decimal? @map("transition_score") @db.Decimal(5, 2)
-  status                String   @default("active") @db.VarChar(20)
+  gender                String?   @db.VarChar(10)
+  streamId              String    @map("stream_id")
+  enrollmentDate        DateTime  @default(now()) @map("enrollment_date") @db.Date
+  isBoarding            Boolean   @default(false) @map("is_boarding")
+  photoUrl              String?   @map("photo_url")
+  medicalNotes          String?   @map("medical_notes")
+  transitionScore       Decimal?  @map("transition_score") @db.Decimal(5, 2)
+  status                String    @default("active") @db.VarChar(20)
   leavingDate           DateTime? @map("leaving_date") @db.Date
-  leavingReason         String?  @map("leaving_reason") @db.VarChar(50)
-  leavingCertificateRef String?  @map("leaving_certificate_ref") @db.VarChar(50)
-  previousSchool        String?  @map("previous_school") @db.VarChar(200)
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
+  leavingReason         String?   @map("leaving_reason") @db.VarChar(50)
+  leavingCertificateRef String?   @map("leaving_certificate_ref") @db.VarChar(50)
+  previousSchool        String?   @map("previous_school") @db.VarChar(200)
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
   deletedAt             DateTime? @map("deleted_at")
 
-  school                   School                   @relation(fields: [schoolId], references: [id])
-  stream                   Stream                   @relation(fields: [streamId], references: [id])
+  school                   School                    @relation(fields: [schoolId], references: [id])
+  stream                   Stream                    @relation(fields: [streamId], references: [id])
   guardians                Guardian[]
   studentDailyAttendances  StudentDailyAttendance[]
   studentLessonAttendances StudentLessonAttendance[]
@@ -264,24 +264,24 @@ model Student {
 // GUARDIANS
 // ============================================================
 model Guardian {
-  id                     String    @id @default(uuid())
-  userId                 String    @map("user_id")
-  studentId              String    @map("student_id")
-  relationship           String?   @db.VarChar(30)
-  isPrimary              Boolean   @default(false) @map("is_primary")
-  canPickup              Boolean   @default(true) @map("can_pickup")
-  verified               Boolean   @default(false)
-  verifiedAt             DateTime? @map("verified_at")
-  verifiedBy             String?   @map("verified_by")
-  hasRestrictedAccess    Boolean   @default(false) @map("has_restricted_access")
-  accessRestrictionNote  String?   @map("access_restriction_note")
-  isActive               Boolean   @default(true) @map("is_active")
-  deactivatedAt          DateTime? @map("deactivated_at")
-  deactivatedBy          String?   @map("deactivated_by")
-  deactivationReason     String?   @map("deactivation_reason") @db.VarChar(50)
-  previousPhones         String[]  @map("previous_phones")
-  createdAt              DateTime  @default(now()) @map("created_at")
-  updatedAt              DateTime  @updatedAt @map("updated_at")
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  studentId             String    @map("student_id")
+  relationship          String?   @db.VarChar(30)
+  isPrimary             Boolean   @default(false) @map("is_primary")
+  canPickup             Boolean   @default(true) @map("can_pickup")
+  verified              Boolean   @default(false)
+  verifiedAt            DateTime? @map("verified_at")
+  verifiedBy            String?   @map("verified_by")
+  hasRestrictedAccess   Boolean   @default(false) @map("has_restricted_access")
+  accessRestrictionNote String?   @map("access_restriction_note")
+  isActive              Boolean   @default(true) @map("is_active")
+  deactivatedAt         DateTime? @map("deactivated_at")
+  deactivatedBy         String?   @map("deactivated_by")
+  deactivationReason    String?   @map("deactivation_reason") @db.VarChar(50)
+  previousPhones        String[]  @map("previous_phones")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
   user    User    @relation(fields: [userId], references: [id])
   student Student @relation(fields: [studentId], references: [id])
@@ -295,16 +295,16 @@ model Guardian {
 // CBC LEARNING AREAS
 // ============================================================
 model LearningArea {
-  id          String   @id @default(uuid())
-  schoolId    String   @map("school_id")
-  name        String   @db.VarChar(100)
-  code        String?  @db.VarChar(20)
-  cbcStage    String?  @map("cbc_stage") @db.VarChar(20)
-  isJssArea   Boolean  @default(false) @map("is_jss_area")
-  color       String?  @db.VarChar(7)
-  createdAt   DateTime @default(now()) @map("created_at")
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  name      String   @db.VarChar(100)
+  code      String?  @db.VarChar(20)
+  cbcStage  String?  @map("cbc_stage") @db.VarChar(20)
+  isJssArea Boolean  @default(false) @map("is_jss_area")
+  color     String?  @db.VarChar(7)
+  createdAt DateTime @default(now()) @map("created_at")
 
-  school         School         @relation(fields: [schoolId], references: [id])
+  school         School          @relation(fields: [schoolId], references: [id])
   strands        Strand[]
   timetableSlots TimetableSlot[]
 
@@ -341,46 +341,47 @@ model SubStrand {
 // TIMETABLE
 // ============================================================
 model TimetablePeriod {
-  id          String   @id @default(uuid())
-  schoolId    String   @map("school_id")
-  name        String   @db.VarChar(30)
-  startTime   DateTime @map("start_time") @db.Time()
-  endTime     DateTime @map("end_time") @db.Time()
-  isBreak     Boolean  @default(false) @map("is_break")
-  orderIndex  Int      @map("order_index")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id         String   @id @default(uuid())
+  schoolId   String   @map("school_id")
+  name       String   @db.VarChar(30)
+  startTime  DateTime @map("start_time") @db.Time()
+  endTime    DateTime @map("end_time") @db.Time()
+  isBreak    Boolean  @default(false) @map("is_break")
+  orderIndex Int      @map("order_index")
+  createdAt  DateTime @default(now()) @map("created_at")
 
-  school       School          @relation(fields: [schoolId], references: [id])
-  slots        TimetableSlot[]
-  doubleSlots  TimetableSlot[] @relation("DoubleLessonPeriod")
+  school      School          @relation(fields: [schoolId], references: [id])
+  slots       TimetableSlot[]
+  doubleSlots TimetableSlot[] @relation("DoubleLessonPeriod")
+  isPublished   Boolean  @default(false) @map("is_published")
 
   @@index([schoolId], map: "idx_timetable_periods_school")
   @@map("timetable_periods")
 }
 
 model TimetableSlot {
-  id               String   @id @default(uuid())
-  schoolId         String   @map("school_id")
-  termId           String   @map("term_id")
-  streamId         String   @map("stream_id")
-  learningAreaId   String   @map("learning_area_id")
-  teacherId        String   @map("teacher_id")
-  periodId         String   @map("period_id")
-  dayOfWeek        Int      @map("day_of_week")
-  room             String?  @db.VarChar(50)
-  isDoubleLesson   Boolean  @default(false) @map("is_double_lesson")
-  secondPeriodId   String?  @map("second_period_id")
-  createdAt        DateTime @default(now()) @map("created_at")
+  id             String   @id @default(uuid())
+  schoolId       String   @map("school_id")
+  termId         String   @map("term_id")
+  streamId       String   @map("stream_id")
+  learningAreaId String   @map("learning_area_id")
+  teacherId      String   @map("teacher_id")
+  periodId       String   @map("period_id")
+  dayOfWeek      Int      @map("day_of_week")
+  room           String?  @db.VarChar(50)
+  isDoubleLesson Boolean  @default(false) @map("is_double_lesson")
+  secondPeriodId String?  @map("second_period_id")
+  createdAt      DateTime @default(now()) @map("created_at")
 
-  school           School                  @relation(fields: [schoolId], references: [id])
-  term             Term                    @relation(fields: [termId], references: [id])
-  stream           Stream                  @relation(fields: [streamId], references: [id])
-  learningArea     LearningArea            @relation(fields: [learningAreaId], references: [id])
-  teacher          Teacher                 @relation(fields: [teacherId], references: [id])
-  period           TimetablePeriod         @relation(fields: [periodId], references: [id])
-  secondPeriod     TimetablePeriod?        @relation("DoubleLessonPeriod", fields: [secondPeriodId], references: [id])
-  qrTokens         ClassroomQrToken[]
-  teacherAttendances TeacherAttendance[]
+  school                   School                    @relation(fields: [schoolId], references: [id])
+  term                     Term                      @relation(fields: [termId], references: [id])
+  stream                   Stream                    @relation(fields: [streamId], references: [id])
+  learningArea             LearningArea              @relation(fields: [learningAreaId], references: [id])
+  teacher                  Teacher                   @relation(fields: [teacherId], references: [id])
+  period                   TimetablePeriod           @relation(fields: [periodId], references: [id])
+  secondPeriod             TimetablePeriod?          @relation("DoubleLessonPeriod", fields: [secondPeriodId], references: [id])
+  qrTokens                 ClassroomQrToken[]
+  teacherAttendances       TeacherAttendance[]
   studentLessonAttendances StudentLessonAttendance[]
 
   @@unique([teacherId, periodId, dayOfWeek, termId], map: "idx_slots_teacher_unique")
@@ -391,14 +392,14 @@ model TimetableSlot {
 }
 
 model ClassroomQrToken {
-  id          String    @id @default(uuid())
-  schoolId    String    @map("school_id")
-  slotId      String    @map("slot_id")
-  token       String    @unique @db.VarChar(100)
-  validFrom   DateTime  @map("valid_from")
-  validUntil  DateTime  @map("valid_until")
-  usedAt      DateTime? @map("used_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id         String    @id @default(uuid())
+  schoolId   String    @map("school_id")
+  slotId     String    @map("slot_id")
+  token      String    @unique @db.VarChar(100)
+  validFrom  DateTime  @map("valid_from")
+  validUntil DateTime  @map("valid_until")
+  usedAt     DateTime? @map("used_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   school School        @relation(fields: [schoolId], references: [id])
   slot   TimetableSlot @relation(fields: [slotId], references: [id])
@@ -412,29 +413,29 @@ model ClassroomQrToken {
 // TEACHER ATTENDANCE
 // ============================================================
 model TeacherAttendance {
-  id                    String    @id @default(uuid())
-  schoolId              String    @map("school_id")
-  teacherId             String    @map("teacher_id")
-  slotId                String?   @map("slot_id")
-  date                  DateTime  @db.Date
-  checkedInAt           DateTime? @map("checked_in_at")
-  checkedOutAt          DateTime? @map("checked_out_at")
-  checkInLat            Decimal?  @map("check_in_lat") @db.Decimal(10, 8)
-  checkInLng            Decimal?  @map("check_in_lng") @db.Decimal(11, 8)
-  geofencePassed        Boolean   @default(false) @map("geofence_passed")
-  qrScanned             Boolean   @default(false) @map("qr_scanned")
-  status                String    @default("pending") @db.VarChar(20)
-  minutesLate           Int?      @map("minutes_late")
-  absenceReason         String?   @map("absence_reason") @db.VarChar(50)
-  lessonNotes           String?   @map("lesson_notes")
-  substituteTeacherId   String?   @map("substitute_teacher_id")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  id                  String    @id @default(uuid())
+  schoolId            String    @map("school_id")
+  teacherId           String    @map("teacher_id")
+  slotId              String?   @map("slot_id")
+  date                DateTime  @db.Date
+  checkedInAt         DateTime? @map("checked_in_at")
+  checkedOutAt        DateTime? @map("checked_out_at")
+  checkInLat          Decimal?  @map("check_in_lat") @db.Decimal(10, 8)
+  checkInLng          Decimal?  @map("check_in_lng") @db.Decimal(11, 8)
+  geofencePassed      Boolean   @default(false) @map("geofence_passed")
+  qrScanned           Boolean   @default(false) @map("qr_scanned")
+  status              String    @default("pending") @db.VarChar(20)
+  minutesLate         Int?      @map("minutes_late")
+  absenceReason       String?   @map("absence_reason") @db.VarChar(50)
+  lessonNotes         String?   @map("lesson_notes")
+  substituteTeacherId String?   @map("substitute_teacher_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
-  school            School    @relation(fields: [schoolId], references: [id])
-  teacher           Teacher   @relation(fields: [teacherId], references: [id])
+  school            School         @relation(fields: [schoolId], references: [id])
+  teacher           Teacher        @relation(fields: [teacherId], references: [id])
   slot              TimetableSlot? @relation(fields: [slotId], references: [id])
-  substituteTeacher Teacher?  @relation("SubstituteTeacher", fields: [substituteTeacherId], references: [id])
+  substituteTeacher Teacher?       @relation("SubstituteTeacher", fields: [substituteTeacherId], references: [id])
 
   @@unique([teacherId, slotId, date], map: "idx_teacher_att_unique")
   @@index([teacherId, date], map: "idx_teacher_att_date")
@@ -446,14 +447,14 @@ model TeacherAttendance {
 // STUDENT ATTENDANCE
 // ============================================================
 model StudentDailyAttendance {
-  id          String    @id @default(uuid())
-  schoolId    String    @map("school_id")
-  studentId   String    @map("student_id")
-  date        DateTime  @db.Date
-  arrivedAt   DateTime? @map("arrived_at")
-  departedAt  DateTime? @map("departed_at")
-  status      String    @default("absent") @db.VarChar(20)
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id         String    @id @default(uuid())
+  schoolId   String    @map("school_id")
+  studentId  String    @map("student_id")
+  date       DateTime  @db.Date
+  arrivedAt  DateTime? @map("arrived_at")
+  departedAt DateTime? @map("departed_at")
+  status     String    @default("absent") @db.VarChar(20)
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   school  School  @relation(fields: [schoolId], references: [id])
   student Student @relation(fields: [studentId], references: [id])
@@ -464,22 +465,22 @@ model StudentDailyAttendance {
 }
 
 model StudentLessonAttendance {
-  id                  String    @id @default(uuid())
-  schoolId            String    @map("school_id")
-  studentId           String    @map("student_id")
-  slotId              String?   @map("slot_id")
-  date                DateTime  @db.Date
-  status              String    @db.VarChar(20)
-  absenceReason       String?   @map("absence_reason") @db.VarChar(50)
-  markedBy            String    @map("marked_by")
-  parentNotified      Boolean   @default(false) @map("parent_notified")
-  notificationHeld    Boolean   @default(false) @map("notification_held")
-  notificationJobId   String?   @map("notification_job_id") @db.VarChar(100)
-  notificationSentAt  DateTime? @map("notification_sent_at")
-  createdAt           DateTime  @default(now()) @map("created_at")
+  id                 String    @id @default(uuid())
+  schoolId           String    @map("school_id")
+  studentId          String    @map("student_id")
+  slotId             String?   @map("slot_id")
+  date               DateTime  @db.Date
+  status             String    @db.VarChar(20)
+  absenceReason      String?   @map("absence_reason") @db.VarChar(50)
+  markedBy           String    @map("marked_by")
+  parentNotified     Boolean   @default(false) @map("parent_notified")
+  notificationHeld   Boolean   @default(false) @map("notification_held")
+  notificationJobId  String?   @map("notification_job_id") @db.VarChar(100)
+  notificationSentAt DateTime? @map("notification_sent_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
 
-  school School        @relation(fields: [schoolId], references: [id])
-  student Student      @relation(fields: [studentId], references: [id])
+  school  School         @relation(fields: [schoolId], references: [id])
+  student Student        @relation(fields: [studentId], references: [id])
   slot    TimetableSlot? @relation(fields: [slotId], references: [id])
 
   @@unique([studentId, slotId, date], map: "idx_student_lesson_att_unique")
@@ -495,17 +496,17 @@ model StudentLessonAttendance {
 // AUDIT LOG (append-only, immutable)
 // ============================================================
 model AuditLog {
-  id         BigInt   @id @default(autoincrement())
-  schoolId   String?  @map("school_id")
-  actorId    String?  @map("actor_id")
-  action     String   @db.VarChar(100)
-  tableName  String   @map("table_name") @db.VarChar(50)
-  recordId   String?  @map("record_id") @db.Uuid
-  oldData    Json?    @map("old_data")
-  newData    Json?    @map("new_data")
-  ipAddress  String?  @map("ip_address") @db.Inet
-  userAgent  String?  @map("user_agent")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id        BigInt   @id @default(autoincrement())
+  schoolId  String?  @map("school_id")
+  actorId   String?  @map("actor_id")
+  action    String   @db.VarChar(100)
+  tableName String   @map("table_name") @db.VarChar(50)
+  recordId  String?  @map("record_id") @db.Uuid
+  oldData   Json?    @map("old_data")
+  newData   Json?    @map("new_data")
+  ipAddress String?  @map("ip_address") @db.Inet
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
 
   school School? @relation(fields: [schoolId], references: [id])
   actor  User?   @relation(fields: [actorId], references: [id])
