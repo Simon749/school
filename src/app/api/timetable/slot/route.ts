@@ -24,8 +24,8 @@ export async function POST(req: NextRequest) {
 
   // Verify ownership
   const [stream, teacher, period, learningArea] = await Promise.all([
-    prisma.stream.findFirst({ where: { id: streamId, schoolId: admin.schoolId } }),
-    prisma.teacher.findFirst({ where: { id: teacherId, schoolId: admin.schoolId } }),
+    prisma.stream.findFirst({ where: { id: streamId, schoolId: admin.schoolId }, include: { grade: true } }),
+    prisma.teacher.findFirst({ where: { id: teacherId, schoolId: admin.schoolId }, include: { user: true }  }),
     prisma.timetablePeriod.findFirst({ where: { id: periodId, schoolId: admin.schoolId } }),
     prisma.learningArea.findFirst({ where: { id: learningAreaId, schoolId: admin.schoolId } }),
   ]);

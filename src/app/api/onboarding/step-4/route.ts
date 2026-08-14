@@ -5,10 +5,24 @@ import { gradeStreamSchema } from "@/lib/validations/onboarding";
 
 export async function POST(req: NextRequest) {
   const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!clerkId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { clerkId },
+    select: { schoolId: true },
+  });
+
+  if (!user?.schoolId) {
+    return NextResponse.json({ error: "School not found for user" }, { status: 404 });
+  }
+
+  const schoolId = user.schoolId;
 
   const body = await req.json();
   const parsed = gradeStreamSchema.safeParse(body);
+
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Validation failed", issues: parsed.error.issues },
@@ -16,11 +30,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { schoolId, grades } = parsed.data;
+  const { grades } = parsed.data;
 
   try {
-    // Use transaction to create grades + streams atomically
-    await prisma.$transaction(async (tx: { grade: { create: (arg0: { data: { schoolId: any; name: string; level: number; cbcStage: "pre_primary" | "lower_primary" | "upper_primary" | "jss"; }; }) => any; }; stream: { create: (arg0: { data: { schoolId: any; gradeId: any; name: string; capacity: number; }; }) => any; }; school: { update: (arg0: { where: { id: any; }; data: { onboardingStep: number; }; }) => any; }; }) => {
+    await prisma.$transaction(async (tx) => {
       for (const grade of grades) {
         const createdGrade = await tx.grade.create({
           data: {
@@ -43,7 +56,6 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Update onboarding progress
       await tx.school.update({
         where: { id: schoolId },
         data: { onboardingStep: 4 },

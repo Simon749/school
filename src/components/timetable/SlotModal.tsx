@@ -65,8 +65,10 @@ export function SlotModal({
 
   if (!open || !initialData) return null;
 
-  const currentPeriod = periods.find((p) => p.id === initialData.periodId);
-  const dayLabel = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][initialData.dayOfWeek];
+  const data = initialData;
+  const { periodId, dayOfWeek } = data;
+  const currentPeriod = periods.find((p) => p.id === data.periodId);
+  const dayLabel = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][data.dayOfWeek];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -74,15 +76,17 @@ export function SlotModal({
       setError("Learning area, teacher, and stream are required.");
       return;
     }
+
     setLoading(true);
     setError("");
+
     try {
       await onSave({
         id: existingSlot?.id,
-        termId: existingSlot?.termId, // should be passed from parent or fetched
+        termId: existingSlot?.termId,
         streamId,
-        periodId: initialData.periodId,
-        dayOfWeek: initialData.dayOfWeek,
+        periodId: data.periodId,
+        dayOfWeek: data.dayOfWeek,
         learningAreaId,
         teacherId,
         room,

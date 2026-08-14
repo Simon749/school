@@ -69,9 +69,9 @@
 - [ ] Create Prisma `db.ts` singleton client (`lib/db.ts`) — next up, see chat
 - [x] Write schema for first 3 tables: `schools`, `users`, `academic_years` — done in
       `prisma/schema.prisma`, schema-only (not migrated — no live DB to migrate against yet)
-- [ ] Run first migration: `npx prisma migrate dev --name init` — **needs you**, once
+- [x] Run first migration: `npx prisma migrate dev --name init` — **needs you**, once
       `DATABASE_URL` is real
-- [ ] Confirm tables exist in Neon dashboard — **needs you**
+- [x] Confirm tables exist in Neon dashboard — **needs you**
 
 ### 0.3 Redis — Upstash
 - [ ] Create Upstash account + Redis database (`edutrack-dev`)

@@ -218,21 +218,21 @@ export default function StudentProfilePage() {
                 value={student.firstName}
                 editing={isEditing}
                 onChange={(v) => setEditForm({ ...editForm, firstName: v })}
-                editValue={editForm.firstName}
+                editValue={editForm.firstName || ""}
               />
               <Field
                 label="Last Name"
                 value={student.lastName}
                 editing={isEditing}
                 onChange={(v) => setEditForm({ ...editForm, lastName: v })}
-                editValue={editForm.lastName}
+                editValue={editForm.lastName || ""}
               />
               <Field
                 label="NEMIS Number"
                 value={student.nemisNumber}
                 editing={isEditing}
                 onChange={(v) => setEditForm({ ...editForm, nemisNumber: v })}
-                editValue={editForm.nemisNumber}
+                editValue={editForm.nemisNumber || ""}
               />
               <Field
                 label="Admission Number"

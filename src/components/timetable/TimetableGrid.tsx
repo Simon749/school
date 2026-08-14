@@ -21,7 +21,7 @@ interface Slot {
   learningArea: { name: string; color: string | null };
   teacher: { user: { firstName: string; lastName: string } };
   stream?: { name: string; grade: { name: string } };
-  secondPeriod?: { name: string } | null;
+  secondPeriod?: { id: string; name: string } | null;
 }
 
 const DAYS = [
