@@ -114,6 +114,7 @@ export async function POST(req: NextRequest) {
             // Create user record (no clerkId yet — they will sign up via Clerk invitation later)
             const user = await tx.user.create({
                 data: {
+                    clerkId: `teacher_${Date.now()}`,
                     schoolId: admin.schoolId,
                     firstName: data.firstName,
                     lastName: data.lastName,

@@ -51,6 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     } else {
       const newUser = await prisma.user.create({
         data: {
+          clerkId: `guardian_${Date.now()}`,
           schoolId: user.schoolId,
           firstName: parsed.data.firstName,
           lastName: parsed.data.lastName,
