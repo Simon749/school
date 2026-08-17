@@ -25,9 +25,10 @@ interface Slot {
   learningArea: { name: string; color: string | null };
   teacher: { user: { firstName: string; lastName: string } };
   stream: { name: string; grade: { name: string } };
-  secondPeriod: { name: string } | null;
+  secondPeriod: { id: string; name: string } | null;
   termId: string;
-}
+};
+
 
 export default function TimetableBuilderPage() {
   const router = useRouter();
@@ -120,7 +121,7 @@ export default function TimetableBuilderPage() {
           const current = (data.terms || []).find((t: any) => t.isCurrent);
           if (current) setCurrentTermId(current.id);
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [currentTermId]);
 

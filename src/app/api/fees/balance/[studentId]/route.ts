@@ -62,29 +62,29 @@ export async function GET(
     if (!link) return NextResponse.json({ error: "Not your child" }, { status: 403 });
   }
 
-  const [fees, payments] = await Promise.all([
-    prisma.studentFee.findMany({
-      where: { studentId: params.studentId },
-      include: { feeItem: true, term: true },
-    }) as Promise<StudentFeeData[]>,
-    prisma.feePayment.findMany({
-      where: { studentId: params.studentId, isReversed: false },
-    }) as Promise<FeePaymentData[]>,
-  ]);
+ const [fees, payments] = await Promise.all([
+  prisma.studentFee.findMany({
+    where: { studentId: params.studentId },
+    include: { feeItem: true },
+  }),
+  prisma.feePayment.findMany({
+    where: { studentId: params.studentId, isReversed: false },
+  }),
+]);
 
-  const totalDue = fees.reduce((sum: number, f: StudentFeeData) => sum + Number(f.amountDue) - Number(f.discount) + Number(f.carryForwardAmount), 0);
-  const totalPaid = payments.reduce((sum: number, p: FeePaymentData) => sum + Number(p.amount), 0);
+  const totalDue = fees.reduce((sum, f) => sum + Number(f.amountDue) - Number(f.discount) + Number(f.carryForwardAmount), 0);
+  const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
   const balance = totalDue - totalPaid;
 
   return NextResponse.json<BalanceResponse>({
     totalDue,
     totalPaid,
     balance,
-    items: fees.map((f: StudentFeeData) => ({
+    items: fees.map((f) => ({
       name: f.feeItem.name,
       due: Number(f.amountDue) - Number(f.discount),
       paid: payments
-        .flatMap((p: FeePaymentData) => (p.allocations as FeeAllocation[]) || [])
+        .flatMap((p) => (p.allocations as FeeAllocation[]) || [])
         .filter((a: FeeAllocation) => a?.feeItemId === f.feeItemId)
         .reduce((s: number, a: FeeAllocation) => s + (a?.amountAllocated || 0), 0),
     })),

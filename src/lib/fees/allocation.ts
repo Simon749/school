@@ -34,7 +34,7 @@ export async function allocatePayment(input: AllocationInput): Promise<Allocatio
   // Fetch existing payments for this student/term (excluding reversed)
   const existingPayments = await prisma.feePayment.findMany({
     where: { studentId, termId, isReversed: false },
-    select: { allocations: true, amount: true },
+    select: { id: true, allocations: true, amount: true },
   });
 
   // Calculate already-paid amount per fee item

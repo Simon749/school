@@ -41,7 +41,6 @@ export const attendanceWorker = new Worker(
           status,
           minutesLate,
           lessonNotes,
-          updatedAt: new Date(),
         },
         create: {
           schoolId,

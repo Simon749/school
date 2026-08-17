@@ -65,14 +65,21 @@ export async function GET(req: NextRequest) {
 
   const disputes = await prisma.paymentDispute.findMany({
     where: { schoolId: user.schoolId },
-    include: {
-      student: { select: { firstName: true, lastName: true } },
-    },
     orderBy: { createdAt: "desc" },
   });
 
+  const studentIds = Array.from(new Set(disputes.map((d) => d.studentId).filter(Boolean)));
+  const students = await prisma.student.findMany({
+    where: { id: { in: studentIds } },
+    select: { id: true, firstName: true, lastName: true },
+  });
+
+  const studentMap = new Map(students.map((s) => [s.id, s]));
+
   // Fetch raiser names separately (since raisedBy is not a relation)
-  const raiserIds = [...new Set(disputes.map((d) => d.raisedBy).filter(Boolean))];
+  const raiserIds = Array.from(
+    new Set(disputes.map((d) => d.raisedBy).filter(Boolean))
+  );
   const raisers = await prisma.user.findMany({
     where: { id: { in: raiserIds } },
     select: { id: true, firstName: true, lastName: true },
@@ -83,6 +90,9 @@ export async function GET(req: NextRequest) {
     ...d,
     raisedByName: raiserMap.get(d.raisedBy)
       ? `${raiserMap.get(d.raisedBy)!.firstName} ${raiserMap.get(d.raisedBy)!.lastName}`
+      : "Unknown",
+    studentName: studentMap.get(d.studentId)
+      ? `${studentMap.get(d.studentId)!.firstName} ${studentMap.get(d.studentId)!.lastName}`
       : "Unknown",
   }));
 
