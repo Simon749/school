@@ -1,23 +1,22 @@
-import "@/lib/db";
-import { attendanceWorker } from "./attendance.worker";
-import { mpesaWorker } from "./mpesa.worker";
-import { notificationWorker } from "./notification.worker";
+// src/workers/index.ts
 import { smsWorker } from "./sms.worker";
+import { notificationWorker } from "./notification.worker";
 
-console.log(" EduTrack workers started");
-console.log("   Listening on queues: attendance, notification, sms, mpesa");
-console.log("   Press Ctrl+C to stop\n");
+console.log("[Workers] All workers started");
+console.log("[Workers] - SMS Worker: listening for jobs");
+console.log("[Workers] - Notification Worker: listening for jobs");
 
-const workers = [attendanceWorker, mpesaWorker, notificationWorker, smsWorker];
-
-process.on("SIGINT", async () => {
-  console.log("\n SIGINT received, closing workers...");
-  await Promise.all(workers.map((w) => w.close()));
+// Graceful shutdown
+process.on("SIGTERM", async () => {
+  console.log("[Workers] SIGTERM received, shutting down gracefully");
+  await smsWorker.close();
+  await notificationWorker.close();
   process.exit(0);
 });
 
-process.on("SIGTERM", async () => {
-  console.log("\n SIGTERM received, closing workers...");
-  await Promise.all(workers.map((w) => w.close()));
+process.on("SIGINT", async () => {
+  console.log("[Workers] SIGINT received, shutting down gracefully");
+  await smsWorker.close();
+  await notificationWorker.close();
   process.exit(0);
 });

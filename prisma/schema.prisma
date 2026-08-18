@@ -68,6 +68,7 @@ model School {
   examTimetableSlots ExamTimetableSlot[]
   teacherDuties      TeacherDuty[]
   lessonRegisters    LessonRegister[]
+  TermReport         TermReport[]
 
   @@map("schools")
 }
@@ -112,6 +113,9 @@ model Term {
   studentActivities  StudentActivity[]
   assessments        Assessment[]
   examTimetableSlots ExamTimetableSlot[]
+
+  termReports        TermReport[]
+  portfolioArtefacts PortfolioArtefact[]
 
   @@index([schoolId], map: "idx_terms_school")
   @@map("terms")
@@ -169,6 +173,7 @@ model Stream {
   classTeacher       Teacher?            @relation("StreamClassTeacher")
   assessments        Assessment[]
   examTimetableSlots ExamTimetableSlot[]
+  termReports        TermReport[]
 
   @@unique([gradeId, name], map: "idx_stream_grade_name")
   @@index([schoolId], map: "idx_streams_school")
@@ -195,12 +200,16 @@ model User {
   updatedAt        DateTime  @updatedAt @map("updated_at")
   deletedAt        DateTime? @map("deleted_at")
 
-  school    School     @relation(fields: [schoolId], references: [id])
-  teacher   Teacher?
-  guardians Guardian[]
-  auditLogs AuditLog[]
+  school           School           @relation(fields: [schoolId], references: [id])
+  teacher          Teacher?
+  guardians        Guardian[]
+  auditLogs        AuditLog[]
   disputesRaised   PaymentDispute[] @relation("DisputeRaiser")
   disputesResolved PaymentDispute[] @relation("DisputeResolver")
+
+  reviewedAssessments Assessment[]        @relation("AssessmentReviewer")
+  lockedAssessments   Assessment[]        @relation("AssessmentLocker")
+  uploadedPortfolios  PortfolioArtefact[] @relation("PortfolioUploader")
 
   @@index([schoolId], map: "idx_users_school")
   @@map("users")
@@ -279,7 +288,10 @@ model Student {
   feePayments              FeePayment[]
   studentActivities        StudentActivity[]
   paymentDisputes          PaymentDispute[]
-  
+
+  assessmentResults  AssessmentResult[]
+  termReports        TermReport[]
+  portfolioArtefacts PortfolioArtefact[]
 
   @@index([schoolId], map: "idx_students_school")
   @@index([streamId], map: "idx_students_stream")
@@ -337,6 +349,7 @@ model LearningArea {
   timetableSlots     TimetableSlot[]
   assessments        Assessment[]
   examTimetableSlots ExamTimetableSlot[]
+  PortfolioArtefact  PortfolioArtefact[]
 
   @@index([schoolId], map: "idx_learning_areas_school")
   @@map("learning_areas")
@@ -361,7 +374,8 @@ model SubStrand {
   name       String @db.VarChar(200)
   orderIndex Int    @default(0) @map("order_index")
 
-  strand Strand @relation(fields: [strandId], references: [id])
+  strand      Strand        @relation(fields: [strandId], references: [id])
+  RubricScore RubricScore[]
 
   @@index([strandId], map: "idx_sub_strands_strand")
   @@map("sub_strands")
@@ -383,7 +397,6 @@ model TimetablePeriod {
   school      School          @relation(fields: [schoolId], references: [id])
   slots       TimetableSlot[]
   doubleSlots TimetableSlot[] @relation("DoubleLessonPeriod")
-  
 
   @@index([schoolId], map: "idx_timetable_periods_school")
   @@map("timetable_periods")
@@ -574,6 +587,12 @@ model Assessment {
   learningArea LearningArea @relation(fields: [learningAreaId], references: [id])
   stream       Stream       @relation(fields: [streamId], references: [id])
   teacher      Teacher      @relation(fields: [teacherId], references: [id])
+  reviewedById String?
+  lockedById   String?
+
+  reviewedBy       User?              @relation("AssessmentReviewer", fields: [reviewedById], references: [id])
+  lockedBy         User?              @relation("AssessmentLocker", fields: [lockedById], references: [id])
+  AssessmentResult AssessmentResult[]
 
   @@index([schoolId], map: "idx_assessments_school")
   @@map("assessments")
@@ -664,9 +683,9 @@ model FeePayment {
   overpaymentAction String?   @map("overpayment_action") @db.VarChar(20)
   createdAt         DateTime  @default(now()) @map("created_at")
 
-  school  School  @relation(fields: [schoolId], references: [id])
-  student Student @relation(fields: [studentId], references: [id])
-  term    Term    @relation(fields: [termId], references: [id])
+  school   School           @relation(fields: [schoolId], references: [id])
+  student  Student          @relation(fields: [studentId], references: [id])
+  term     Term             @relation(fields: [termId], references: [id])
   disputes PaymentDispute[]
 
   @@index([studentId, termId], map: "idx_fee_payments_student")
@@ -691,8 +710,8 @@ model PaymentDispute {
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  school  School  @relation(fields: [schoolId], references: [id])
-  student Student @relation(fields: [studentId], references: [id])
+  school   School      @relation(fields: [schoolId], references: [id])
+  student  Student     @relation(fields: [studentId], references: [id])
   raiser   User        @relation("DisputeRaiser", fields: [raisedBy], references: [id])
   resolver User?       @relation("DisputeResolver", fields: [resolvedBy], references: [id])
   payment  FeePayment? @relation(fields: [paymentId], references: [id])
@@ -845,4 +864,93 @@ model LessonRegister {
   @@unique([slotId, date], map: "idx_lesson_register_unique")
   @@index([schoolId, date], map: "idx_lesson_register_school_date")
   @@map("lesson_registers")
+}
+
+// ============================================================
+// PHASE 3: CBC RESULTS & REPORTING
+// ============================================================
+
+model AssessmentResult {
+  id             String    @id @default(uuid())
+  assessmentId   String    @map("assessment_id")
+  studentId      String    @map("student_id")
+  marksObtained  Decimal?  @map("marks_obtained") @db.Decimal(5, 2)
+  teacherComment String?   @map("teacher_comment")
+  submittedAt    DateTime? @map("submitted_at")
+  isLocked       Boolean   @default(false) @map("is_locked")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  assessment   Assessment    @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  student      Student       @relation(fields: [studentId], references: [id])
+  rubricScores RubricScore[]
+
+  @@unique([assessmentId, studentId], map: "idx_assessment_result_unique")
+  @@index([studentId], map: "idx_assessment_results_student")
+  @@map("assessment_results")
+}
+
+model RubricScore {
+  id          String   @id @default(uuid())
+  resultId    String   @map("result_id")
+  subStrandId String   @map("sub_strand_id")
+  score       String   @db.VarChar(5) // EE|ME|AE|BE
+  comment     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  result    AssessmentResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  subStrand SubStrand        @relation(fields: [subStrandId], references: [id])
+
+  @@unique([resultId, subStrandId], map: "idx_rubric_score_unique")
+  @@map("rubric_scores")
+}
+
+model TermReport {
+  id                  String    @id @default(uuid())
+  schoolId            String    @map("school_id")
+  studentId           String    @map("student_id")
+  termId              String    @map("term_id")
+  streamId            String    @map("stream_id")
+  classTeacherComment String?   @map("class_teacher_comment")
+  principalComment    String?   @map("principal_comment")
+  overallScore        Decimal?  @map("overall_score") @db.Decimal(5, 2)
+  position            Int?
+  outOf               Int?      @map("out_of")
+  totalLessons        Int?      @map("total_lessons")
+  lessonsAttended     Int?      @map("lessons_attended")
+  conduct             String?   @db.VarChar(30)
+  generatedAt         DateTime? @map("generated_at")
+  pdfUrl              String?   @map("pdf_url")
+  publishedAt         DateTime? @map("published_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  school  School  @relation(fields: [schoolId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+  term    Term    @relation(fields: [termId], references: [id])
+  stream  Stream  @relation(fields: [streamId], references: [id])
+
+  @@unique([studentId, termId], map: "idx_term_report_unique")
+  @@index([schoolId, termId], map: "idx_term_reports_school_term")
+  @@map("term_reports")
+}
+
+model PortfolioArtefact {
+  id             String   @id @default(uuid())
+  studentId      String   @map("student_id")
+  termId         String   @map("term_id")
+  learningAreaId String   @map("learning_area_id")
+  title          String   @db.VarChar(200)
+  description    String?
+  artefactType   String   @map("artefact_type") @db.VarChar(30) // photo|document|video|reflection
+  fileUrl        String   @map("file_url")
+  uploadedById   String   @map("uploaded_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  student      Student      @relation(fields: [studentId], references: [id])
+  term         Term         @relation(fields: [termId], references: [id])
+  learningArea LearningArea @relation(fields: [learningAreaId], references: [id])
+  uploadedBy   User         @relation("PortfolioUploader", fields: [uploadedById], references: [id])
+
+  @@index([studentId, termId], map: "idx_portfolio_artefacts_student_term")
+  @@map("portfolio_artefacts")
 }

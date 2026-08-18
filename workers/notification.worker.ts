@@ -1,96 +1,93 @@
-import { Worker } from "bullmq";
-import { connection } from "@/lib/queue/connection";
+// src/workers/notification.worker.ts
+import { Worker, Job } from "bullmq";
 import { prisma } from "@/lib/db";
-import { smsQueue } from "@/lib/queue";
+import { redis } from "@/lib/redis";
+import { sendPushNotification } from "@/lib/firebase/admin";
 
-export const notificationWorker = new Worker(
-  "notification",
-  async (job) => {
-    if (job.name === "absence-alert") {
-      const { studentId, slotId, date, lessonName, reason } = job.data as {
-        studentId: string;
-        slotId: string;
-        date: string;
-        lessonName: string;
-        reason: string;
-      };
+interface NotificationJobData {
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  data?: Record<string, string>;
+  priority?: "high" | "normal" | "low";
+}
 
-      const record = await prisma.studentLessonAttendance.findUnique({
-        where: { studentId_slotId_date: { studentId, slotId, date: new Date(date) } },
-      });
-      if (!record || record.status !== "absent") return { cancelled: true };
+export const notificationWorker = new Worker<NotificationJobData>(
+  "notification-queue",
+  async (job: Job<NotificationJobData>) => {
+    const { userId, type, title, body, data, priority } = job.data;
 
-      const student = await prisma.student.findUnique({
-        where: { id: studentId },
-        select: { firstName: true, lastName: true, schoolId: true },
-      });
-      if (!student) return { missing: true };
+    console.log(`[Notification Worker] Processing notification for user ${userId}`);
 
-      const guardian = await prisma.guardian.findFirst({
-        where: { studentId, isPrimary: true, isActive: true },
-        include: { user: true },
-      });
-      if (!guardian?.user.phone) return { noPhone: true };
+    // Fetch user with device tokens
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        deviceTokens: true,
+        notificationPref: true,
+        hasAppInstalled: true,
+      },
+    });
 
-      const message = `${student.firstName} was absent from ${lessonName} today. Reason: ${reason}. Contact the school if you have questions.`;
-
-      await smsQueue.add("send-sms", {
-        to: guardian.user.phone,
-        message,
-        schoolId: student.schoolId,
-        type: "automated",
-        metadata: { recipientId: guardian.userId },
-      });
-
-      await prisma.studentLessonAttendance.update({
-        where: { id: record.id },
-        data: {
-          parentNotified: true,
-          notificationHeld: false,
-          notificationSentAt: new Date(),
-        },
-      });
-
-      return { notified: true };
+    if (!user) {
+      console.log(`[Notification Worker] User ${userId} not found`);
+      return;
     }
 
-    if (job.name === "payment-confirmation") {
-      const { userId, studentName, amount, receiptNumber } = job.data as {
-        userId: string;
-        studentName: string;
-        amount: number;
-        receiptNumber: string;
-      };
-
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (!user?.phone) return { noPhone: true };
-
-      await smsQueue.add("send-sms", {
-        to: user.phone,
-        message: `Payment of KES ${amount.toLocaleString()} for ${studentName} received. Receipt: ${receiptNumber}.`,
-        schoolId: user.schoolId,
-        type: "automated",
-        metadata: { recipientId: user.id },
-      });
-
-      await prisma.notification.create({
-        data: {
-          userId: user.id,
-          type: "payment_confirmation",
-          title: "Payment received",
-          body: `KES ${amount.toLocaleString()} paid for ${studentName}`,
-          data: { receiptNumber, amount },
-        },
-      });
-
-      return { notified: true };
+    // Check notification preference
+    if (user.notificationPref === "none") {
+      console.log(`[Notification Worker] User ${userId} has opted out of notifications`);
+      return;
     }
 
-    throw new Error(`Unknown notification job: ${job.name}`);
+    // Store notification in database
+    await prisma.notification.create({
+      data: {
+        userId: user.id,
+        type,
+        title,
+        body,
+        data: data || {},
+      },
+    });
+
+    // Send push notification if user has device tokens
+    if (user.deviceTokens && user.deviceTokens.length > 0) {
+      try {
+        await sendPushNotification({
+          tokens: user.deviceTokens,
+          title,
+          body,
+          data: {
+            ...data,
+            type,
+            userId: user.id,
+          },
+        });
+
+        console.log(`[Notification Worker] Push sent to user ${userId}`);
+      } catch (error: any) {
+        console.error(`[Notification Worker] Failed to send push to user ${userId}:`, error);
+        // Don't throw - notification is still saved in DB
+      }
+    } else {
+      console.log(`[Notification Worker] User ${userId} has no device tokens, skipping push`);
+    }
+
+    return { success: true };
   },
-  { connection, concurrency: 5 }
+  {
+    connection: redis,
+    concurrency: 10,
+  }
 );
 
+notificationWorker.on("completed", (job) => {
+  console.log(`[Notification Worker] Job ${job.id} completed`);
+});
+
 notificationWorker.on("failed", (job, err) => {
-  console.error(`[NotificationWorker] Job ${job?.id} failed:`, err.message);
+  console.error(`[Notification Worker] Job ${job?.id} failed:`, err);
 });
