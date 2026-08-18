@@ -14,22 +14,27 @@ type Child = {
     stream: { grade: { name: string }; name: string };
   };
   daily: { status: string; arrivedAt: string } | null;
-  lessons: { status: string; slot: { learningArea: { name: string } } }[];
+  lessons: { status: string; absenceReason: string | null; slot: { learningArea: { name: string } } }[];
 };
 
 export default function ParentDashboard() {
   const { user } = useUser();
   const [children, setChildren] = useState<Child[]>([]);
+  const [selectedId, setSelectedId] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/parent/children")
       .then((r) => r.json())
       .then((d) => {
-        setChildren(d.children || []);
+        const list = d.children || [];
+        setChildren(list);
+        if (list[0]) setSelectedId(list[0].student.id);
         setLoading(false);
       });
   }, []);
+
+  const selected = children.find((c) => c.student.id === selectedId) || children[0];
 
   if (loading) return <div className="p-4">Loading...</div>;
 

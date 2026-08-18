@@ -29,9 +29,14 @@ export async function GET(req: NextRequest) {
   });
   if (!slot) return NextResponse.json({ error: "Slot not found" }, { status: 404 });
 
-  const attendances = await prisma.studentLessonAttendance.findMany({
-    where: { slotId, date: new Date(dateParam), schoolId: user.schoolId },
-  });
+  const [attendances, lessonRegister] = await Promise.all([
+    prisma.studentLessonAttendance.findMany({
+      where: { slotId, date: new Date(dateParam), schoolId: user.schoolId },
+    }),
+    prisma.lessonRegister.findUnique({
+      where: { slotId_date: { slotId, date: new Date(dateParam) } },
+    }),
+  ]);
 
   const register = slot.stream.students.map((student) => {
     const att = attendances.find((a) => a.studentId === student.id);
@@ -45,7 +50,7 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  return NextResponse.json({ slot, date: dateParam, register });
+  return NextResponse.json({ slot, date: dateParam, register, isLocked: lessonRegister?.isLocked ?? false });
 }
 
 // POST: submit register
@@ -75,6 +80,13 @@ export async function POST(req: NextRequest) {
     include: { stream: { include: { students: { where: { deletedAt: null, status: "active" } } } } },
   });
   if (!slot) return NextResponse.json({ error: "Slot not found" }, { status: 404 });
+
+  const existingRegister = await prisma.lessonRegister.findUnique({
+    where: { slotId_date: { slotId, date: new Date(date) } },
+  });
+  if (existingRegister?.isLocked && user.role !== "admin") {
+    return NextResponse.json({ error: "Register is locked. Contact admin to unlock." }, { status: 423 });
+  }
 
   const validStudentIds = new Set(slot.stream.students.map((s) => s.id));
   const invalid = entries.find((e) => !validStudentIds.has(e.studentId));

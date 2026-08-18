@@ -23,6 +23,7 @@ export default function AttendanceRegisterPage() {
   const [date, setDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export default function AttendanceRegisterPage() {
       .then((d) => {
         setSlot(d.slot);
         setRegister(d.register);
+        setIsLocked(d.isLocked ?? false);
         setLoading(false);
       });
   }, [slotId]);
@@ -50,6 +52,10 @@ export default function AttendanceRegisterPage() {
   }
 
   async function handleSubmit(confirmed = false) {
+    if (isLocked) {
+      alert("This register is locked. Contact admin to unlock.");
+      return;
+    }
     setSubmitting(true);
     const entries = register
       .filter((e) => e.status !== null)

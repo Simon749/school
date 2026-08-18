@@ -1,7 +1,7 @@
 import { Worker } from "bullmq";
 import { connection } from "@/lib/queue/connection";
 import { prisma } from "@/lib/db";
-import { attendanceQueue } from "@/lib/queue";
+import { notificationQueue } from "@/lib/queue";
 
 export const attendanceWorker = new Worker(
   "attendance",
@@ -58,15 +58,15 @@ export const attendanceWorker = new Worker(
         },
       });
 
-      console.log(`[AttendanceWorker] ✅ Teacher ${teacherId} checked in → ${record.id}`);
+      console.log(`[AttendanceWorker] Teacher ${teacherId} checked in → ${record.id}`);
       return record;
     }
 
     if (type === "student-register") {
       const { schoolId, slotId, date, markedBy, entries } = payload;
 
-      const results = await prisma.$transaction(
-        entries.map((entry: any) =>
+      const results = await prisma.$transaction([
+        ...entries.map((entry: { studentId: string; status: string; absenceReason?: string }) =>
           prisma.studentLessonAttendance.upsert({
             where: {
               studentId_slotId_date: {
@@ -79,7 +79,6 @@ export const attendanceWorker = new Worker(
               status: entry.status,
               absenceReason: entry.absenceReason || null,
               markedBy,
-              updatedAt: new Date(),
             },
             create: {
               schoolId,
@@ -91,38 +90,62 @@ export const attendanceWorker = new Worker(
               markedBy,
             },
           })
-        )
-      );
+        ),
+        prisma.lessonRegister.upsert({
+          where: { slotId_date: { slotId, date: new Date(date) } },
+          update: { isLocked: true, submittedAt: new Date(), submittedBy: markedBy },
+          create: {
+            schoolId,
+            slotId,
+            date: new Date(date),
+            isLocked: true,
+            submittedAt: new Date(),
+            submittedBy: markedBy,
+          },
+        }),
+      ]);
 
-      // Queue notifications for absent students (delayed 15 min buffer)
+      const slot = await prisma.timetableSlot.findUnique({
+        where: { id: slotId },
+        include: { learningArea: true },
+      });
+
       for (const entry of entries) {
-        if (type === "absence-alert") {
-          const { studentId, slotId, date, reason } = payload;
-          // Re-fetch to see if teacher corrected it
-          const record = await prisma.studentLessonAttendance.findUnique({
-            where: { studentId_slotId_date: { studentId, slotId, date: new Date(date) } },
-          });
-          if (!record || record.status !== "absent") return { cancelled: true };
+        if (entry.status !== "absent") continue;
+        const reason = entry.absenceReason || "unknown";
+        if (reason !== "unknown") continue;
 
-          const guardian = await prisma.guardian.findFirst({
-            where: { studentId, isPrimary: true, isActive: true },
-            include: { user: true },
-          });
-          if (!guardian) return { noGuardian: true };
+        const notifyJob = await notificationQueue.add(
+          "absence-alert",
+          {
+            studentId: entry.studentId,
+            slotId,
+            date,
+            lessonName: slot?.learningArea.name || "Lesson",
+            reason,
+          },
+          { delay: 15 * 60 * 1000, jobId: `absence-${entry.studentId}-${slotId}-${date}` }
+        );
 
-          // TODO: send SMS/push via notification worker
+        const record = await prisma.studentLessonAttendance.findUnique({
+          where: {
+            studentId_slotId_date: {
+              studentId: entry.studentId,
+              slotId,
+              date: new Date(date),
+            },
+          },
+        });
+        if (record) {
           await prisma.studentLessonAttendance.update({
             where: { id: record.id },
-            data: { parentNotified: true, notificationSentAt: new Date() },
+            data: { notificationHeld: true, notificationJobId: notifyJob.id },
           });
-
-          console.log(`[AttendanceWorker]  Absence alert sent for student ${studentId}`);
-          return { notified: true };
         }
       }
 
-      console.log(`[AttendanceWorker] Register saved: ${results.length} records`);
-      return { ok: true, count: results.length };
+      console.log(`[AttendanceWorker] Register saved: ${results.length - 1} records`);
+      return { ok: true, count: results.length - 1 };
     }
 
     throw new Error(`Unknown attendance job type: ${type}`);

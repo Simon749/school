@@ -67,6 +67,7 @@ model School {
   messages           Message[]
   examTimetableSlots ExamTimetableSlot[]
   teacherDuties      TeacherDuty[]
+  lessonRegisters    LessonRegister[]
 
   @@map("schools")
 }
@@ -198,6 +199,8 @@ model User {
   teacher   Teacher?
   guardians Guardian[]
   auditLogs AuditLog[]
+  disputesRaised   PaymentDispute[] @relation("DisputeRaiser")
+  disputesResolved PaymentDispute[] @relation("DisputeResolver")
 
   @@index([schoolId], map: "idx_users_school")
   @@map("users")
@@ -274,8 +277,9 @@ model Student {
   studentLessonAttendances StudentLessonAttendance[]
   studentFees              StudentFee[]
   feePayments              FeePayment[]
-  paymentDisputes          PaymentDispute[]
   studentActivities        StudentActivity[]
+  paymentDisputes          PaymentDispute[]
+  
 
   @@index([schoolId], map: "idx_students_school")
   @@index([streamId], map: "idx_students_stream")
@@ -410,6 +414,7 @@ model TimetableSlot {
   qrTokens                 ClassroomQrToken[]
   teacherAttendances       TeacherAttendance[]
   studentLessonAttendances StudentLessonAttendance[]
+  lessonRegisters          LessonRegister[]
 
   @@unique([teacherId, periodId, dayOfWeek, termId], map: "idx_slots_teacher_unique")
   @@unique([streamId, periodId, dayOfWeek, termId], map: "idx_slots_stream_unique")
@@ -505,6 +510,7 @@ model StudentLessonAttendance {
   notificationJobId  String?   @map("notification_job_id") @db.VarChar(100)
   notificationSentAt DateTime? @map("notification_sent_at")
   createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   school  School         @relation(fields: [schoolId], references: [id])
   student Student        @relation(fields: [studentId], references: [id])
@@ -661,6 +667,7 @@ model FeePayment {
   school  School  @relation(fields: [schoolId], references: [id])
   student Student @relation(fields: [studentId], references: [id])
   term    Term    @relation(fields: [termId], references: [id])
+  disputes PaymentDispute[]
 
   @@index([studentId, termId], map: "idx_fee_payments_student")
   @@index([mpesaCode], map: "idx_fee_payments_mpesa")
@@ -686,6 +693,9 @@ model PaymentDispute {
 
   school  School  @relation(fields: [schoolId], references: [id])
   student Student @relation(fields: [studentId], references: [id])
+  raiser   User        @relation("DisputeRaiser", fields: [raisedBy], references: [id])
+  resolver User?       @relation("DisputeResolver", fields: [resolvedBy], references: [id])
+  payment  FeePayment? @relation(fields: [paymentId], references: [id])
 
   @@index([schoolId, status], map: "idx_payment_disputes_status")
   @@map("payment_disputes")
@@ -812,4 +822,27 @@ model TeacherDuty {
 
   @@index([schoolId, date], map: "idx_teacher_duties_school_date")
   @@map("teacher_duties")
+}
+
+// ============================================================
+// LESSON REGISTER (lock after submit)
+// ============================================================
+model LessonRegister {
+  id          String    @id @default(uuid())
+  schoolId    String    @map("school_id")
+  slotId      String    @map("slot_id")
+  date        DateTime  @db.Date
+  isLocked    Boolean   @default(false) @map("is_locked")
+  submittedAt DateTime? @map("submitted_at")
+  submittedBy String?   @map("submitted_by")
+  unlockedAt  DateTime? @map("unlocked_at")
+  unlockedBy  String?   @map("unlocked_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  school School        @relation(fields: [schoolId], references: [id])
+  slot   TimetableSlot @relation(fields: [slotId], references: [id])
+
+  @@unique([slotId, date], map: "idx_lesson_register_unique")
+  @@index([schoolId, date], map: "idx_lesson_register_school_date")
+  @@map("lesson_registers")
 }
