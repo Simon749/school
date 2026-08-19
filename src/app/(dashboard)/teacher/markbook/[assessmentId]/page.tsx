@@ -78,7 +78,10 @@ export default async function MarksEntryPage({ params }: { params: { assessmentI
             assessmentId={assessment.id}
             students={students}
             subStrands={subStrands}
-            existingResults={existingResults}
+            existingResults={existingResults.map(r => ({
+              ...r,
+              marksObtained: r.marksObtained ? Number(r.marksObtained) : null
+            }))}
             isLocked={assessment.status === "locked" || assessment.status === "published"}
             hasRubric={subStrands.length > 0}
             maxMarks={assessment.maxMarks ? Number(assessment.maxMarks) : undefined}

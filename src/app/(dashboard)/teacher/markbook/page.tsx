@@ -66,7 +66,7 @@ export default async function TeacherMarkbookPage() {
         <CreateAssessmentDialog
           streams={teacher.school.streams}
           learningAreas={teacher.school.learningAreas}
-          terms={teacher.school.terms}
+          terms={teacher.school.terms.map(t => ({ id: t.id, name: t.name || "Unnamed Term" }))}
           onSuccess={() => { /* Optional: revalidatePath('/teacher/markbook') if using Next.js cache */ }}
         />
       </div>
@@ -97,7 +97,7 @@ export default async function TeacherMarkbookPage() {
                     <TableCell className="font-medium">{assessment.title}</TableCell>
                     <TableCell>{assessment.learningArea.name}</TableCell>
                     <TableCell>{assessment.stream.name}</TableCell>
-                    <TableCell>{assessment.term.name}</TableCell>
+                    <TableCell>{assessment.term.name || "Unnamed Term"}</TableCell>
                     <TableCell>
                       {new Date(assessment.assessmentDate!).toLocaleDateString("en-KE")}
                     </TableCell>

@@ -38,6 +38,16 @@ export default async function ParentMessagesPage() {
   });
 
   const unreadCount = messages.filter((m) => !m.readAt).length;
+  const serializedMessages = messages.map((message) => ({
+    id: message.id,
+    subject: message.subject,
+    body: message.body,
+    messageType: message.messageType,
+    sentVia: message.sentVia,
+    readAt: message.readAt?.toISOString() ?? null,
+    createdAt: message.createdAt.toISOString(),
+    sender: message.sender,
+  }));
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -58,7 +68,7 @@ export default async function ParentMessagesPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {messages.map((message) => (
+          {serializedMessages.map((message) => (
             <MessageItem key={message.id} message={message} />
           ))}
         </div>

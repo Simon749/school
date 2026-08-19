@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { createMessageSchema } from "@/lib/validations/message.schema";
-import { smsQueue } from "@/lib/queue";
+import { smsQueue, notificationQueue } from "@/lib/queue"; // Added notificationQueue import
 
 export async function POST(request: NextRequest) {
   const { userId } = await auth();
@@ -86,6 +86,22 @@ export async function POST(request: NextRequest) {
         })
       )
     );
+
+    // Enqueue message notifications for recipients
+    for (const message of messages) {
+      if (message.recipientId) {
+        await notificationQueue.add("message-notification", {
+          userId: message.recipientId,
+          type: "message",
+          title: "New Message",
+          body: message.subject || message.body.substring(0, 100),
+          data: {
+            messageId: message.id,
+            url: "/parent/messages",
+          },
+        });
+      }
+    }
 
     // Enqueue SMS jobs if sendViaSms is true
     if (data.sendViaSms) {

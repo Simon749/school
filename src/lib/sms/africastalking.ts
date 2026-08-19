@@ -34,7 +34,12 @@ export async function sendSMS(options: SendSMSOptions): Promise<SendSMSResult> {
       from: options.from || process.env.AT_SENDER_ID,
     });
 
-    return result;
+    return {
+      recipients: result.SMSMessageData.Recipients.map((recipient) => ({
+        ...recipient,
+        statusCode: String(recipient.statusCode),
+      })),
+    };
   } catch (error: any) {
     console.error("Africa's Talking SMS error:", error);
     throw new Error(`Failed to send SMS: ${error.message}`);
@@ -42,13 +47,7 @@ export async function sendSMS(options: SendSMSOptions): Promise<SendSMSResult> {
 }
 
 export async function fetchDeliveryReport(messageIds: string[]) {
-  try {
-    const result = await sms.fetchDeliveryReport({
-      messageId: messageIds.join(","),
-    });
-    return result;
-  } catch (error: any) {
-    console.error("Delivery report fetch error:", error);
-    throw new Error(`Failed to fetch delivery report: ${error.message}`);
-  }
+  throw new Error(
+    `Delivery reports are not supported by the installed Africa's Talking SDK (${messageIds.length} message IDs requested)`,
+  );
 }

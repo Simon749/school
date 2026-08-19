@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/db";
 import { allocatePayment } from "@/lib/fees/allocation";
 import { generateReceiptNumber } from "@/lib/fees/receipt";
+import { notificationQueue } from "@/lib/queue"; // Added notificationQueue import
 
 export async function POST(req: NextRequest) {
   const { userId: clerkId } = await auth();
@@ -52,6 +53,38 @@ export async function POST(req: NextRequest) {
       overpaymentAction: allocation.overpayment > 0 ? "carry_forward" : null,
     },
   });
+
+  // Fetch student details to get firstName for the notification
+  const student = await prisma.student.findUnique({
+    where: { id: payment.studentId },
+    select: { firstName: true },
+  });
+
+  // Send payment confirmation notification to the primary guardian
+  const parent = await prisma.user.findFirst({
+    where: {
+      guardians: {
+        some: {
+          studentId: payment.studentId,
+          isPrimary: true,
+        },
+      },
+    },
+  });
+
+  if (parent) {
+    await notificationQueue.add("payment-confirmation", {
+      userId: parent.id,
+      type: "payment",
+      title: "Payment Received",
+      body: `KES ${payment.amount.toLocaleString()} received for ${student?.firstName || "your student"}. Receipt: ${payment.receiptNumber}`,
+      data: {
+        studentId: payment.studentId,
+        paymentId: payment.id,
+        url: `/parent/${payment.studentId}/fees`,
+      },
+    });
+  }
 
   return NextResponse.json({ success: true, payment }, { status: 201 });
 }

@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { createMessageSchema, CreateMessageInput } from "@/lib/validations/message.schema";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,12 +26,18 @@ interface TeacherComposeMessageProps {
   teacherId: string;
 }
 
+type CreateMessageFormInput = z.input<typeof createMessageSchema>;
+
 export function TeacherComposeMessage({ students, teacherId }: TeacherComposeMessageProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
 
-  const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm<CreateMessageInput>({
+  const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm<
+    CreateMessageFormInput,
+    unknown,
+    CreateMessageInput
+  >({
     resolver: zodResolver(createMessageSchema),
     defaultValues: {
       messageType: "direct",
@@ -89,7 +96,7 @@ export function TeacherComposeMessage({ students, teacherId }: TeacherComposeMes
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger>
         <Button>Compose Message</Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
@@ -99,7 +106,7 @@ export function TeacherComposeMessage({ students, teacherId }: TeacherComposeMes
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
           <div className="space-y-2">
             <Label>Select Student</Label>
-            <Select onValueChange={(v) => setSelectedStudent(v)}>
+            <Select onValueChange={(v: string | null) => setSelectedStudent(v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose a student" />
               </SelectTrigger>

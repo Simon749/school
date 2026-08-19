@@ -53,7 +53,7 @@ export async function GET(
           user: { select: { firstName: true, lastName: true } },
         },
       },
-      results: {
+      AssessmentResult: {
         where: { studentId },
         include: {
           rubricScores: {
@@ -72,7 +72,7 @@ export async function GET(
   });
 
   // 3. Filter to only include assessments where this student has results
-  const assessmentsWithResults = assessments.filter((a) => a.results.length > 0);
+  const assessmentsWithResults = assessments.filter((a) => a.AssessmentResult.length > 0);
 
   return NextResponse.json(assessmentsWithResults);
 }

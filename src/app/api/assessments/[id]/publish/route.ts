@@ -2,6 +2,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { notificationQueue } from "@/lib/queue";
 
 export async function POST(
   request: NextRequest,
@@ -31,6 +32,32 @@ export async function POST(
     });
 
     // TODO: Phase 3.6 - Queue notification to parents that results are published
+const students = await prisma.student.findMany({
+  where: { streamId: assessment.streamId },
+  include: {
+    guardians: {
+      where: { isPrimary: true },
+      select: { userId: true },
+    },
+  },
+});
+
+for (const student of students) {
+  const parent = student.guardians[0];
+  if (parent) {
+    await notificationQueue.add("result-published", {
+      userId: parent.userId,
+      type: "results",
+      title: "Results Published",
+      body: `${student.firstName}'s ${assessment.title} results are now available`,
+      data: {
+        studentId: student.id,
+        assessmentId: assessment.id,
+        url: `/parent/${student.id}/results`,
+      },
+    });
+  }
+}
 
     return NextResponse.json(updated);
   } catch (error) {

@@ -39,7 +39,7 @@ export async function sendPushNotification(options: SendPushOptions) {
       data: data || {},
       tokens,
       android: {
-        priority: "high",
+        priority: "high" as const,
         notification: {
           channelId: "default",
           sound: "default",

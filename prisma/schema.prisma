@@ -210,6 +210,10 @@ model User {
   reviewedAssessments Assessment[]        @relation("AssessmentReviewer")
   lockedAssessments   Assessment[]        @relation("AssessmentLocker")
   uploadedPortfolios  PortfolioArtefact[] @relation("PortfolioUploader")
+  deviceTokens      String[]  @map("device_tokens")
+  hasAppInstalled   Boolean   @default(false) @map("has_app_installed")
+  sentMessages      Message[] @relation("MessageSender")
+  receivedMessages  Message[] @relation("MessageRecipient")
 
   @@index([schoolId], map: "idx_users_school")
   @@map("users")
@@ -577,6 +581,7 @@ model Assessment {
   maxMarks       Decimal?  @map("max_marks") @db.Decimal(5, 2)
   weightPercent  Decimal?  @map("weight_percent") @db.Decimal(5, 2)
   assessmentDate DateTime? @map("assessment_date") @db.Date
+  AssessmentResult AssessmentResult[]  
   status         String    @default("draft") @db.VarChar(20)
   publishedAt    DateTime? @map("published_at")
   createdAt      DateTime  @default(now()) @map("created_at")
@@ -592,7 +597,6 @@ model Assessment {
 
   reviewedBy       User?              @relation("AssessmentReviewer", fields: [reviewedById], references: [id])
   lockedBy         User?              @relation("AssessmentLocker", fields: [lockedById], references: [id])
-  AssessmentResult AssessmentResult[]
 
   @@index([schoolId], map: "idx_assessments_school")
   @@map("assessments")
@@ -774,7 +778,9 @@ model Message {
   smsMessageId String?   @map("sms_message_id") @db.VarChar(100)
   createdAt    DateTime  @default(now()) @map("created_at")
 
-  school School @relation(fields: [schoolId], references: [id])
+  school    School @relation(fields: [schoolId], references: [id])
+  sender    User   @relation("MessageSender", fields: [senderId], references: [id])
+  recipient User?  @relation("MessageRecipient", fields: [recipientId], references: [id])
 
   @@index([recipientId, createdAt], map: "idx_messages_recipient")
   @@map("messages")

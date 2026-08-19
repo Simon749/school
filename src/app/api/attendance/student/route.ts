@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/db";
-import { attendanceQueue } from "@/lib/queue";
+import { attendanceQueue, notificationQueue } from "@/lib/queue"; // Added notificationQueue import
 
 // GET: fetch register for a slot
 export async function GET(req: NextRequest) {
@@ -77,7 +77,10 @@ export async function POST(req: NextRequest) {
 
   const slot = await prisma.timetableSlot.findFirst({
     where: { id: slotId, schoolId: user.schoolId },
-    include: { stream: { include: { students: { where: { deletedAt: null, status: "active" } } } } },
+    include: {
+      learningArea: true, // Included so we can read the subject name for lessonName
+      stream: { include: { students: { where: { deletedAt: null, status: "active" } } } },
+    },
   });
   if (!slot) return NextResponse.json({ error: "Slot not found" }, { status: 404 });
 
@@ -101,6 +104,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // Queue background attendance processing job
   const job = await attendanceQueue.add(
     "student-register",
     {
@@ -115,6 +119,48 @@ export async function POST(req: NextRequest) {
     },
     { attempts: 3, backoff: { type: "exponential", delay: 2000 } }
   );
+
+  // Send absence notifications to primary guardians
+  const lessonName = slot.learningArea?.name || "class";
+  const parsedDate = new Date(date);
+
+  for (const entry of entries) {
+    if (entry.status === "absent") {
+      const student = slot.stream.students.find((s) => s.id === entry.studentId);
+      if (!student) continue;
+
+      const parent = await prisma.user.findFirst({
+        where: {
+          guardians: {
+            some: {
+              studentId: entry.studentId,
+              isPrimary: true,
+            },
+          },
+        },
+      });
+
+      if (parent) {
+        await notificationQueue.add(
+          "absence-alert",
+          {
+            userId: parent.id,
+            type: "attendance",
+            title: "Absence Alert",
+            body: `${student.firstName} was absent from ${lessonName}.${
+              entry.absenceReason ? ` Reason: ${entry.absenceReason}` : ""
+            }`,
+            data: {
+              studentId: entry.studentId,
+              date: parsedDate.toISOString(),
+              url: `/parent/${entry.studentId}/attendance`,
+            },
+          },
+          { delay: 15 * 60 * 1000 } // 15-minute buffer
+        );
+      }
+    }
+  }
 
   return NextResponse.json({ success: true, jobId: job.id }, { status: 202 });
 }

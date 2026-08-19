@@ -76,7 +76,7 @@ export default async function ParentResultsPage({
           user: { select: { firstName: true, lastName: true } },
         },
       },
-      results: {
+      AssessmentResult: {
         where: { studentId: params.studentId },
         include: {
           rubricScores: {
@@ -94,7 +94,9 @@ export default async function ParentResultsPage({
     orderBy: { assessmentDate: "desc" },
   });
 
-  const assessmentsWithResults = assessments.filter((a) => a.results.length > 0);
+  const assessmentsWithResults = assessments.filter(
+    (assessment) => assessment.AssessmentResult.length > 0
+  );
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -118,7 +120,7 @@ export default async function ParentResultsPage({
       ) : (
         <div className="space-y-4">
           {assessmentsWithResults.map((assessment) => {
-            const result = assessment.results[0];
+            const result = assessment.AssessmentResult[0];
             const hasRubric = result.rubricScores.length > 0;
 
             return (
@@ -183,7 +185,18 @@ export default async function ParentResultsPage({
 
                   {/* View Details Button */}
                   <div className="pt-2">
-                    <AssessmentDetail assessment={assessment} result={result} />
+                    <AssessmentDetail
+                      assessment={{
+                        ...assessment,
+                        maxMarks: assessment.maxMarks === null ? null : Number(assessment.maxMarks),
+                        assessmentDate: assessment.assessmentDate?.toISOString() ?? null,
+                      }}
+                      result={{
+                        ...result,
+                        marksObtained:
+                          result.marksObtained === null ? null : Number(result.marksObtained),
+                      }}
+                    />
                   </div>
                 </CardContent>
               </Card>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { z } from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -24,19 +25,26 @@ interface AdminBroadcastMessageProps {
   streams: Stream[];
 }
 
+type CreateMessageFormInput = z.input<typeof createMessageSchema>;
+
 export function AdminBroadcastMessage({ streams }: AdminBroadcastMessageProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
 
-  const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm<CreateMessageInput>({
-    resolver: zodResolver(createMessageSchema),
-    defaultValues: {
-      messageType: "school_wide",
-      body: "",
-      sendViaSms: false,
-    },
-  });
+
+
+  const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm<
+    CreateMessageFormInput,
+    unknown,
+    CreateMessageInput>({
+      resolver: zodResolver(createMessageSchema),
+      defaultValues: {
+        messageType: "school_wide",
+        body: "",
+        sendViaSms: false,
+      },
+    });
 
   const messageType = watch("messageType");
   const streamId = watch("streamId");
@@ -47,9 +55,9 @@ export function AdminBroadcastMessage({ streams }: AdminBroadcastMessageProps) {
   const smsCount = Math.ceil(bodyLength / 160);
   const estimatedCost = smsCount * 1.5 * (recipientCount || 0);
 
-  const handleStreamChange = async (value: string) => {
-    setValue("streamId", value);
-    
+  const handleStreamChange = async (value: string | null) => {
+    setValue("streamId", value as any);
+
     if (messageType === "class" && value) {
       // Fetch count of parents in this stream
       const res = await fetch(`/api/streams/${value}/guardian-count`);
@@ -103,7 +111,7 @@ export function AdminBroadcastMessage({ streams }: AdminBroadcastMessageProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger>
         <Button>Broadcast Message</Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">

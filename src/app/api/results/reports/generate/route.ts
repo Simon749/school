@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         status: "published",
       },
       include: {
-        results: {
+        AssessmentResult: {
           where: { studentId: data.studentId },
           select: { marksObtained: true },
         },
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     let totalMaxMarks = 0;
 
     assessments.forEach((assessment) => {
-      const result = assessment.results[0];
+      const result = assessment.AssessmentResult[0];
       if (result?.marksObtained && assessment.maxMarks) {
         totalMarks += Number(result.marksObtained);
         totalMaxMarks += Number(assessment.maxMarks);

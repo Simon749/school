@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createAssessmentSchema, CreateAssessmentInput } from "@/lib/validations/assessment.schema";
-import { Button } from "@/components/ui/button"; // Adjust to your shadcn path
+import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner"; // Or your preferred toast library
+import { toast } from "sonner";
 
 interface CreateAssessmentDialogProps {
   streams: { id: string; name: string }[];
@@ -57,7 +57,7 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger>
         <Button>+ New Assessment</Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -89,7 +89,9 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Term</Label>
-              <Select onValueChange={(v) => setValue("termId", v)}>
+              <Select onValueChange={(v: string | null) => {
+                if (v) setValue("termId", v);
+              }}>
                 <SelectTrigger><SelectValue placeholder="Select term" /></SelectTrigger>
                 <SelectContent>
                   {terms.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
@@ -99,7 +101,9 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
             </div>
             <div className="space-y-2">
               <Label>Stream</Label>
-              <Select onValueChange={(v) => setValue("streamId", v)}>
+              <Select onValueChange={(v: string | null) => {
+                if (v) setValue("streamId", v);
+              }}>
                 <SelectTrigger><SelectValue placeholder="Select stream" /></SelectTrigger>
                 <SelectContent>
                   {streams.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
@@ -109,7 +113,9 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
             </div>
             <div className="space-y-2">
               <Label>Learning Area</Label>
-              <Select onValueChange={(v) => setValue("learningAreaId", v)}>
+              <Select onValueChange={(v: string | null) => {
+                if (v) setValue("learningAreaId", v);
+              }}>
                 <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
                 <SelectContent>
                   {learningAreas.map((la) => <SelectItem key={la.id} value={la.id}>{la.name}</SelectItem>)}

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { renderToStream } from "@react-pdf/renderer";
 import { TermReportPDF } from "@/lib/pdf/term-report-template";
+import { TermReportData } from '@/types/reports';
 
 export async function GET(
   request: NextRequest,
@@ -31,11 +32,11 @@ export async function GET(
   // Verify access (parent can only see published reports for their children)
   const user = await prisma.user.findUnique({
     where: { clerkId: userId },
-    include: { guardian: true },
+    include: { guardians: true },
   });
 
   const isParent = user?.role === "parent";
-  const isGuardian = user?.guardian?.some((g) => g.studentId === report.studentId);
+  const isGuardian = user?.guardians?.some((g) => g.studentId === report.studentId);
 
   if (isParent && !isGuardian) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });
@@ -48,7 +49,7 @@ export async function GET(
   try {
     const pdfData = {
       schoolName: report.school.name,
-      termName: report.term.name,
+      termName: report.term.name || "Current Term",
       studentName: `${report.student.firstName} ${report.student.lastName}`,
       admissionNumber: report.student.admissionNumber || "N/A",
       className: `${report.stream.grade.name} ${report.stream.name}`,
@@ -63,11 +64,11 @@ export async function GET(
     const pdfStream = await renderToStream(<TermReportPDF data={pdfData} />);
 
     // Convert stream to buffer
-    const chunks: Uint8Array[] = [];
-    for await (const chunk of pdfStream) {
-      chunks.push(chunk);
-    }
-    const buffer = Buffer.concat(chunks);
+  const chunks: Buffer[] = [];
+  for await (const chunk of pdfStream) {
+    chunks.push(Buffer.from(chunk));
+  }
+  const buffer = Buffer.concat(chunks);
 
     return new NextResponse(buffer, {
       headers: {
@@ -79,4 +80,8 @@ export async function GET(
     console.error("PDF generation error:", error);
     return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 });
   }
+}
+
+function data({ data }: { data: TermReportData; }): Element {
+  throw new Error("Function not implemented.");
 }

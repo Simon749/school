@@ -10,11 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
+import { strict } from "assert";
 
 interface Student { id: string; firstName: string; lastName: string; admissionNumber: string | null; }
 interface SubStrand { id: string; name: string; strandName: string; }
 interface ExistingResult {
-  id: string; studentId: string; marksObtained: number | null; teacherComment: string | null;
+  id: string; studentId: string; marksObtained: number | string | null; teacherComment: string | null;
   rubricScores: { id: string; subStrandId: string; score: string; comment: string | null; }[];
 }
 
@@ -182,7 +183,7 @@ export function MarksEntryTable({
                     <TableCell key={ss.id}>
                       <Select
                         value={state.rubricScores[ss.id] || ""}
-                        onValueChange={(val) => updateRubricScore(student.id, ss.id, val)}
+                        onValueChange={(val : string | null) => updateRubricScore(student.id, ss.id, val || "")}
                         disabled={isLocked}
                       >
                         <SelectTrigger className="w-[100px]">
