@@ -3,30 +3,41 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/db";
 import { allocatePayment } from "@/lib/fees/allocation";
 import { generateReceiptNumber } from "@/lib/fees/receipt";
-import { notificationQueue } from "@/lib/queue"; // Added notificationQueue import
+import { notificationQueue } from "@/lib/queue";
+import { logAudit, getRequestMetadata } from "@/lib/audit";
 
 export async function POST(req: NextRequest) {
   const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!clerkId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const user = await prisma.user.findUnique({
     where: { clerkId },
     select: { id: true, schoolId: true, role: true },
   });
+
   if (!user?.schoolId || !["admin", "bursar"].includes(user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const body = await req.json();
   const { studentId, amount, paymentMethod, reference, notes } = body;
+
   if (!studentId || !amount || !paymentMethod) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
   const currentTerm = await prisma.term.findFirst({
-    where: { schoolId: user.schoolId, isCurrent: true },
+    where: {
+      schoolId: user.schoolId,
+      isCurrent: true,
+    },
   });
-  if (!currentTerm) return NextResponse.json({ error: "No current term" }, { status: 400 });
+
+  if (!currentTerm) {
+    return NextResponse.json({ error: "No current term" }, { status: 400 });
+  }
 
   const allocation = await allocatePayment({
     studentId,
@@ -50,8 +61,27 @@ export async function POST(req: NextRequest) {
       notes: notes || null,
       allocations: allocation.allocations,
       overpaymentAmount: allocation.overpayment,
-      overpaymentAction: allocation.overpayment > 0 ? "carry_forward" : null,
+      overpaymentAction:
+        allocation.overpayment > 0 ? "carry_forward" : null,
     },
+  });
+
+  const { ipAddress, userAgent } = getRequestMetadata(req);
+
+  await logAudit({
+    schoolId: payment.schoolId,
+    actorId: user.id,
+    action: "fee.payment.recorded",
+    tableName: "fee_payments",
+    recordId: payment.id,
+    newData: {
+      amount: payment.amount,
+      paymentMethod: payment.paymentMethod,
+      mpesaCode: payment.mpesaCode,
+      studentId: payment.studentId,
+    },
+    ipAddress,
+    userAgent,
   });
 
   // Fetch student details to get firstName for the notification
@@ -77,7 +107,9 @@ export async function POST(req: NextRequest) {
       userId: parent.id,
       type: "payment",
       title: "Payment Received",
-      body: `KES ${payment.amount.toLocaleString()} received for ${student?.firstName || "your student"}. Receipt: ${payment.receiptNumber}`,
+      body: `KES ${payment.amount.toLocaleString()} received for ${
+        student?.firstName || "your student"
+      }. Receipt: ${payment.receiptNumber}`,
       data: {
         studentId: payment.studentId,
         paymentId: payment.id,
@@ -91,12 +123,16 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (!clerkId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const user = await prisma.user.findUnique({
     where: { clerkId },
     select: { schoolId: true, role: true },
   });
+
   if (!user?.schoolId || !["admin", "bursar"].includes(user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -107,22 +143,45 @@ export async function GET(req: NextRequest) {
   const dateFrom = searchParams.get("from");
   const dateTo = searchParams.get("to");
 
-  const where: any = { schoolId: user.schoolId, isReversed: false };
+  const where: any = {
+    schoolId: user.schoolId,
+    isReversed: false,
+  };
+
   if (studentId) where.studentId = studentId;
   if (termId) where.termId = termId;
+
   if (dateFrom || dateTo) {
     where.paidAt = {};
-    if (dateFrom) where.paidAt.gte = new Date(dateFrom);
-    if (dateTo) where.paidAt.lte = new Date(dateTo);
+
+    if (dateFrom) {
+      where.paidAt.gte = new Date(dateFrom);
+    }
+
+    if (dateTo) {
+      where.paidAt.lte = new Date(dateTo);
+    }
   }
 
   const payments = await prisma.feePayment.findMany({
     where,
     include: {
-      student: { select: { firstName: true, lastName: true, admissionNumber: true } },
-      term: { select: { name: true } },
+      student: {
+        select: {
+          firstName: true,
+          lastName: true,
+          admissionNumber: true,
+        },
+      },
+      term: {
+        select: {
+          name: true,
+        },
+      },
     },
-    orderBy: { paidAt: "desc" },
+    orderBy: {
+      paidAt: "desc",
+    },
     take: 100,
   });
 

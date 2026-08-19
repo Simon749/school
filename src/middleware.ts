@@ -1,50 +1,52 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-// Route groups that require authentication.
+// Public routes — no auth required
+const isPublicRoute = createRouteMatcher(["/api/health"]);
+
 const isProtectedRoute = createRouteMatcher([
   "/admin(.*)",
   "/teacher(.*)",
-  "/parent(.*)",
   "/bursar(.*)",
-  "/deputy(.*)",
-  "/it_admin(.*)",
-  "/dashboard(.*)",
-  "/api/(.*)",
-]);
-
-// Routes that are always public (auth pages, webhooks, health).
-const isPublicRoute = createRouteMatcher([
-  "/login",
-  "/sign-up",
-  "/api/webhooks/(.*)",
-  "/api/health",
+  "/parent(.*)",
+  "/api(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  const { userId } = await auth();
-  const { pathname } = req.nextUrl;
-
-  // Public routes never block
-  if (isPublicRoute(req)) {
-    return NextResponse.next();
+  // Protect everything except public routes
+  if (!isPublicRoute(req) && isProtectedRoute(req)) {
+    auth().protect();
   }
 
-  // Protected routes: redirect unauthenticated to /login
-  if (isProtectedRoute(req) && !userId) {
-    const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("redirect_url", req.url);
-    return NextResponse.redirect(loginUrl);
-  }
+  const response = NextResponse.next();
 
-  // Onboarding guard: if user is authenticated but has no school profile yet,
-  // redirect to onboarding (implemented in Phase 1.2).
-  // For now we let them through so the dashboard shell renders.
-  return NextResponse.next();
+  // --- Security headers (from Step 2, unchanged) ---
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+  response.headers.set(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains"
+  );
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.dev https://*.clerk.accounts.dev",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://*.clerk.dev https://*.clerk.accounts.dev https://*.upstash.io https://*.amazonaws.com",
+    "frame-src 'self' https://*.clerk.dev https://*.clerk.accounts.dev",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+  response.headers.set("Content-Security-Policy", csp);
+
+  return response;
 });
 
 export const config = {
-  matcher: [
-    "/((?!_next|[^?]*\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-  ],
+  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
 };

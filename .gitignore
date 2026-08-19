@@ -1,1 +1,11 @@
+<<<<<<< HEAD
 node_modules
+=======
+# Next.js
+.next/
+out/
+*.log
+
+# Dependencies
+node_modules/
+>>>>>>> 7c557d8 (phase 5)

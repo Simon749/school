@@ -1,13 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { stkPush } from "@/lib/mpesa/daraja";
 import { mpesaQueue } from "@/lib/queue";
 import { generateReceiptNumber } from "@/lib/fees/receipt";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const { userId: clerkId } = await auth();
   if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rate limit: max 3 STK Push attempts per minute per IP.
+  // Payment initiation calls out to Daraja and creates a pending payment record,
+  // so this is both a cost-control and abuse-prevention measure.
+  const headersList = headers();
+  const ip = headersList.get("x-forwarded-for") || "unknown-ip";
+  const rateLimit = await checkRateLimit({
+    uniqueKey: `stk-push:${ip}`,
+    limit: 3,
+    windowInSeconds: 60,
+  });
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many payment requests. Please wait a moment." },
+      { status: 429 }
+    );
+  }
 
   const user = await prisma.user.findUnique({
     where: { clerkId },

@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/db";
 import Papa from "papaparse";
 import { csvStudentRowSchema } from "@/lib/validations/import.schema";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,6 +13,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Rate limit: max 5 validation attempts per minute per user.
+    // Import validation reads and cross-checks the full student/stream tables,
+    // so it's an expensive endpoint worth protecting even for authenticated admins.
+    const rateLimit = await checkRateLimit({
+      uniqueKey: `import:validate:${userId}`,
+      limit: 5,
+      windowInSeconds: 60,
+    });
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: "Too many requests. Please wait before trying again." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(Math.ceil((rateLimit.reset - Date.now()) / 1000)) },
+        }
+      );
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File;
     if (!file) {
@@ -19,6 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     const text = await file.text();
+<<<<<<< HEAD
     
     // Parse CSV synchronously to get data array
     const parseResult = Papa.parse(text, {
@@ -32,12 +52,27 @@ export async function POST(req: NextRequest) {
     }
     
     // Batch fetch existing data for efficient validation
+=======
+    const parseResult = Papa.parse(text, { header: true, skipEmptyLines: true });
+    const rows = parseResult.data as any[];
+
+    if (rows.length === 0) {
+      return NextResponse.json({ error: "CSV file is empty or has no valid rows" }, { status: 400 });
+    }
+
+>>>>>>> 7c557d8 (phase 5)
     const nemisNumbers = rows.map((r: any) => r.nemis_number).filter(Boolean);
     const existingNemis = await prisma.student.findMany({
       where: { nemisNumber: { in: nemisNumbers }, deletedAt: null },
       select: { nemisNumber: true },
     });
+<<<<<<< HEAD
     const existingNemisSet = new Set(existingNemis.map(s => s.nemisNumber));
+=======
+
+    // Explicitly type 's' to satisfy strict TS
+    const existingNemisSet = new Set(existingNemis.map((s: { nemisNumber: string }) => s.nemisNumber));
+>>>>>>> 7c557d8 (phase 5)
 
     const streams = await prisma.stream.findMany({
       include: { grade: true },
@@ -51,9 +86,14 @@ export async function POST(req: NextRequest) {
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
+<<<<<<< HEAD
       const rowNum = i + 2; // 1-indexed, accounting for header row
       
       // 1. Zod Schema Validation
+=======
+      const rowNum = i + 2;
+
+>>>>>>> 7c557d8 (phase 5)
       const parsed = csvStudentRowSchema.safeParse(row);
       if (!parsed.success) {
         validationResults.push({
