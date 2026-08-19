@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import Papa from "papaparse";
 import { csvStudentRowSchema } from "@/lib/validations/import.schema";
 
@@ -33,13 +33,13 @@ export async function POST(req: NextRequest) {
     
     // Batch fetch existing data for efficient validation
     const nemisNumbers = rows.map((r: any) => r.nemis_number).filter(Boolean);
-    const existingNemis = await db.student.findMany({
+    const existingNemis = await prisma.student.findMany({
       where: { nemisNumber: { in: nemisNumbers }, deletedAt: null },
       select: { nemisNumber: true },
     });
     const existingNemisSet = new Set(existingNemis.map(s => s.nemisNumber));
 
-    const streams = await db.stream.findMany({
+    const streams = await prisma.stream.findMany({
       include: { grade: true },
     });
     const streamMap = new Map<string, string>();
