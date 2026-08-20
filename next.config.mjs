@@ -8,6 +8,14 @@ const nextConfig = {
       { protocol: "https", hostname: "images.clerk.dev" },
     ],
   },
+  experimental: {
+    serverActions: {
+      allowedOrigins: [
+        "localhost:3000",
+        "*.app.github.dev", // Codespaces forwarded-port origin — remove/adjust once you're off Codespaces
+      ],
+    },
+  },
 };
 
 export default withPWA({
