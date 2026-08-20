@@ -2,13 +2,22 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 // Public routes — no auth required
-const isPublicRoute = createRouteMatcher(["/api/health"]);
+const isPublicRoute = createRouteMatcher([
+  "/api/health",
+  '/login(.*)',
+  "/sign-in(.*)",
+  '/sign-up(.*)' 
+  
+]);
 
 const isProtectedRoute = createRouteMatcher([
   "/admin(.*)",
+  "/deputy(.*)",
   "/teacher(.*)",
   "/bursar(.*)",
   "/parent(.*)",
+  "/it_admin(.*)",
+  "/dashboard(.*)",
   "/api(.*)",
 ]);
 

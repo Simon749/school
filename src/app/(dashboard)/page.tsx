@@ -1,6 +1,6 @@
-"use client";
-
 import { useUser } from "@clerk/nextjs";
+
+"use client";
 
 export default function DashboardPage() {
   const { user } = useUser();

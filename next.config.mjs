@@ -12,7 +12,6 @@ const nextConfig = {
     serverActions: {
       allowedOrigins: [
         "localhost:3000",
-        "*.app.github.dev", // Codespaces forwarded-port origin — remove/adjust once you're off Codespaces
       ],
     },
   },
