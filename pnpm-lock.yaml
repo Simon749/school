@@ -38,6 +38,9 @@ importers:
       '@sentry/nextjs':
         specifier: ^10.70.0
         version: 10.70.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(next@14.2.35(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(supports-color@8.1.1)(webpack@5.109.2(esbuild@0.28.2)(postcss@8.5.26))
+      '@valkey/valkey-glide':
+        specifier: ^2.5.3
+        version: 2.5.3
       africastalking:
         specifier: ^0.7.9
         version: 0.7.9(debug@4.4.3(supports-color@8.1.1))
@@ -2506,6 +2509,44 @@ packages:
     resolution: {integrity: sha512-nAB74NfSNKknqQ1RrYj6uz8FcXEomu/MATJZxh/x+BArzN2U3JbOYC0APYzUIGhVY3m5hRxA8VPNdPBoG8txlA==}
     cpu: [x64]
     os: [win32]
+
+  '@valkey/valkey-glide-darwin-arm64@2.5.3':
+    resolution: {integrity: sha512-DB2dooH/OLhN6v2/rHbg5L+cynkYx/HhXSG/Iqs18+xaKvWlQZwdbfj5x2AXK0XObQVQaJKLMnc6+EYbv5+Img==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@valkey/valkey-glide-darwin-x64@2.5.3':
+    resolution: {integrity: sha512-Sxw+2uA2K445FCdIr78T7XirwKHMDP1rdliqRzRWgx87PYQOfkp8Qz/LXyri3la+YZ6/rnGezwkyuNlDT75kBw==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@valkey/valkey-glide-linux-arm64-gnu@2.5.3':
+    resolution: {integrity: sha512-/hpjvDQGarJe1KJFSYcUfPB1KrnhqUBkiFbK3Yq9wyv8CA/Jh5QiADDXYjDjVwpY+Ocy+znm6E7Od8tNTrmdiw==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@valkey/valkey-glide-linux-arm64-musl@2.5.3':
+    resolution: {integrity: sha512-aKqkDMEewlQvEjdCa+rSWKwL41nLxEshqJ8otMtvpgtRyU2fjRH5yDuJ4JXsCz+4Y/Zi5xQVspUawU37XgIf0A==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@valkey/valkey-glide-linux-x64-gnu@2.5.3':
+    resolution: {integrity: sha512-65JCnAj0IlQqiIzVCNzWo8v1N5c58Hoi2jP+fmtf78+1Uw4JInPAgicGI6GronlaLrfXZRTLqNNnjVez0QeMUg==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@valkey/valkey-glide-linux-x64-musl@2.5.3':
+    resolution: {integrity: sha512-kBsS6nLjhcIcecM+iEUdVdTl/WzkJH8YNSKeKeUPZJUfK3zQqiyw6dbC/w6aYmOB/UrtJOQkuSbRZqfNWyf+Dw==}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@valkey/valkey-glide@2.5.3':
+    resolution: {integrity: sha512-VvT7oOr1ZyvPDFUEEovYqVKNaCicUHJPmrfDyflCEi8hzH+YEdxEikYDheHGeclgFW0MlLkJ2rky6pa7tT6iqg==}
+    engines: {node: '>=16'}
 
   '@webassemblyjs/ast@1.14.1':
     resolution: {integrity: sha512-nuBEDgQfm1ccRp/8bCQrx1frohyufl4JlbMMZ4P1wpeOfDhF6FQkxZJ1b/e+PLwr6X1Nhw6OLme5usuBWYBvuQ==}
@@ -8773,6 +8814,36 @@ snapshots:
 
   '@unrs/resolver-binding-win32-x64-msvc@1.12.2':
     optional: true
+
+  '@valkey/valkey-glide-darwin-arm64@2.5.3':
+    optional: true
+
+  '@valkey/valkey-glide-darwin-x64@2.5.3':
+    optional: true
+
+  '@valkey/valkey-glide-linux-arm64-gnu@2.5.3':
+    optional: true
+
+  '@valkey/valkey-glide-linux-arm64-musl@2.5.3':
+    optional: true
+
+  '@valkey/valkey-glide-linux-x64-gnu@2.5.3':
+    optional: true
+
+  '@valkey/valkey-glide-linux-x64-musl@2.5.3':
+    optional: true
+
+  '@valkey/valkey-glide@2.5.3':
+    dependencies:
+      long: 5.3.2
+      protobufjs: 7.6.5
+    optionalDependencies:
+      '@valkey/valkey-glide-darwin-arm64': 2.5.3
+      '@valkey/valkey-glide-darwin-x64': 2.5.3
+      '@valkey/valkey-glide-linux-arm64-gnu': 2.5.3
+      '@valkey/valkey-glide-linux-arm64-musl': 2.5.3
+      '@valkey/valkey-glide-linux-x64-gnu': 2.5.3
+      '@valkey/valkey-glide-linux-x64-musl': 2.5.3
 
   '@webassemblyjs/ast@1.14.1':
     dependencies:
