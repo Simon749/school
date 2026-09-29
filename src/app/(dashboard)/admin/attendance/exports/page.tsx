@@ -36,7 +36,7 @@ export default function AttendanceExportsPage() {
 
       setJobId(data.jobId);
       pollJobStatus(data.jobId);
-    } catch (err: unknown) {
+    } catch (error: any) {
       alert((err as Error).message);
       setIsExporting(false);
     }

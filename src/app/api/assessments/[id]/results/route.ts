@@ -70,7 +70,7 @@ export async function POST(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: unknown) {
+  } catch (error: any) {
     if (error.name === "ZodError") {
       return NextResponse.json({ error: "Validation failed", details: error.errors }, { status: 400 });
     }

@@ -40,7 +40,7 @@ export async function sendSMS(options: SendSMSOptions): Promise<SendSMSResult> {
         statusCode: String(recipient.statusCode),
       })),
     };
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error("Africa's Talking SMS error:", error);
     throw new Error(`Failed to send SMS: ${error.message}`);
   }

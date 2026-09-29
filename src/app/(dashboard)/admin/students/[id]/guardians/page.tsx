@@ -48,7 +48,7 @@ export default function LinkGuardianPage() {
       if (!res.ok) throw new Error(data.error || "Search failed");
       setSearchResults(data.users || []);
       if (data.users.length === 0) setError("No existing guardian found with this phone.");
-    } catch (err: unknown) {
+    } catch (error: any) {
       setError((err as Error).message);
     } finally {
       setSearching(false);
@@ -87,7 +87,7 @@ export default function LinkGuardianPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to link guardian");
       router.push(`/admin/students/${studentId}`);
-    } catch (err: unknown) {
+    } catch (error: any) {
       setError((err as Error).message);
     } finally {
       setLoading(false);

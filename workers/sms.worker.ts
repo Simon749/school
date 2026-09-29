@@ -119,7 +119,7 @@ export const smsWorker = new Worker<SMSJobData>(
               },
             });
           }
-        } catch (error: unknown) {
+        } catch (error: any) {
           console.error(`[SMS Worker] Error sending SMS to ${message.recipient.phone}:`, error);
           // Don't deduct balance on error
           await prisma.message.update({

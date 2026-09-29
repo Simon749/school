@@ -126,7 +126,7 @@ export default function BursarPaymentsPage() {
         notes: "",
         paymentMethod: "mpesa"
       });
-    } catch (error: unknown) {
+    } catch (error: any) {
       toast.error(error.message || "Failed to record payment");
     } finally {
       setSaving(false);

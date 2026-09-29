@@ -53,8 +53,8 @@ export default function Step1SchoolPage() {
 
       // Redirect to next step with schoolId
       router.push(`/onboarding/step-3-calendar?schoolId=${json.school.id}`);
-    } catch (err: unknown) {
-      setErrors({ form: (err as Error).message });
+    } catch (error: any) {
+      setErrors({ form: (error as Error).message });
     } finally {
       setLoading(false);
     }

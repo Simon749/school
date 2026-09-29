@@ -160,7 +160,7 @@ export default function TimetableBuilderPage() {
       const json = await res.json();
       alert(`Published ${json.publishedCount} slots.`);
       setSlots((prev) => prev.map((s) => ({ ...s, isPublished: true })));
-    } catch (err: unknown) {
+    } catch (error: any) {
       alert((err as Error).message);
     } finally {
       setPublishing(false);

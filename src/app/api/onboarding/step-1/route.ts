@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, school });
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error("Onboarding step 1 error:", error);
     return NextResponse.json(
       { error: error.message || "Failed to save school" },

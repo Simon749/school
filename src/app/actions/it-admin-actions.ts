@@ -32,7 +32,7 @@ export async function createUserAction(schoolId: string, data: z.infer<typeof us
       },
     });
     return { success: true };
-  } catch (error: unknown) {
+  } catch (error: any) {
     if (error.code === "P2002") return { error: "Email, Phone, or National ID already exists." };
     return { error: error.message || "Failed to create user" };
   }
@@ -50,7 +50,7 @@ export async function updateUserAction(userId: string, data: z.infer<typeof user
       },
     });
     return { success: true };
-  } catch (error: unknown) {
+  } catch (error: any) {
     if (error.code === "P2002") return { error: "Email, Phone, or National ID already exists." };
     return { error: error.message || "Failed to update user" };
   }
@@ -66,7 +66,7 @@ export async function importStudentsAction(validRows: unknown[]) {
     // 4. Create Guardian link
     // For now, we return a mock success to unblock the UI flow.
     return { success: true, count: validRows.length };
-  } catch (error: unknown) {
+  } catch (error: any) {
     return { error: error.message || "Failed to import students" };
   }
 }
@@ -77,7 +77,7 @@ export async function exportDataAction(type: string) {
     // NOTE: In Phase 4, this will generate a CSV string, upload to S3, 
     // and return a pre-signed download URL.
     return { success: true, url: `/api/export/mock-${type}.csv` };
-  } catch (error: unknown) {
+  } catch (error: any) {
     return { error: error.message || "Failed to generate export" };
   }
 }

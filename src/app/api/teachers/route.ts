@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
             },
             { status: 201 }
         );
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("Create teacher error:", error);
         const message = error instanceof Error ? error.message : "Failed to create teacher";
         return NextResponse.json({ error: message }, { status: 500 });

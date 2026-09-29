@@ -61,7 +61,7 @@ export default function ItAdminExportPage() {
         }
       }, 1000); 
 
-    } catch (error: unknown) {
+    } catch (error: any) {
       if (pollInterval !== null) clearInterval(pollInterval);
       console.error(error);
       toast.error(error.message || "Export failed");

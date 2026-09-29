@@ -102,7 +102,7 @@ export function AdminBroadcastMessage({ streams }: AdminBroadcastMessageProps) {
       setOpen(false);
       reset();
       setRecipientCount(null);
-    } catch (error: unknown) {
+    } catch (error: any) {
       toast.error(error.message);
     } finally {
       setIsSubmitting(false);

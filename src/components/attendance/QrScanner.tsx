@@ -28,7 +28,7 @@ export function QrScanner({ onScan, onError }: Props) {
           setStreaming(true);
           tick();
         }
-      } catch (err: unknown) {
+      } catch (error: any) {
         onError?.("Camera access denied or unavailable. Ensure you're on HTTPS.");
       }
     }

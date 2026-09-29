@@ -50,7 +50,7 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
       toast.success("Assessment created successfully");
       setOpen(false);
       onSuccess();
-    } catch (error: unknown) {
+    } catch (error: any) {
       toast.error(error.message);
     } finally {
       setIsSubmitting(false);

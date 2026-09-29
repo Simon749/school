@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       transactionDesc: "School Fees",
       callbackUrl,
     });
-  } catch (err: unknown) {
+  } catch (error: any) {
     console.error("STK Push error:", err);
     return NextResponse.json({ error: (err as Error).message || "MPesa request failed" }, { status: 502 });
   }

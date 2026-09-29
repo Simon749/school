@@ -94,7 +94,7 @@ export function SlotModal({
         secondPeriodId: isDoubleLesson ? secondPeriodId : null,
       });
       onClose();
-    } catch (err: unknown) {
+    } catch (error: any) {
       setError((err as Error).message || "Failed to save slot");
     } finally {
       setLoading(false);
@@ -108,7 +108,7 @@ export function SlotModal({
     try {
       await onDelete(existingSlot.id);
       onClose();
-    } catch (err: unknown) {
+    } catch (error: any) {
       setError((err as Error).message || "Failed to delete");
     } finally {
       setLoading(false);

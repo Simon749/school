@@ -52,7 +52,7 @@ export function TermReportForm({ studentId, termId, existingReport }: TermReport
 
       toast.success("Report saved successfully");
       router.refresh();
-    } catch (error: unknown) {
+    } catch (error: any) {
       toast.error(error.message);
     } finally {
       setIsSubmitting(false);
