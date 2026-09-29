@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import err from "next/error";
 import {
   ArrowLeft,
   Edit2,
@@ -101,7 +102,7 @@ export default function StudentProfilePage() {
       setStudent(json.student);
       setIsEditing(false);
     } catch (error: any) {
-      alert((err as Error).message);
+      alert((error as Error).message);
     } finally {
       setSaving(false);
     }
@@ -114,7 +115,7 @@ export default function StudentProfilePage() {
       if (!res.ok) throw new Error("Delete failed");
       router.push("/admin/students");
     } catch (error: any) {
-      alert((err as Error).message);
+      alert((error as Error).message);
     }
   }
 

@@ -41,7 +41,7 @@ export default function GradesPage() {
       setGrades(data.grades);
       setError("");
     } catch (error: any) {
-      setError((err as Error).message);
+      setError((error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,7 @@ export default function GradesPage() {
       setNewStream({ name: "", capacity: 40 });
       await fetchGrades();
     } catch (error: any) {
-      alert((err as Error).message);
+      alert((error as Error).message);
     } finally {
       setSaving(false);
     }
@@ -90,7 +90,7 @@ export default function GradesPage() {
       setEditingStream(null);
       await fetchGrades();
     } catch (error: any) {
-      alert((err as Error).message);
+      alert((error as Error).message);
     } finally {
       setSaving(false);
     }
@@ -104,7 +104,7 @@ export default function GradesPage() {
       if (!res.ok) throw new Error(json.error || "Failed to delete stream");
       await fetchGrades();
     } catch (error: any) {
-      alert((err as Error).message);
+      alert((error as Error).message);
     }
   }
 

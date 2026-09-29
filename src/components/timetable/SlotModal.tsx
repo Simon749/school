@@ -95,7 +95,7 @@ export function SlotModal({
       });
       onClose();
     } catch (error: any) {
-      setError((err as Error).message || "Failed to save slot");
+      setError((error as Error).message || "Failed to save slot");
     } finally {
       setLoading(false);
     }
@@ -109,7 +109,7 @@ export function SlotModal({
       await onDelete(existingSlot.id);
       onClose();
     } catch (error: any) {
-      setError((err as Error).message || "Failed to delete");
+      setError((error as Error).message || "Failed to delete");
     } finally {
       setLoading(false);
     }

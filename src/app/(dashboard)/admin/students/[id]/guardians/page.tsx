@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Search, Loader2, UserPlus } from "lucide-react";
+import error from "next/error";
 
 interface UserResult {
   id: string;
@@ -49,7 +50,7 @@ export default function LinkGuardianPage() {
       setSearchResults(data.users || []);
       if (data.users.length === 0) setError("No existing guardian found with this phone.");
     } catch (error: any) {
-      setError((err as Error).message);
+      setError((error as Error).message);
     } finally {
       setSearching(false);
     }
@@ -88,7 +89,7 @@ export default function LinkGuardianPage() {
       if (!res.ok) throw new Error(json.error || "Failed to link guardian");
       router.push(`/admin/students/${studentId}`);
     } catch (error: any) {
-      setError((err as Error).message);
+      setError((error as Error).message);
     } finally {
       setLoading(false);
     }

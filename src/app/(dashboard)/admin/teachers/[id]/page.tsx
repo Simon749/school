@@ -78,7 +78,7 @@ export default function TeacherProfilePage() {
       setTeacher(json.teacher);
       setIsEditing(false);
     } catch (error: any) {
-      alert((err as Error).message);
+      alert((error as Error).message);
     } finally {
       setSaving(false);
     }
@@ -91,7 +91,7 @@ export default function TeacherProfilePage() {
       if (!res.ok) throw new Error("Delete failed");
       router.push("/admin/teachers");
     } catch (error: any) {
-      alert((err as Error).message);
+      alert((error as Error).message);
     }
   }
 

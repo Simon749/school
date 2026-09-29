@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("STK Push error:", err);
-    return NextResponse.json({ error: (err as Error).message || "MPesa request failed" }, { status: 502 });
+    return NextResponse.json({ error: (error as Error).message || "MPesa request failed" }, { status: 502 });
   }
 
   if (darajaRes.ResponseCode !== "0") {

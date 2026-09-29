@@ -51,8 +51,8 @@ export default function TimetableBuilderPage() {
       // Get current term first
       const termRes = await fetch("/api/grades"); // reusing to get school context, but we need terms
       // Actually, let's fetch terms separately
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
     }
   }, []);
 
@@ -161,7 +161,7 @@ export default function TimetableBuilderPage() {
       alert(`Published ${json.publishedCount} slots.`);
       setSlots((prev) => prev.map((s) => ({ ...s, isPublished: true })));
     } catch (error: any) {
-      alert((err as Error).message);
+      alert((error as Error).message);
     } finally {
       setPublishing(false);
     }

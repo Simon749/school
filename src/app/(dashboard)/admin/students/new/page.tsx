@@ -63,7 +63,7 @@ export default function NewStudentPage() {
 
       router.push(`/admin/students/${json.student.id}`);
     } catch (error: any) {
-      setErrors({ form: (err as Error).message });
+      setErrors({ form: (error as Error).message });
     } finally {
       setLoading(false);
     }

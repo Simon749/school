@@ -75,7 +75,7 @@ export default function NewTeacherPage() {
 
       router.push(`/admin/teachers/${json.teacher.id}`);
     } catch (error: any) {
-      setErrors({ form: (err as Error).message });
+      setErrors({ form: (error as Error).message });
     } finally {
       setLoading(false);
     }
