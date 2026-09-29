@@ -40,7 +40,12 @@ export async function POST(req: NextRequest) {
       streamMap.set(`${s.grade.name}-${s.name}`, s.id);
     });
 
-    const validationResults = [];
+    const validationResults: Array<{
+      row: number;
+      status: "valid" | "error";
+      errors?: string;
+      data: Record<string, any>;
+    }> = [];
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];

@@ -2,6 +2,15 @@
 
 import { useState, useEffect } from "react";
 
+type Period = {
+  id: string;
+  name?: string;
+  orderIndex?: number;
+  startTime?: string;
+  endTime?: string;
+  isBreak?: boolean;
+};
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -12,7 +21,7 @@ interface Props {
     dayOfWeek: number;
     existingSlot?: any;
   };
-  periods: unknown[];
+  periods: Period[];
   learningAreas: unknown[];
   teachers: unknown[];
   streams: unknown[];

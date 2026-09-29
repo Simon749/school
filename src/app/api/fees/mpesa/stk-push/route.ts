@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       callbackUrl,
     });
   } catch (error: any) {
-    console.error("STK Push error:", err);
+    console.error("STK Push error:", error);
     return NextResponse.json({ error: (error as Error).message || "MPesa request failed" }, { status: 502 });
   }
 
