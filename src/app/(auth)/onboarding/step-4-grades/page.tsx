@@ -110,7 +110,7 @@ export default function Step4GradesPage() {
 
       router.push(`/onboarding/step-6-done?schoolId=${schoolId}`);
     } catch (error: any) {
-      setErrors({ form: (err as Error).message });
+      setErrors({ form: (error as Error).message });
     } finally {
       setLoading(false);
     }
