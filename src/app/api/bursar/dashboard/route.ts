@@ -197,7 +197,7 @@ export async function GET() {
     }));
 
     // Daily collections (last 7 days)
-    const dailyCollections = [];
+    const dailyCollections: any[] = [];
     for (let i = 6; i >= 0; i--) {
       const date = subDays(today, i);
       const dayResult = await prisma.feePayment.aggregate({
