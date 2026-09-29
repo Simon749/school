@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+*.log
+
+# Environment & secrets — never push these
+.env
+.env.local
+.env.*.local
+
+# TypeScript build cache
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Prisma local artifacts
+prisma/migrations/dev.db*
+
+# Misc
+.DS_Store
+*.pem
+.vercel
+coverage/
