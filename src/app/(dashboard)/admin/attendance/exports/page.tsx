@@ -37,7 +37,7 @@ export default function AttendanceExportsPage() {
       setJobId(data.jobId);
       pollJobStatus(data.jobId);
     } catch (error: any) {
-      alert((err as Error).message);
+      alert((error as Error).message);
       setIsExporting(false);
     }
   };
@@ -59,7 +59,7 @@ export default function AttendanceExportsPage() {
           alert(`Export failed: ${data.error}`);
           setIsExporting(false);
         }
-      } catch (err) {
+      } catch (error: any) {
         clearInterval(interval);
         setIsExporting(false);
       }
