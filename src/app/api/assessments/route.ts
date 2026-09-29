@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(assessment, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return NextResponse.json({ error: "Validation failed", details: error.errors }, { status: 400 });
     }

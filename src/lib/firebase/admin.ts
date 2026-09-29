@@ -68,7 +68,7 @@ export async function sendPushNotification(options: SendPushOptions) {
     }
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Firebase] Push notification error:", error);
     throw new Error(`Failed to send push: ${error.message}`);
   }

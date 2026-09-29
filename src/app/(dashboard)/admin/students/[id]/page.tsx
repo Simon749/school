@@ -100,8 +100,8 @@ export default function StudentProfilePage() {
       if (!res.ok) throw new Error(json.error || "Update failed");
       setStudent(json.student);
       setIsEditing(false);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert((err as Error).message);
     } finally {
       setSaving(false);
     }
@@ -113,8 +113,8 @@ export default function StudentProfilePage() {
       const res = await fetch(`/api/students/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
       router.push("/admin/students");
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert((err as Error).message);
     }
   }
 

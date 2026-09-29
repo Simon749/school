@@ -109,8 +109,8 @@ export default function Step4GradesPage() {
       if (!res.ok) throw new Error(json.error || "Save failed");
 
       router.push(`/onboarding/step-6-done?schoolId=${schoolId}`);
-    } catch (err: any) {
-      setErrors({ form: err.message });
+    } catch (err: unknown) {
+      setErrors({ form: (err as Error).message });
     } finally {
       setLoading(false);
     }

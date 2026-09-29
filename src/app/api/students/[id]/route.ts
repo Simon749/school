@@ -75,7 +75,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
   }
 
-  const updateData: any = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ const updateData: any = {};
   if (parsed.data.firstName !== undefined) updateData.firstName = parsed.data.firstName;
   if (parsed.data.lastName !== undefined) updateData.lastName = parsed.data.lastName;
   if (parsed.data.nemisNumber !== undefined) updateData.nemisNumber = parsed.data.nemisNumber;

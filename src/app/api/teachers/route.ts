@@ -19,7 +19,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search")?.trim();
 
-    const where: any = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ const where: any = {
         schoolId: user.schoolId,
         user: { deletedAt: null },
     };

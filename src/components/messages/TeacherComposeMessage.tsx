@@ -87,7 +87,7 @@ export function TeacherComposeMessage({ students, teacherId }: TeacherComposeMes
       setOpen(false);
       reset();
       setSelectedStudent(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(error.message);
     } finally {
       setIsSubmitting(false);

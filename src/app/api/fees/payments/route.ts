@@ -143,7 +143,8 @@ export async function GET(req: NextRequest) {
   const dateFrom = searchParams.get("from");
   const dateTo = searchParams.get("to");
 
-  const where: any = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ const where: any = {
     schoolId: user.schoolId,
     isReversed: false,
   };

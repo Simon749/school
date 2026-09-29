@@ -68,7 +68,7 @@ export const notificationWorker = new Worker<NotificationJobData>(
         });
 
         console.log(`[Notification Worker] Push sent to user ${userId}`);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`[Notification Worker] Failed to send push to user ${userId}:`, error);
         // Don't throw - notification is still saved in DB
       }

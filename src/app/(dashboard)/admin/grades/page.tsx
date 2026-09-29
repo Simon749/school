@@ -40,8 +40,8 @@ export default function GradesPage() {
       const data = await res.json();
       setGrades(data.grades);
       setError("");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -65,8 +65,8 @@ export default function GradesPage() {
       setAddingToGrade(null);
       setNewStream({ name: "", capacity: 40 });
       await fetchGrades();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert((err as Error).message);
     } finally {
       setSaving(false);
     }
@@ -89,8 +89,8 @@ export default function GradesPage() {
       if (!res.ok) throw new Error(json.error || "Failed to update stream");
       setEditingStream(null);
       await fetchGrades();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert((err as Error).message);
     } finally {
       setSaving(false);
     }
@@ -103,8 +103,8 @@ export default function GradesPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to delete stream");
       await fetchGrades();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert((err as Error).message);
     }
   }
 

@@ -74,8 +74,8 @@ export default function NewTeacherPage() {
       if (!res.ok) throw new Error(json.error || "Failed to add teacher");
 
       router.push(`/admin/teachers/${json.teacher.id}`);
-    } catch (err: any) {
-      setErrors({ form: err.message });
+    } catch (err: unknown) {
+      setErrors({ form: (err as Error).message });
     } finally {
       setLoading(false);
     }

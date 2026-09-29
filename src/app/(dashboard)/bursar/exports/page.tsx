@@ -60,8 +60,8 @@ export default function FeeDefaultersExportPage() {
 
       setJobId(data.jobId);
       pollJobStatus(data.jobId);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert((err as Error).message);
       setIsExporting(false);
     }
   };

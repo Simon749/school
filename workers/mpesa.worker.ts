@@ -124,5 +124,5 @@ mpesaWorker.on("completed", (job) => {
 });
 
 mpesaWorker.on("failed", (job, err) => {
-  console.error(`[MpesaWorker] ${job?.name} #${job?.id} failed:`, err.message);
+  console.error(`[MpesaWorker] ${job?.name} #${job?.id} failed:`, (err as Error).message);
 });

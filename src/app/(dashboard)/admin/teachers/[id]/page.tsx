@@ -77,8 +77,8 @@ export default function TeacherProfilePage() {
       if (!res.ok) throw new Error(json.error || "Update failed");
       setTeacher(json.teacher);
       setIsEditing(false);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert((err as Error).message);
     } finally {
       setSaving(false);
     }
@@ -90,8 +90,8 @@ export default function TeacherProfilePage() {
       const res = await fetch(`/api/teachers/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
       router.push("/admin/teachers");
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert((err as Error).message);
     }
   }
 

@@ -12,10 +12,10 @@ interface Props {
     dayOfWeek: number;
     existingSlot?: any;
   };
-  periods: any[];
-  learningAreas: any[];
-  teachers: any[];
-  streams: any[];
+  periods: unknown[];
+  learningAreas: unknown[];
+  teachers: unknown[];
+  streams: unknown[];
   selectedStreamId?: string;
 }
 
@@ -94,8 +94,8 @@ export function SlotModal({
         secondPeriodId: isDoubleLesson ? secondPeriodId : null,
       });
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to save slot");
+    } catch (err: unknown) {
+      setError((err as Error).message || "Failed to save slot");
     } finally {
       setLoading(false);
     }
@@ -108,8 +108,8 @@ export function SlotModal({
     try {
       await onDelete(existingSlot.id);
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to delete");
+    } catch (err: unknown) {
+      setError((err as Error).message || "Failed to delete");
     } finally {
       setLoading(false);
     }

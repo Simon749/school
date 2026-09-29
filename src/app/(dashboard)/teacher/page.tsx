@@ -212,8 +212,8 @@ export default function TeacherTodayPage() {
 
       setSuccessMsg(json.message);
       setStep("done");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Check-in failed. Please try again.");
+    } catch (err: unknown) {
+      setErrorMsg((err as Error).message || "Check-in failed. Please try again.");
       setStep("error");
     }
   }

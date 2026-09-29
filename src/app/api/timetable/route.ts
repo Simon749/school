@@ -20,7 +20,8 @@ export async function GET(req: NextRequest) {
 
   if (!termId) return NextResponse.json({ error: "termId required" }, { status: 400 });
 
-  const where: any = { schoolId: user.schoolId, termId };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ const where: any = { schoolId: user.schoolId, termId };
   if (streamId) where.streamId = streamId;
   if (teacherId) where.teacherId = teacherId;
 

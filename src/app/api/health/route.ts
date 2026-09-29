@@ -21,7 +21,7 @@ async function measure(fn: () => Promise<unknown>): Promise<CheckResult> {
     return {
       ok: false,
       latencyMs: Date.now() - start,
-      error: err instanceof Error ? err.message : "unknown error",
+      error: err instanceof Error ? (err as Error).message : "unknown error",
     };
   }
 }

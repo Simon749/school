@@ -95,7 +95,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Update user
-    const userUpdate: any = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ const userUpdate: any = {};
     if (data.firstName !== undefined) userUpdate.firstName = data.firstName;
     if (data.lastName !== undefined) userUpdate.lastName = data.lastName;
     if (data.email !== undefined) userUpdate.email = data.email || null;
@@ -107,7 +108,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Update teacher
-    const teacherUpdate: any = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ const teacherUpdate: any = {};
     if (data.tscNumber !== undefined) teacherUpdate.tscNumber = data.tscNumber || null;
     if (data.employmentType !== undefined) teacherUpdate.employmentType = data.employmentType;
     if (data.specialisation !== undefined) teacherUpdate.specialisation = data.specialisation.join(", ");

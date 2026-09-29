@@ -1,4 +1,4 @@
-export function convertToCSV(data: any[], fields: string[]): string {
+export function convertToCSV(data: unknown[], fields: string[]): string {
   if (!data || data.length === 0) return "";
 
   const headers = fields.join(",");

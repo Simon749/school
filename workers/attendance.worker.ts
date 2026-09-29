@@ -158,5 +158,5 @@ attendanceWorker.on("completed", (job) => {
 });
 
 attendanceWorker.on("failed", (job, err) => {
-  console.error(`[AttendanceWorker] Job ${job?.id} failed:`, err.message);
+  console.error(`[AttendanceWorker] Job ${job?.id} failed:`, (err as Error).message);
 });

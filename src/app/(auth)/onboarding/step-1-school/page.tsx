@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { WizardShell, StepNav } from "@/components/onboarding/WizardShell";
 import { schoolIdentitySchema } from "@/lib/validations/onboarding";
-import { z } from "zod";
+
 
 export default function Step1SchoolPage() {
   const router = useRouter();
@@ -53,8 +53,8 @@ export default function Step1SchoolPage() {
 
       // Redirect to next step with schoolId
       router.push(`/onboarding/step-3-calendar?schoolId=${json.school.id}`);
-    } catch (err: any) {
-      setErrors({ form: err.message });
+    } catch (err: unknown) {
+      setErrors({ form: (err as Error).message });
     } finally {
       setLoading(false);
     }

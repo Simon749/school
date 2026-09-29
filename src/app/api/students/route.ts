@@ -23,7 +23,8 @@ export async function GET(req: NextRequest) {
   const gradeId = searchParams.get("gradeId");
   const streamId = searchParams.get("streamId");
 
-  const where: any = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ const where: any = {
     schoolId: user.schoolId,
     deletedAt: null,
   };

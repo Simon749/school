@@ -23,7 +23,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Provide phone or email" }, { status: 400 });
   }
 
-  const where: any = { schoolId: user.schoolId, role: "parent" };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ const where: any = { schoolId: user.schoolId, role: "parent" };
   if (phone) where.phone = { contains: phone, mode: "insensitive" };
   if (email) where.email = { contains: email, mode: "insensitive" };
 

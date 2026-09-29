@@ -62,8 +62,8 @@ export default function NewStudentPage() {
       if (!res.ok) throw new Error(json.error || "Failed to enrol student");
 
       router.push(`/admin/students/${json.student.id}`);
-    } catch (err: any) {
-      setErrors({ form: err.message });
+    } catch (err: unknown) {
+      setErrors({ form: (err as Error).message });
     } finally {
       setLoading(false);
     }

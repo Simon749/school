@@ -88,8 +88,8 @@ export default function MarkbookExportPage() {
       if (!res.ok) throw new Error(data.error);
 
       pollJobStatus(data.jobId);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert((err as Error).message);
       setIsExporting(false);
     }
   };
