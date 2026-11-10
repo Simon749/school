@@ -73,5 +73,5 @@ export function directMessageTemplate(data: MessageTemplateData): string {
 // Helper to truncate message to SMS length (160 chars per SMS)
 export function truncateForSMS(message: string, maxLength: number = 160): string {
   if (message.length <= maxLength) return message;
-  return message.substring(0, maxLength - 3) + "...";
+  return message.substring(0, maxLength - 3) + '...';
 }

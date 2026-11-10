@@ -1,8 +1,8 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const createStreamSchema = z.object({
-  gradeId: z.string().uuid("Invalid grade ID"),
-  name: z.string().min(1, "Stream name is required").max(10, "Too long"),
+  gradeId: z.string().uuid('Invalid grade ID'),
+  name: z.string().min(1, 'Stream name is required').max(10, 'Too long'),
   capacity: z.coerce.number().min(1).max(100).default(40),
 });
 

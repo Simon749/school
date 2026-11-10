@@ -1,35 +1,35 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { WizardShell, StepNav } from "@/components/onboarding/WizardShell";
-import { gradeStreamSchema } from "@/lib/validations/onboarding";
+import { useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { WizardShell, StepNav } from '@/components/onboarding/WizardShell';
+import { gradeStreamSchema } from '@/lib/validations/onboarding';
 
 const ALL_GRADES = [
-  { name: "PP1", level: 0, cbcStage: "pre_primary" as const },
-  { name: "PP2", level: 1, cbcStage: "pre_primary" as const },
-  { name: "Grade 1", level: 2, cbcStage: "lower_primary" as const },
-  { name: "Grade 2", level: 3, cbcStage: "lower_primary" as const },
-  { name: "Grade 3", level: 4, cbcStage: "lower_primary" as const },
-  { name: "Grade 4", level: 5, cbcStage: "upper_primary" as const },
-  { name: "Grade 5", level: 6, cbcStage: "upper_primary" as const },
-  { name: "Grade 6", level: 7, cbcStage: "upper_primary" as const },
-  { name: "Grade 7", level: 8, cbcStage: "jss" as const },
-  { name: "Grade 8", level: 9, cbcStage: "jss" as const },
-  { name: "Grade 9", level: 10, cbcStage: "jss" as const },
+  { name: 'PP1', level: 0, cbcStage: 'pre_primary' as const },
+  { name: 'PP2', level: 1, cbcStage: 'pre_primary' as const },
+  { name: 'Grade 1', level: 2, cbcStage: 'lower_primary' as const },
+  { name: 'Grade 2', level: 3, cbcStage: 'lower_primary' as const },
+  { name: 'Grade 3', level: 4, cbcStage: 'lower_primary' as const },
+  { name: 'Grade 4', level: 5, cbcStage: 'upper_primary' as const },
+  { name: 'Grade 5', level: 6, cbcStage: 'upper_primary' as const },
+  { name: 'Grade 6', level: 7, cbcStage: 'upper_primary' as const },
+  { name: 'Grade 7', level: 8, cbcStage: 'jss' as const },
+  { name: 'Grade 8', level: 9, cbcStage: 'jss' as const },
+  { name: 'Grade 9', level: 10, cbcStage: 'jss' as const },
 ];
 
 export default function Step4GradesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const schoolId = searchParams.get("schoolId");
+  const schoolId = searchParams.get('schoolId');
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [streams, setStreams] = useState<Record<string, { name: string; capacity: number }[]>>(
     () => {
       const initial: Record<string, { name: string; capacity: number }[]> = {};
       ALL_GRADES.forEach((g) => {
-        initial[g.name] = [{ name: "A", capacity: 40 }];
+        initial[g.name] = [{ name: 'A', capacity: 40 }];
       });
       return initial;
     }
@@ -56,13 +56,13 @@ export default function Step4GradesPage() {
   const updateStream = (
     gradeName: string,
     idx: number,
-    field: "name" | "capacity",
+    field: 'name' | 'capacity',
     value: string
   ) => {
     const current = [...(streams[gradeName] || [])];
     current[idx] = {
       ...current[idx],
-      [field]: field === "capacity" ? parseInt(value) || 40 : value,
+      [field]: field === 'capacity' ? parseInt(value) || 40 : value,
     };
     setStreams({ ...streams, [gradeName]: current });
   };
@@ -75,7 +75,7 @@ export default function Step4GradesPage() {
 
   async function handleSubmit() {
     if (!schoolId) {
-      setErrors({ form: "Missing school ID. Go back to Step 1." });
+      setErrors({ form: 'Missing school ID. Go back to Step 1.' });
       return;
     }
 
@@ -91,7 +91,7 @@ export default function Step4GradesPage() {
     if (!parsed.success) {
       const fieldErrors: Record<string, string> = {};
       parsed.error.issues.forEach((issue) => {
-        fieldErrors[issue.path.join(".")] = issue.message;
+        fieldErrors[issue.path.join('.')] = issue.message;
       });
       setErrors(fieldErrors);
       setLoading(false);
@@ -99,14 +99,14 @@ export default function Step4GradesPage() {
     }
 
     try {
-      const res = await fetch("/api/onboarding/step-4", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/onboarding/step-4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ schoolId, grades: parsed.data.grades }),
       });
 
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Save failed");
+      if (!res.ok) throw new Error(json.error || 'Save failed');
 
       router.push(`/onboarding/step-6-done?schoolId=${schoolId}`);
     } catch (error: any) {
@@ -132,7 +132,7 @@ export default function Step4GradesPage() {
             <div
               key={grade.name}
               className={`border rounded-lg p-4 transition-colors ${
-                isSelected ? "border-blue-500 bg-blue-50" : "border-gray-200"
+                isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
               }`}
             >
               <div className="flex items-center justify-between mb-3">
@@ -146,7 +146,7 @@ export default function Step4GradesPage() {
                   <div>
                     <span className="font-semibold text-gray-900">{grade.name}</span>
                     <span className="text-xs text-gray-500 ml-2 capitalize">
-                      ({grade.cbcStage.replace("_", " ")})
+                      ({grade.cbcStage.replace('_', ' ')})
                     </span>
                   </div>
                 </label>
@@ -160,16 +160,14 @@ export default function Step4GradesPage() {
                       <input
                         type="text"
                         value={stream.name}
-                        onChange={(e) => updateStream(grade.name, idx, "name", e.target.value)}
+                        onChange={(e) => updateStream(grade.name, idx, 'name', e.target.value)}
                         className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
                         placeholder="A"
                       />
                       <input
                         type="number"
                         value={stream.capacity}
-                        onChange={(e) =>
-                          updateStream(grade.name, idx, "capacity", e.target.value)
-                        }
+                        onChange={(e) => updateStream(grade.name, idx, 'capacity', e.target.value)}
                         className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
                         min={1}
                         max={100}
@@ -204,7 +202,7 @@ export default function Step4GradesPage() {
 
       <StepNav
         step={4}
-        schoolId={schoolId || ""}
+        schoolId={schoolId || ''}
         backHref="/onboarding/step-3-calendar"
         isNextDisabled={selected.size === 0 || loading}
       />
@@ -215,7 +213,7 @@ export default function Step4GradesPage() {
           disabled={loading || selected.size === 0}
           className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? "Saving..." : "Continue →"}
+          {loading ? 'Saving...' : 'Continue →'}
         </button>
       </div>
     </WizardShell>

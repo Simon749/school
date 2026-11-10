@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   CreditCard,
   FileText,
@@ -20,7 +20,7 @@ import {
   Info,
   Calendar,
   Clock,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   AreaChart,
   Area,
@@ -34,8 +34,8 @@ import {
   PieChart,
   Pie,
   Cell,
-} from "recharts";
-import { Card } from "@/components/ui/card";
+} from 'recharts';
+import { Card } from '@/components/ui/card';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -134,11 +134,11 @@ function Stat({
   label: string;
   value: string;
   sublabel: string;
-  trend?: "up" | "down" | "neutral";
+  trend?: 'up' | 'down' | 'neutral';
 }) {
   const trendColor =
-    trend === "up" ? "text-emerald-600" : trend === "down" ? "text-red-500" : "text-slate-500";
-  const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
+    trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-500' : 'text-slate-500';
+  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
   return (
     <div>
       <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
@@ -180,21 +180,28 @@ function EmptyState({ children }: { children: React.ReactNode }) {
 function FinancialOverview({ data }: { data: DashboardData }) {
   const { summary, school } = data;
   const hasTerm = !!school.term;
-  const pct = summary.targetAmount > 0 ? Math.round((summary.totalCollected / summary.targetAmount) * 100) : 0;
+  const pct =
+    summary.targetAmount > 0
+      ? Math.round((summary.totalCollected / summary.targetAmount) * 100)
+      : 0;
 
   return (
     <Card className="p-6">
       <SectionHeader title="Financial Overview" action="Full report" href="/bursar/reports" />
 
       {!hasTerm ? (
-        <EmptyState>No current term is set up yet — fee figures will appear once one is.</EmptyState>
+        <EmptyState>
+          No current term is set up yet — fee figures will appear once one is.
+        </EmptyState>
       ) : summary.targetAmount === 0 ? (
         <EmptyState>No fee structure has been set up for this term yet.</EmptyState>
       ) : (
         <>
           <div className="mb-6">
             <div className="mb-2 flex items-baseline justify-between">
-              <span className="text-xs uppercase tracking-wide text-slate-500">Collection Progress</span>
+              <span className="text-xs uppercase tracking-wide text-slate-500">
+                Collection Progress
+              </span>
               <span className="font-mono text-sm font-medium text-slate-800">{pct}% collected</span>
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-slate-100">
@@ -218,7 +225,9 @@ function FinancialOverview({ data }: { data: DashboardData }) {
             </div>
             <div className="rounded-lg bg-red-50 p-3 text-center">
               <p className="mb-1 text-xs text-red-500">Defaulters</p>
-              <p className="font-mono text-sm font-semibold text-red-700">{summary.defaultersCount}</p>
+              <p className="font-mono text-sm font-semibold text-red-700">
+                {summary.defaultersCount}
+              </p>
               <p className="mt-0.5 text-xs text-red-400">students</p>
             </div>
             <div className="rounded-lg bg-emerald-50 p-3 text-center">
@@ -232,22 +241,38 @@ function FinancialOverview({ data }: { data: DashboardData }) {
 
           {data.dailyCollections.length > 0 && (
             <div>
-              <p className="mb-3 text-xs uppercase tracking-wide text-slate-500">7-Day Collection Trend</p>
+              <p className="mb-3 text-xs uppercase tracking-wide text-slate-500">
+                7-Day Collection Trend
+              </p>
               <ResponsiveContainer width="100%" height={120}>
-                <AreaChart data={data.dailyCollections} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <AreaChart
+                  data={data.dailyCollections}
+                  margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
+                >
                   <defs>
                     <linearGradient id="feeGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="dayLabel" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <XAxis
+                    dataKey="dayLabel"
+                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
                   <YAxis hide />
                   <Tooltip
-                    formatter={(v) => [formatKes(Number(v ?? 0)), "Collected"]}
-                    contentStyle={{ fontSize: 11, border: "1px solid #e2e8f0", borderRadius: 6 }}
+                    formatter={(v) => [formatKes(Number(v ?? 0)), 'Collected']}
+                    contentStyle={{ fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 6 }}
                   />
-                  <Area type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={2} fill="url(#feeGrad)" />
+                  <Area
+                    type="monotone"
+                    dataKey="amount"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    fill="url(#feeGrad)"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -291,9 +316,9 @@ function RecentPayments({ data }: { data: DashboardData }) {
                   {formatKes(payment.amount)}
                 </p>
                 <p className="text-xs text-slate-400">
-                  {new Date(payment.paidAt).toLocaleTimeString("en-KE", {
-                    hour: "2-digit",
-                    minute: "2-digit",
+                  {new Date(payment.paidAt).toLocaleTimeString('en-KE', {
+                    hour: '2-digit',
+                    minute: '2-digit',
                   })}
                 </p>
                 <p className="text-xs text-slate-500 capitalize">{payment.method}</p>
@@ -338,7 +363,9 @@ function DefaultersAlert({ data }: { data: DashboardData }) {
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-mono text-sm font-bold text-red-700">{formatKes(defaulter.balance)}</p>
+                <p className="font-mono text-sm font-bold text-red-700">
+                  {formatKes(defaulter.balance)}
+                </p>
                 <Link
                   href={`/bursar/fees/record?studentId=${defaulter.id}`}
                   className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-800"
@@ -359,7 +386,7 @@ function DefaultersAlert({ data }: { data: DashboardData }) {
 // ---------------------------------------------------------------------------
 
 function PaymentMethods({ data }: { data: DashboardData }) {
-  const COLORS = ["#10b981", "#64748b", "#f59e0b", "#8b5cf6"];
+  const COLORS = ['#10b981', '#64748b', '#f59e0b', '#8b5cf6'];
 
   return (
     <Card className="p-6">
@@ -387,7 +414,7 @@ function PaymentMethods({ data }: { data: DashboardData }) {
                 </Pie>
                 <Tooltip
                   formatter={(v) => formatKes(Number(v))}
-                  contentStyle={{ fontSize: 11, border: "1px solid #e2e8f0", borderRadius: 6 }}
+                  contentStyle={{ fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 6 }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -403,7 +430,9 @@ function PaymentMethods({ data }: { data: DashboardData }) {
                   <span className="text-sm capitalize text-slate-700">{method.method}</span>
                 </div>
                 <div className="text-right">
-                  <p className="font-mono text-sm font-medium text-slate-800">{formatKes(method.amount)}</p>
+                  <p className="font-mono text-sm font-medium text-slate-800">
+                    {formatKes(method.amount)}
+                  </p>
                   <p className="text-xs text-slate-500">{method.count} transactions</p>
                 </div>
               </div>
@@ -430,17 +459,25 @@ function FeeStructureSummary({ data }: { data: DashboardData }) {
         <div className="rounded-lg bg-slate-50 p-4">
           <div className="mb-2 flex items-center gap-2">
             <FileText className="h-4 w-4 text-slate-600" />
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Mandatory Fees</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Mandatory Fees
+            </p>
           </div>
-          <p className="text-2xl font-bold text-slate-900">{formatKes(feeStructureSummary.mandatoryTotal)}</p>
+          <p className="text-2xl font-bold text-slate-900">
+            {formatKes(feeStructureSummary.mandatoryTotal)}
+          </p>
           <p className="mt-1 text-xs text-slate-500">Per student average</p>
         </div>
         <div className="rounded-lg bg-violet-50 p-4">
           <div className="mb-2 flex items-center gap-2">
             <Receipt className="h-4 w-4 text-violet-600" />
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Optional Activities</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Optional Activities
+            </p>
           </div>
-          <p className="text-2xl font-bold text-violet-700">{formatKes(feeStructureSummary.optionalTotal)}</p>
+          <p className="text-2xl font-bold text-violet-700">
+            {formatKes(feeStructureSummary.optionalTotal)}
+          </p>
           <p className="mt-1 text-xs text-slate-500">Per student average</p>
         </div>
       </div>
@@ -474,7 +511,8 @@ function OpenDisputes({ data }: { data: DashboardData }) {
             <ShieldAlert className="h-5 w-5 flex-shrink-0 text-amber-600" />
             <div className="flex-1">
               <p className="text-sm font-medium text-slate-800">
-                {data.summary.disputesOpen} {data.summary.disputesOpen === 1 ? "dispute" : "disputes"} pending review
+                {data.summary.disputesOpen}{' '}
+                {data.summary.disputesOpen === 1 ? 'dispute' : 'disputes'} pending review
               </p>
               <p className="mt-0.5 text-xs text-slate-600">
                 Parents have raised payment discrepancies that need your attention.
@@ -498,9 +536,9 @@ function OpenDisputes({ data }: { data: DashboardData }) {
 // ---------------------------------------------------------------------------
 
 function greetingForHour(hour: number) {
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 export default function BursarDashboardPage() {
@@ -514,15 +552,15 @@ export default function BursarDashboardPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/bursar/dashboard");
+        const res = await fetch('/api/bursar/dashboard');
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || "Failed to load dashboard");
+          throw new Error(body.error || 'Failed to load dashboard');
         }
         const json = (await res.json()) as DashboardData;
         if (!cancelled) setData(json);
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load dashboard");
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load dashboard');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -555,18 +593,18 @@ export default function BursarDashboardPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-slate-900">Bursar dashboard</h1>
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error || "Something went wrong loading your dashboard."}
+          {error || 'Something went wrong loading your dashboard.'}
         </p>
       </div>
     );
   }
 
   const hour = new Date().getHours();
-  const dateStr = new Date().toLocaleDateString("en-KE", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
+  const dateStr = new Date().toLocaleDateString('en-KE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
   });
 
   return (
@@ -579,7 +617,7 @@ export default function BursarDashboardPage() {
           </h1>
           <p className="mt-0.5 text-sm text-slate-500">
             {data.school.name}
-            {data.school.term ? ` · ${data.school.term}` : ""} — here's your financial overview.
+            {data.school.term ? ` · ${data.school.term}` : ''} — here's your financial overview.
           </p>
         </div>
         <p className="hidden text-xs text-slate-400 sm:block">{dateStr}</p>
@@ -594,7 +632,7 @@ export default function BursarDashboardPage() {
             accent="bg-emerald-500"
             label="Total Collected"
             value={formatKes(data.summary.totalCollected)}
-            sublabel={data.school.term || "this term"}
+            sublabel={data.school.term || 'this term'}
             trend="up"
           />
           <PulseCard
@@ -619,7 +657,7 @@ export default function BursarDashboardPage() {
             label="Open Disputes"
             value={`${data.summary.disputesOpen}`}
             sublabel="needs attention"
-            trend={data.summary.disputesOpen > 0 ? "down" : "neutral"}
+            trend={data.summary.disputesOpen > 0 ? 'down' : 'neutral'}
           />
         </div>
       </section>

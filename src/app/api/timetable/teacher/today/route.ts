@@ -1,22 +1,22 @@
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/db";
+import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { prisma } from '@/lib/db';
 
 export async function GET() {
   const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const user = await prisma.user.findUnique({
     where: { clerkId },
     select: { schoolId: true, id: true, role: true },
   });
 
-  if (!user?.schoolId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!user?.schoolId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const teacher = await prisma.teacher.findFirst({
     where: { userId: user.id, schoolId: user.schoolId },
   });
-  if (!teacher) return NextResponse.json({ error: "Teacher record not found" }, { status: 404 });
+  if (!teacher) return NextResponse.json({ error: 'Teacher record not found' }, { status: 404 });
 
   const today = new Date();
   const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon...
@@ -42,7 +42,7 @@ export async function GET() {
 
     if (stream) {
       const students = await prisma.student.findMany({
-        where: { streamId: stream.id, schoolId: user.schoolId, status: "active", deletedAt: null },
+        where: { streamId: stream.id, schoolId: user.schoolId, status: 'active', deletedAt: null },
         select: { id: true, firstName: true, lastName: true },
       });
       const studentIds = students.map((s) => s.id);
@@ -61,10 +61,10 @@ export async function GET() {
       // Daily attendance %, last 5 dates that have any records
       const byDate = new Map<string, { present: number; total: number }>();
       for (const r of attendanceRecords) {
-        const key = r.date.toISOString().split("T")[0];
+        const key = r.date.toISOString().split('T')[0];
         const bucket = byDate.get(key) || { present: 0, total: 0 };
         bucket.total += 1;
-        if (r.status === "present" || r.status === "late") bucket.present += 1;
+        if (r.status === 'present' || r.status === 'late') bucket.present += 1;
         byDate.set(key, bucket);
       }
       const attendanceTrend = Array.from(byDate.entries())
@@ -78,7 +78,7 @@ export async function GET() {
       // Students with 2+ absences in the last 7 days
       const absenceCounts = new Map<string, number>();
       for (const r of attendanceRecords) {
-        if (r.status === "absent") {
+        if (r.status === 'absent') {
           absenceCounts.set(r.studentId, (absenceCounts.get(r.studentId) || 0) + 1);
         }
       }
@@ -108,11 +108,11 @@ export async function GET() {
     where: { schoolId: user.schoolId, isCurrent: true },
   });
 
-  if (!currentTerm) return NextResponse.json({ error: "No current term" }, { status: 400 });
+  if (!currentTerm) return NextResponse.json({ error: 'No current term' }, { status: 400 });
 
   const periods = await prisma.timetablePeriod.findMany({
     where: { schoolId: user.schoolId },
-    orderBy: { orderIndex: "asc" },
+    orderBy: { orderIndex: 'asc' },
   });
 
   const slots = await prisma.timetableSlot.findMany({
@@ -129,14 +129,14 @@ export async function GET() {
       period: true,
       secondPeriod: true,
     },
-    orderBy: { period: { orderIndex: "asc" } },
+    orderBy: { period: { orderIndex: 'asc' } },
   });
 
   return NextResponse.json({
     slots,
     periods,
     dayOfWeek,
-    date: today.toISOString().split("T")[0],
+    date: today.toISOString().split('T')[0],
     classTeacherPanel,
   });
 }

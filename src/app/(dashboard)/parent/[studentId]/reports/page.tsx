@@ -1,23 +1,23 @@
 // src/app/(dashboard)/parent/[studentId]/reports/page.tsx
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
+import { prisma } from '@/lib/db';
+import { requirePageUser } from '@/lib/auth/current-user';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
 
-export default async function ParentReportsPage({
-  params,
-}: {
-  params: { studentId: string };
-}) {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+export default async function ParentReportsPage({ params }: { params: { studentId: string } }) {
+  // FEAT-01: guardians are linked by the internal user id, not the Clerk id.
+  const user = await requirePageUser(['parent']);
 
-  // Verify guardian access
+  // Verify guardian access (active link, student in the parent's own school)
   const guardian = await prisma.guardian.findFirst({
-    where: { userId, studentId: params.studentId, isActive: true },
+    where: {
+      userId: user.id,
+      studentId: params.studentId,
+      isActive: true,
+      student: { schoolId: user.schoolId, deletedAt: null },
+    },
     include: {
       student: {
         include: {
@@ -35,12 +35,13 @@ export default async function ParentReportsPage({
   const reports = await prisma.termReport.findMany({
     where: {
       studentId: params.studentId,
+      schoolId: user.schoolId,
       publishedAt: { not: null }, // Only published reports
     },
     include: {
       term: { select: { name: true } },
     },
-    orderBy: { term: { startDate: "desc" } },
+    orderBy: { term: { startDate: 'desc' } },
   });
 
   return (
@@ -57,9 +58,7 @@ export default async function ParentReportsPage({
       {reports.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">
-              No report cards available yet.
-            </p>
+            <p className="text-muted-foreground">No report cards available yet.</p>
           </CardContent>
         </Card>
       ) : (
@@ -80,7 +79,7 @@ export default async function ParentReportsPage({
                   <div>
                     <p className="text-sm text-muted-foreground">Conduct</p>
                     <Badge variant="outline" className="capitalize">
-                      {report.conduct.replace("_", " ")}
+                      {report.conduct.replace('_', ' ')}
                     </Badge>
                   </div>
                 )}

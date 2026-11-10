@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, Loader2, Check } from "lucide-react";
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft, Loader2, Check } from 'lucide-react';
 
 interface Stream {
   id: string;
@@ -25,22 +25,22 @@ export default function NewTeacherPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    nationalId: "",
-    tscNumber: "",
-    employmentType: "bom" as "tsc" | "bom",
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    nationalId: '',
+    tscNumber: '',
+    employmentType: 'bom' as 'tsc' | 'bom',
     specialisation: [] as string[],
     isClassTeacher: false,
-    classTeacherStreamId: "",
+    classTeacherStreamId: '',
   });
 
   const fetchData = useCallback(async () => {
     const [streamsRes, areasRes] = await Promise.all([
-      fetch("/api/grades"),
-      fetch("/api/learning-areas"),
+      fetch('/api/grades'),
+      fetch('/api/learning-areas'),
     ]);
     if (streamsRes.ok) {
       const data = await streamsRes.json();
@@ -65,13 +65,13 @@ export default function NewTeacherPage() {
     setErrors({});
 
     try {
-      const res = await fetch("/api/teachers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/teachers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to add teacher");
+      if (!res.ok) throw new Error(json.error || 'Failed to add teacher');
 
       router.push(`/admin/teachers/${json.teacher.id}`);
     } catch (error: any) {
@@ -103,7 +103,10 @@ export default function NewTeacherPage() {
         <h1 className="text-2xl font-bold text-gray-900">Add New Teacher</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 md:p-8 space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white rounded-xl border border-gray-200 p-6 md:p-8 space-y-6"
+      >
         {errors.form && (
           <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-100">
             {errors.form}
@@ -140,7 +143,9 @@ export default function NewTeacherPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone (2547XXXXXXXX)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone (2547XXXXXXXX)
+            </label>
             <input
               type="tel"
               value={form.phone}
@@ -168,15 +173,19 @@ export default function NewTeacherPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Employment Type *
+            </label>
             <div className="flex gap-4 mt-2">
               <label className="flex items-center gap-2">
                 <input
                   type="radio"
                   name="employmentType"
                   value="tsc"
-                  checked={form.employmentType === "tsc"}
-                  onChange={(e) => setForm({ ...form, employmentType: e.target.value as "tsc" | "bom" })}
+                  checked={form.employmentType === 'tsc'}
+                  onChange={(e) =>
+                    setForm({ ...form, employmentType: e.target.value as 'tsc' | 'bom' })
+                  }
                   className="w-4 h-4 text-blue-600"
                 />
                 <span className="text-sm text-gray-700">TSC (Government)</span>
@@ -186,8 +195,10 @@ export default function NewTeacherPage() {
                   type="radio"
                   name="employmentType"
                   value="bom"
-                  checked={form.employmentType === "bom"}
-                  onChange={(e) => setForm({ ...form, employmentType: e.target.value as "tsc" | "bom" })}
+                  checked={form.employmentType === 'bom'}
+                  onChange={(e) =>
+                    setForm({ ...form, employmentType: e.target.value as 'tsc' | 'bom' })
+                  }
                   className="w-4 h-4 text-blue-600"
                 />
                 <span className="text-sm text-gray-700">BOM (Board of Management)</span>
@@ -197,7 +208,9 @@ export default function NewTeacherPage() {
         </div>
 
         <div className="border-t pt-6">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Learning Area Specialisations</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            Learning Area Specialisations
+          </label>
           <div className="flex flex-wrap gap-2">
             {learningAreas.map((area) => {
               const selected = form.specialisation.includes(area.name);
@@ -208,8 +221,8 @@ export default function NewTeacherPage() {
                   onClick={() => toggleSpecialisation(area.name)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                     selected
-                      ? "bg-blue-50 border-blue-300 text-blue-700"
-                      : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                      ? 'bg-blue-50 border-blue-300 text-blue-700'
+                      : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                   }`}
                 >
                   {selected && <Check className="w-3 h-3 inline mr-1" />}
@@ -225,7 +238,9 @@ export default function NewTeacherPage() {
             <input
               type="checkbox"
               checked={form.isClassTeacher}
-              onChange={(e) => setForm({ ...form, isClassTeacher: e.target.checked, classTeacherStreamId: "" })}
+              onChange={(e) =>
+                setForm({ ...form, isClassTeacher: e.target.checked, classTeacherStreamId: '' })
+              }
               className="w-4 h-4 text-blue-600 rounded"
             />
             <span className="text-sm font-medium text-gray-700">Assign as Class Teacher</span>
@@ -264,7 +279,7 @@ export default function NewTeacherPage() {
             className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? "Adding..." : "Add Teacher"}
+            {loading ? 'Adding...' : 'Add Teacher'}
           </button>
         </div>
       </form>

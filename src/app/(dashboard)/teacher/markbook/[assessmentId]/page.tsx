@@ -1,21 +1,17 @@
 // src/app/(dashboard)/teacher/markbook/[assessmentId]/page.tsx
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { MarksEntryTable } from "@/components/results/MarksEntryTable";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
+import { prisma } from '@/lib/db';
+import { requirePageTeacher } from '@/lib/auth/current-user';
+import { MarksEntryTable } from '@/components/results/MarksEntryTable';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
 
 export default async function MarksEntryPage({ params }: { params: { assessmentId: string } }) {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  // FEAT-01: the teacher record is keyed by the internal user id, not the Clerk id.
+  const { teacher } = await requirePageTeacher();
 
-  const teacher = await prisma.teacher.findUnique({ where: { userId } });
-  if (!teacher) redirect("/");
-
-  const assessment = await prisma.assessment.findUnique({
+  const assessment = await prisma.assessment.findFirst({
     where: { id: params.assessmentId, teacherId: teacher.id, schoolId: teacher.schoolId },
     include: {
       learningArea: {
@@ -31,8 +27,13 @@ export default async function MarksEntryPage({ params }: { params: { assessmentI
   }
 
   const students = await prisma.student.findMany({
-    where: { streamId: assessment.streamId, schoolId: teacher.schoolId, status: "active" },
-    orderBy: { firstName: "asc" },
+    where: {
+      streamId: assessment.streamId,
+      schoolId: teacher.schoolId,
+      status: 'active',
+      deletedAt: null,
+    },
+    orderBy: { firstName: 'asc' },
     select: { id: true, firstName: true, lastName: true, admissionNumber: true },
   });
 
@@ -60,7 +61,7 @@ export default async function MarksEntryPage({ params }: { params: { assessmentI
           </p>
         </div>
         <div className="flex gap-2">
-          <Badge variant={assessment.status === "published" ? "default" : "secondary"}>
+          <Badge variant={assessment.status === 'published' ? 'default' : 'secondary'}>
             {assessment.status.toUpperCase()}
           </Badge>
           <Link href="/teacher/markbook">
@@ -78,11 +79,11 @@ export default async function MarksEntryPage({ params }: { params: { assessmentI
             assessmentId={assessment.id}
             students={students}
             subStrands={subStrands}
-            existingResults={existingResults.map(r => ({
+            existingResults={existingResults.map((r) => ({
               ...r,
-              marksObtained: r.marksObtained ? Number(r.marksObtained) : null
+              marksObtained: r.marksObtained ? Number(r.marksObtained) : null,
             }))}
-            isLocked={assessment.status === "locked" || assessment.status === "published"}
+            isLocked={assessment.status === 'locked' || assessment.status === 'published'}
             hasRubric={subStrands.length > 0}
             maxMarks={assessment.maxMarks ? Number(assessment.maxMarks) : undefined}
           />

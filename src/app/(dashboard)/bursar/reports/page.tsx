@@ -1,22 +1,21 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { 
-  Search, 
-  Printer, 
-  Send, 
-  AlertTriangle, 
-  TrendingUp, 
-  Users 
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from 'react';
+import { Search, Printer, Send, AlertTriangle, TrendingUp, Users } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
-  Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { toast } from "sonner";
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { toast } from 'sonner';
 
 type Defaulter = {
   id: string;
@@ -29,16 +28,16 @@ type Defaulter = {
 
 export default function BursarReportsPage() {
   const [defaulters, setDefaulters] = useState<Defaulter[]>([]);
-  const [term, setTerm] = useState("");
+  const [term, setTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetch("/api/fees/defaulters")
+    fetch('/api/fees/defaulters')
       .then((r) => r.json())
       .then((d) => {
         setDefaulters(d.defaulters || []);
-        setTerm(d.term || "Current Term");
+        setTerm(d.term || 'Current Term');
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -82,7 +81,12 @@ export default function BursarReportsPage() {
         <h1 className="text-3xl font-bold text-center">Fee Defaulters Report</h1>
         <p className="text-center text-slate-600 mt-1">{term}</p>
         <p className="text-center text-sm text-slate-500 mt-1">
-          Generated on {new Date().toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}
+          Generated on{' '}
+          {new Date().toLocaleDateString('en-KE', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })}
         </p>
       </div>
 
@@ -148,7 +152,9 @@ export default function BursarReportsPage() {
             </div>
           ) : filteredDefaulters.length === 0 ? (
             <div className="py-12 text-center text-slate-500">
-              {searchTerm ? "No students match your search." : "No defaulters — all fees are fully paid!"}
+              {searchTerm
+                ? 'No students match your search.'
+                : 'No defaulters — all fees are fully paid!'}
             </div>
           ) : (
             <Table>

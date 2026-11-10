@@ -1,20 +1,22 @@
-import { prisma } from "@/lib/db";
+import { prisma } from '@/lib/db';
+import { PrismaClient, Prisma } from '@prisma/client';
+import { DefaultArgs } from '@prisma/client/runtime/library';
 
 /**
  * Generate a sequential receipt number per school.
  * Format: {PREFIX}-{SEQUENCE}  e.g. "TSK-001247"
  * Uses a simple counter stored in Redis; falls back to DB MAX+1.
  */
-export async function generateReceiptNumber(schoolId: string): Promise<string> {
+export async function generateReceiptNumber(schoolId: string, tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<string> {
   const school = await prisma.school.findUnique({
     where: { id: schoolId },
     select: { name: true },
   });
   // Derive prefix from school name (first 3 chars uppercase)
-  const prefix = school?.name?.slice(0, 3).toUpperCase() || "RCPT";
+  const prefix = school?.name?.slice(0, 3).toUpperCase() || 'RCPT';
 
   // Use Redis atomic INCR for the sequence
-  const { redis } = await import("@/lib/redis");
+  const { redis } = await import('@/lib/redis');
   const key = `receipt_seq:${schoolId}`;
   let seq = await redis.incr(key);
 
@@ -32,5 +34,5 @@ export async function generateReceiptNumber(schoolId: string): Promise<string> {
     }
   }
 
-  return `${prefix}-${String(seq).padStart(6, "0")}`;
+  return `${prefix}-${String(seq).padStart(6, '0')}`;
 }

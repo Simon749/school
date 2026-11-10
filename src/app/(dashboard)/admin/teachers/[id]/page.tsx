@@ -1,9 +1,19 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, Edit2, Save, X, Trash2, Mail, Phone, UserCircle, GraduationCap } from "lucide-react";
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import {
+  ArrowLeft,
+  Edit2,
+  Save,
+  X,
+  Trash2,
+  Mail,
+  Phone,
+  UserCircle,
+  GraduationCap,
+} from 'lucide-react';
 
 interface Teacher {
   id: string;
@@ -38,23 +48,23 @@ export default function TeacherProfilePage() {
   const fetchTeacher = useCallback(async () => {
     try {
       const res = await fetch(`/api/teachers/${id}`);
-      if (!res.ok) throw new Error("Not found");
+      if (!res.ok) throw new Error('Not found');
       const data = await res.json();
       setTeacher(data.teacher);
       setEditForm({
         firstName: data.teacher.user.firstName,
         lastName: data.teacher.user.lastName,
-        email: data.teacher.user.email || "",
-        phone: data.teacher.user.phone || "",
-        nationalId: data.teacher.user.nationalId || "",
-        tscNumber: data.teacher.tscNumber || "",
+        email: data.teacher.user.email || '',
+        phone: data.teacher.user.phone || '',
+        nationalId: data.teacher.user.nationalId || '',
+        tscNumber: data.teacher.tscNumber || '',
         employmentType: data.teacher.employmentType,
-        specialisation: data.teacher.specialisation ? data.teacher.specialisation.split(", ") : [],
+        specialisation: data.teacher.specialisation ? data.teacher.specialisation.split(', ') : [],
         isClassTeacher: data.teacher.isClassTeacher,
-        classTeacherStreamId: data.teacher.classTeacherStream?.id || "",
+        classTeacherStreamId: data.teacher.classTeacherStream?.id || '',
       });
     } catch (err) {
-      router.push("/admin/teachers");
+      router.push('/admin/teachers');
     } finally {
       setLoading(false);
     }
@@ -69,12 +79,12 @@ export default function TeacherProfilePage() {
     setSaving(true);
     try {
       const res = await fetch(`/api/teachers/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Update failed");
+      if (!res.ok) throw new Error(json.error || 'Update failed');
       setTeacher(json.teacher);
       setIsEditing(false);
     } catch (error: any) {
@@ -85,11 +95,11 @@ export default function TeacherProfilePage() {
   }
 
   async function handleDelete() {
-    if (!confirm("Delete this teacher? Their user account will also be deactivated.")) return;
+    if (!confirm('Delete this teacher? Their user account will also be deactivated.')) return;
     try {
-      const res = await fetch(`/api/teachers/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
-      router.push("/admin/teachers");
+      const res = await fetch(`/api/teachers/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      router.push('/admin/teachers');
     } catch (error: any) {
       alert((error as Error).message);
     }
@@ -121,7 +131,7 @@ export default function TeacherProfilePage() {
                 {teacher.user.firstName} {teacher.user.lastName}
               </h1>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm text-gray-500">{teacher.user.email || "No email"}</span>
+                <span className="text-sm text-gray-500">{teacher.user.email || 'No email'}</span>
                 {!hasClerkLink && (
                   <span className="text-[10px] font-medium px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full border border-amber-100">
                     Pending signup
@@ -150,7 +160,7 @@ export default function TeacherProfilePage() {
                   className="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
-                  {saving ? "Saving..." : "Save"}
+                  {saving ? 'Saving...' : 'Save'}
                 </button>
               </>
             ) : (
@@ -178,12 +188,38 @@ export default function TeacherProfilePage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">Personal Info</h2>
+            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">
+              Personal Info
+            </h2>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="First Name" value={teacher.user.firstName} editing={isEditing} editValue={editForm.firstName} onChange={(v: string) => setEditForm({ ...editForm, firstName: v })} />
-              <Field label="Last Name" value={teacher.user.lastName} editing={isEditing} editValue={editForm.lastName} onChange={(v: string) => setEditForm({ ...editForm, lastName: v })} />
-              <Field label="National ID" value={teacher.user.nationalId || "—"} editing={isEditing} editValue={editForm.nationalId} onChange={(v: string) => setEditForm({ ...editForm, nationalId: v })} />
-              <Field label="TSC Number" value={teacher.tscNumber || "—"} editing={isEditing} editValue={editForm.tscNumber} onChange={(v: string) => setEditForm({ ...editForm, tscNumber: v })} />
+              <Field
+                label="First Name"
+                value={teacher.user.firstName}
+                editing={isEditing}
+                editValue={editForm.firstName}
+                onChange={(v: string) => setEditForm({ ...editForm, firstName: v })}
+              />
+              <Field
+                label="Last Name"
+                value={teacher.user.lastName}
+                editing={isEditing}
+                editValue={editForm.lastName}
+                onChange={(v: string) => setEditForm({ ...editForm, lastName: v })}
+              />
+              <Field
+                label="National ID"
+                value={teacher.user.nationalId || '—'}
+                editing={isEditing}
+                editValue={editForm.nationalId}
+                onChange={(v: string) => setEditForm({ ...editForm, nationalId: v })}
+              />
+              <Field
+                label="TSC Number"
+                value={teacher.tscNumber || '—'}
+                editing={isEditing}
+                editValue={editForm.tscNumber}
+                onChange={(v: string) => setEditForm({ ...editForm, tscNumber: v })}
+              />
               <div>
                 <label className="text-xs font-medium text-gray-500">Employment Type</label>
                 {isEditing ? (
@@ -203,7 +239,9 @@ export default function TeacherProfilePage() {
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">Contact</h2>
+            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">
+              Contact
+            </h2>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-gray-400" />
@@ -214,7 +252,7 @@ export default function TeacherProfilePage() {
                     className="flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm"
                   />
                 ) : (
-                  <span className="text-sm text-gray-900">{teacher.user.email || "—"}</span>
+                  <span className="text-sm text-gray-900">{teacher.user.email || '—'}</span>
                 )}
               </div>
               <div className="flex items-center gap-3">
@@ -226,7 +264,7 @@ export default function TeacherProfilePage() {
                     className="flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm"
                   />
                 ) : (
-                  <span className="text-sm text-gray-900">{teacher.user.phone || "—"}</span>
+                  <span className="text-sm text-gray-900">{teacher.user.phone || '—'}</span>
                 )}
               </div>
             </div>
@@ -235,7 +273,9 @@ export default function TeacherProfilePage() {
 
         <div className="space-y-6">
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">Assignment</h2>
+            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">
+              Assignment
+            </h2>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <GraduationCap className="w-4 h-4 text-gray-400" />
@@ -244,36 +284,39 @@ export default function TeacherProfilePage() {
                   <p className="text-sm font-medium text-gray-900">
                     {teacher.isClassTeacher && teacher.classTeacherStream
                       ? `${teacher.classTeacherStream.grade.name} ${teacher.classTeacherStream.name}`
-                      : "Not assigned"}
+                      : 'Not assigned'}
                   </p>
                 </div>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Specialisation</p>
-                <p className="text-sm text-gray-900">{teacher.specialisation || "—"}</p>
+                <p className="text-sm text-gray-900">{teacher.specialisation || '—'}</p>
               </div>
             </div>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">Account Status</h2>
+            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">
+              Account Status
+            </h2>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-500">Active</span>
-                <span className={teacher.user.isActive ? "text-green-700" : "text-gray-400"}>
-                  {teacher.user.isActive ? "Yes" : "No"}
+                <span className={teacher.user.isActive ? 'text-green-700' : 'text-gray-400'}>
+                  {teacher.user.isActive ? 'Yes' : 'No'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Can log in</span>
-                <span className={hasClerkLink ? "text-green-700" : "text-amber-700"}>
-                  {hasClerkLink ? "Yes" : "Pending invitation"}
+                <span className={hasClerkLink ? 'text-green-700' : 'text-amber-700'}>
+                  {hasClerkLink ? 'Yes' : 'Pending invitation'}
                 </span>
               </div>
             </div>
             {!hasClerkLink && (
               <p className="text-xs text-amber-700 mt-3 bg-amber-50 p-2 rounded border border-amber-100">
-                This teacher has not signed up yet. Invite them via your Clerk dashboard or send them the login link.
+                This teacher has not signed up yet. Invite them via your Clerk dashboard or send
+                them the login link.
               </p>
             )}
           </div>

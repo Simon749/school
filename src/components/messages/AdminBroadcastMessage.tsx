@@ -1,19 +1,31 @@
 // src/components/messages/AdminBroadcastMessage.tsx
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { createMessageSchema, CreateMessageInput } from "@/lib/validations/message.schema";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { z } from "zod";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { createMessageSchema, CreateMessageInput } from '@/lib/validations/message.schema';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { z } from 'zod';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 interface Stream {
   id: string;
@@ -32,42 +44,44 @@ export function AdminBroadcastMessage({ streams }: AdminBroadcastMessageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
 
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+    reset,
+  } = useForm<CreateMessageFormInput, unknown, CreateMessageInput>({
+    resolver: zodResolver(createMessageSchema),
+    defaultValues: {
+      messageType: 'school_wide',
+      body: '',
+      sendViaSms: false,
+    },
+  });
 
-
-  const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm<
-    CreateMessageFormInput,
-    unknown,
-    CreateMessageInput>({
-      resolver: zodResolver(createMessageSchema),
-      defaultValues: {
-        messageType: "school_wide",
-        body: "",
-        sendViaSms: false,
-      },
-    });
-
-  const messageType = watch("messageType");
-  const streamId = watch("streamId");
-  const bodyLength = watch("body")?.length || 0;
-  const sendViaSms = watch("sendViaSms");
+  const messageType = watch('messageType');
+  const streamId = watch('streamId');
+  const bodyLength = watch('body')?.length || 0;
+  const sendViaSms = watch('sendViaSms');
 
   // Estimate SMS cost (1 SMS = 160 chars, ~KES 1.5 per SMS)
   const smsCount = Math.ceil(bodyLength / 160);
   const estimatedCost = smsCount * 1.5 * (recipientCount || 0);
 
   const handleStreamChange = async (value: string | null) => {
-    setValue("streamId", value as any);
+    setValue('streamId', value as any);
 
-    if (messageType === "class" && value) {
+    if (messageType === 'class' && value) {
       // Fetch count of parents in this stream
       const res = await fetch(`/api/streams/${value}/guardian-count`);
       if (res.ok) {
         const { count } = await res.json();
         setRecipientCount(count);
       }
-    } else if (messageType === "school_wide") {
+    } else if (messageType === 'school_wide') {
       // Fetch total parent count
-      const res = await fetch("/api/school/guardian-count");
+      const res = await fetch('/api/school/guardian-count');
       if (res.ok) {
         const { count } = await res.json();
         setRecipientCount(count);
@@ -77,25 +91,30 @@ export function AdminBroadcastMessage({ streams }: AdminBroadcastMessageProps) {
 
   const onSubmit = async (data: CreateMessageInput) => {
     if (!recipientCount || recipientCount === 0) {
-      toast.error("No recipients found");
+      toast.error('No recipients found');
       return;
     }
 
-    if (sendViaSms && !confirm(`This will send SMS to ${recipientCount} parents. Estimated cost: KES ${estimatedCost.toFixed(2)}. Continue?`)) {
+    if (
+      sendViaSms &&
+      !confirm(
+        `This will send SMS to ${recipientCount} parents. Estimated cost: KES ${estimatedCost.toFixed(2)}. Continue?`
+      )
+    ) {
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Failed to send message");
+        throw new Error(err.error || 'Failed to send message');
       }
 
       toast.success(`Message sent to ${recipientCount} recipients`);
@@ -121,7 +140,7 @@ export function AdminBroadcastMessage({ streams }: AdminBroadcastMessageProps) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
           <div className="space-y-2">
             <Label>Recipients</Label>
-            <Select onValueChange={(v) => setValue("messageType", v as any)}>
+            <Select onValueChange={(v) => setValue('messageType', v as any)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select recipients" />
               </SelectTrigger>
@@ -132,7 +151,7 @@ export function AdminBroadcastMessage({ streams }: AdminBroadcastMessageProps) {
             </Select>
           </div>
 
-          {messageType === "class" && (
+          {messageType === 'class' && (
             <div className="space-y-2">
               <Label>Select Class</Label>
               <Select onValueChange={handleStreamChange}>
@@ -150,11 +169,11 @@ export function AdminBroadcastMessage({ streams }: AdminBroadcastMessageProps) {
             </div>
           )}
 
-          {messageType === "school_wide" && (
+          {messageType === 'school_wide' && (
             <Button
               type="button"
               variant="outline"
-              onClick={() => handleStreamChange("")}
+              onClick={() => handleStreamChange('')}
               className="w-full"
             >
               Load Recipient Count
@@ -169,26 +188,31 @@ export function AdminBroadcastMessage({ streams }: AdminBroadcastMessageProps) {
 
           <div className="space-y-2">
             <Label>Subject (Optional)</Label>
-            <Input {...register("subject")} placeholder="e.g., Important Notice" />
+            <Input {...register('subject')} placeholder="e.g., Important Notice" />
           </div>
 
           <div className="space-y-2">
             <Label>Message (500 characters max)</Label>
             <Textarea
-              {...register("body")}
+              {...register('body')}
               placeholder="Type your message here..."
               className="min-h-[120px]"
             />
             <div className="flex justify-between items-center">
               {errors.body && <p className="text-sm text-red-500">{errors.body.message}</p>}
-              <p className={`text-xs ${bodyLength > 500 ? "text-red-500" : "text-muted-foreground"}`}>
+              <p
+                className={`text-xs ${bodyLength > 500 ? 'text-red-500' : 'text-muted-foreground'}`}
+              >
                 {bodyLength}/500
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2">
-            <Checkbox id="sendViaSms" onCheckedChange={(checked) => setValue("sendViaSms", !!checked)} />
+            <Checkbox
+              id="sendViaSms"
+              onCheckedChange={(checked) => setValue('sendViaSms', !!checked)}
+            />
             <Label htmlFor="sendViaSms" className="text-sm">
               Send via SMS to parents without the app
             </Label>
@@ -198,7 +222,8 @@ export function AdminBroadcastMessage({ streams }: AdminBroadcastMessageProps) {
             <div className="bg-yellow-50 p-3 rounded-md">
               <p className="text-sm font-medium">SMS Cost Estimate</p>
               <p className="text-xs text-muted-foreground">
-                {smsCount} SMS × {recipientCount} parents × KES 1.5 = <strong>KES {estimatedCost.toFixed(2)}</strong>
+                {smsCount} SMS × {recipientCount} parents × KES 1.5 ={' '}
+                <strong>KES {estimatedCost.toFixed(2)}</strong>
               </p>
             </div>
           )}
@@ -208,7 +233,7 @@ export function AdminBroadcastMessage({ streams }: AdminBroadcastMessageProps) {
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting || !recipientCount}>
-              {isSubmitting ? "Sending..." : "Send Broadcast"}
+              {isSubmitting ? 'Sending...' : 'Send Broadcast'}
             </Button>
           </div>
         </form>

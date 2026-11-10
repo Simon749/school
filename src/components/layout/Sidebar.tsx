@@ -1,21 +1,53 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useUser, useClerk } from "@clerk/nextjs";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useUser, useClerk } from '@clerk/nextjs';
 import {
-  LayoutDashboard, Users, UserCheck, CalendarDays, ClipboardList, Calendar,
-  Settings, BarChart3, AlertTriangle, BookOpen, MessageSquare, FileText,
-  CreditCard, ShieldAlert, Home, Award, Upload, Download, School, LogOut,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { ROLE_NAVIGATION, NavItem } from "@/lib/navigation";
-import { UserRole } from "@prisma/client";
+  LayoutDashboard,
+  Users,
+  UserCheck,
+  CalendarDays,
+  ClipboardList,
+  Calendar,
+  Settings,
+  BarChart3,
+  AlertTriangle,
+  BookOpen,
+  MessageSquare,
+  FileText,
+  CreditCard,
+  ShieldAlert,
+  Home,
+  Award,
+  Upload,
+  Download,
+  School,
+  LogOut,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ROLE_NAVIGATION, NavItem } from '@/lib/navigation';
+import { UserRole } from '@prisma/client';
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  LayoutDashboard, Users, UserCheck, CalendarDays, ClipboardList, Calendar,
-  Settings, BarChart3, AlertTriangle, BookOpen, MessageSquare, FileText,
-  CreditCard, ShieldAlert, Home, Award, Upload, Download,
+  LayoutDashboard,
+  Users,
+  UserCheck,
+  CalendarDays,
+  ClipboardList,
+  Calendar,
+  Settings,
+  BarChart3,
+  AlertTriangle,
+  BookOpen,
+  MessageSquare,
+  FileText,
+  CreditCard,
+  ShieldAlert,
+  Home,
+  Award,
+  Upload,
+  Download,
 };
 
 function SidebarLink({ item, isActive }: { item: NavItem; isActive: boolean }) {
@@ -24,10 +56,10 @@ function SidebarLink({ item, isActive }: { item: NavItem; isActive: boolean }) {
     <Link
       href={item.href}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+        'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
         isActive
-          ? "bg-emerald-50 text-emerald-700"
-          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          ? 'bg-emerald-50 text-emerald-700'
+          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
       )}
     >
       <Icon className="h-4 w-4 shrink-0" />
@@ -46,7 +78,7 @@ export default function Sidebar() {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
 
-  const role = (user?.publicMetadata?.role as UserRole) || "admin";
+  const role = (user?.publicMetadata?.role as UserRole) || 'admin';
   const navItems = ROLE_NAVIGATION[role] || ROLE_NAVIGATION.admin;
 
   if (!isLoaded) {
@@ -76,7 +108,7 @@ export default function Sidebar() {
           <SidebarLink
             key={item.href}
             item={item}
-            isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
+            isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
           />
         ))}
       </nav>
@@ -85,7 +117,7 @@ export default function Sidebar() {
       <div className="shrink-0 border-t border-slate-200 p-4">
         <div className="mb-3 flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700">
-            {user?.firstName?.[0] || "A"}
+            {user?.firstName?.[0] || 'A'}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-slate-900">
@@ -95,7 +127,7 @@ export default function Sidebar() {
           </div>
         </div>
         <button
-          onClick={() => signOut({ redirectUrl: "/login" })}
+          onClick={() => signOut({ redirectUrl: '/login' })}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-red-50 hover:text-red-700"
         >
           <LogOut className="h-4 w-4 shrink-0" />

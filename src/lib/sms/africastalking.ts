@@ -1,10 +1,11 @@
 // src/lib/sms/africastalking.ts
-import Africa from "africastalking";
+import Africa from 'africastalking';
+import { envOr } from '@/lib/env';
 
 // Initialize the client
 const credentials = {
-  apiKey: process.env.AT_API_KEY || "",
-  username: process.env.AT_USERNAME || "sandbox", // "sandbox" for testing
+  apiKey: envOr('AT_API_KEY', ''),
+  username: envOr('AT_USERNAME', 'sandbox'), // "sandbox" only outside production
 };
 
 const africastalking = Africa(credentials);
@@ -48,6 +49,6 @@ export async function sendSMS(options: SendSMSOptions): Promise<SendSMSResult> {
 
 export async function fetchDeliveryReport(messageIds: string[]) {
   throw new Error(
-    `Delivery reports are not supported by the installed Africa's Talking SDK (${messageIds.length} message IDs requested)`,
+    `Delivery reports are not supported by the installed Africa's Talking SDK (${messageIds.length} message IDs requested)`
   );
 }

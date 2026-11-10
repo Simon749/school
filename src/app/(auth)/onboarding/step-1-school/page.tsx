@@ -1,15 +1,14 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { WizardShell, StepNav } from "@/components/onboarding/WizardShell";
-import { schoolIdentitySchema } from "@/lib/validations/onboarding";
-
+import { useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { WizardShell, StepNav } from '@/components/onboarding/WizardShell';
+import { schoolIdentitySchema } from '@/lib/validations/onboarding';
 
 export default function Step1SchoolPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const schoolId = searchParams.get("schoolId");
+  const schoolId = searchParams.get('schoolId');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -21,13 +20,13 @@ export default function Step1SchoolPage() {
 
     const formData = new FormData(e.currentTarget);
     const data = {
-      name: formData.get("name") as string,
-      knecCode: formData.get("knecCode") as string,
-      county: formData.get("county") as string,
-      subCounty: formData.get("subCounty") as string,
-      phone: formData.get("phone") as string,
-      email: formData.get("email") as string,
-      logoUrl: formData.get("logoUrl") as string,
+      name: formData.get('name') as string,
+      knecCode: formData.get('knecCode') as string,
+      county: formData.get('county') as string,
+      subCounty: formData.get('subCounty') as string,
+      phone: formData.get('phone') as string,
+      email: formData.get('email') as string,
+      logoUrl: formData.get('logoUrl') as string,
     };
 
     const parsed = schoolIdentitySchema.safeParse(data);
@@ -42,14 +41,14 @@ export default function Step1SchoolPage() {
     }
 
     try {
-      const res = await fetch("/api/onboarding/step-1", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/onboarding/step-1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...parsed.data, schoolId: schoolId || undefined }),
       });
 
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Save failed");
+      if (!res.ok) throw new Error(json.error || 'Save failed');
 
       // Redirect to next step with schoolId
       router.push(`/onboarding/step-3-calendar?schoolId=${json.school.id}`);
@@ -64,17 +63,13 @@ export default function Step1SchoolPage() {
     <WizardShell currentStep={1}>
       <div className="mb-6">
         <h2 className="text-xl font-bold text-gray-900">Step 1: School Identity</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Let's start with the basics about your school.
-        </p>
+        <p className="text-sm text-gray-500 mt-1">Let's start with the basics about your school.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              School Name *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">School Name *</label>
             <input
               name="name"
               type="text"
@@ -86,9 +81,7 @@ export default function Step1SchoolPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              KNEC Code
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">KNEC Code</label>
             <input
               name="knecCode"
               type="text"
@@ -98,9 +91,7 @@ export default function Step1SchoolPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              County *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">County *</label>
             <input
               name="county"
               type="text"
@@ -111,9 +102,7 @@ export default function Step1SchoolPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sub-County *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Sub-County *</label>
             <input
               name="subCounty"
               type="text"
@@ -137,9 +126,7 @@ export default function Step1SchoolPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
             <input
               name="email"
               type="email"
@@ -150,9 +137,7 @@ export default function Step1SchoolPage() {
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Logo URL
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
             <input
               name="logoUrl"
               type="url"
@@ -172,7 +157,7 @@ export default function Step1SchoolPage() {
             disabled={loading}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? "Saving..." : "Continue →"}
+            {loading ? 'Saving...' : 'Continue →'}
           </button>
         </div>
       </form>

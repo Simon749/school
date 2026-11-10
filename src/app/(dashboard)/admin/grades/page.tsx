@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from 'react';
 
 interface Stream {
   id: string;
@@ -20,26 +20,26 @@ interface Grade {
 export default function GradesPage() {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   // Inline edit state
   const [editingStream, setEditingStream] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", capacity: 40 });
+  const [editForm, setEditForm] = useState({ name: '', capacity: 40 });
 
   // Add stream state
   const [addingToGrade, setAddingToGrade] = useState<string | null>(null);
-  const [newStream, setNewStream] = useState({ name: "", capacity: 40 });
+  const [newStream, setNewStream] = useState({ name: '', capacity: 40 });
 
   const [saving, setSaving] = useState(false);
 
   const fetchGrades = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/grades");
-      if (!res.ok) throw new Error("Failed to load grades");
+      const res = await fetch('/api/grades');
+      if (!res.ok) throw new Error('Failed to load grades');
       const data = await res.json();
       setGrades(data.grades);
-      setError("");
+      setError('');
     } catch (error: any) {
       setError((error as Error).message);
     } finally {
@@ -55,15 +55,15 @@ export default function GradesPage() {
     if (!newStream.name.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/streams", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/streams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gradeId, ...newStream }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to create stream");
+      if (!res.ok) throw new Error(json.error || 'Failed to create stream');
       setAddingToGrade(null);
-      setNewStream({ name: "", capacity: 40 });
+      setNewStream({ name: '', capacity: 40 });
       await fetchGrades();
     } catch (error: any) {
       alert((error as Error).message);
@@ -81,12 +81,12 @@ export default function GradesPage() {
     setSaving(true);
     try {
       const res = await fetch(`/api/streams/${streamId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to update stream");
+      if (!res.ok) throw new Error(json.error || 'Failed to update stream');
       setEditingStream(null);
       await fetchGrades();
     } catch (error: any) {
@@ -97,11 +97,11 @@ export default function GradesPage() {
   }
 
   async function handleDelete(streamId: string) {
-    if (!confirm("Are you sure? This cannot be undone.")) return;
+    if (!confirm('Are you sure? This cannot be undone.')) return;
     try {
-      const res = await fetch(`/api/streams/${streamId}`, { method: "DELETE" });
+      const res = await fetch(`/api/streams/${streamId}`, { method: 'DELETE' });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to delete stream");
+      if (!res.ok) throw new Error(json.error || 'Failed to delete stream');
       await fetchGrades();
     } catch (error: any) {
       alert((error as Error).message);
@@ -109,11 +109,7 @@ export default function GradesPage() {
   }
 
   if (loading) {
-    return (
-      <div className="p-8 text-center text-gray-500">
-        Loading grades and streams...
-      </div>
-    );
+    return <div className="p-8 text-center text-gray-500">Loading grades and streams...</div>;
   }
 
   if (error) {
@@ -141,10 +137,7 @@ export default function GradesPage() {
 
       <div className="grid gap-6">
         {grades.map((grade) => {
-          const totalStudents = grade.streams.reduce(
-            (sum, s) => sum + s._count.students,
-            0
-          );
+          const totalStudents = grade.streams.reduce((sum, s) => sum + s._count.students, 0);
 
           return (
             <div
@@ -153,23 +146,19 @@ export default function GradesPage() {
             >
               <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-bold text-gray-900">
-                    {grade.name}
-                  </h2>
+                  <h2 className="text-lg font-bold text-gray-900">{grade.name}</h2>
                   <span className="text-xs font-medium px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full capitalize">
-                    {grade.cbcStage.replace("_", " ")}
+                    {grade.cbcStage.replace('_', ' ')}
                   </span>
                 </div>
                 <span className="text-sm text-gray-500">
-                  {totalStudents} student{totalStudents !== 1 ? "s" : ""}
+                  {totalStudents} student{totalStudents !== 1 ? 's' : ''}
                 </span>
               </div>
 
               <div className="p-6 space-y-3">
                 {grade.streams.length === 0 && (
-                  <p className="text-sm text-gray-400 italic">
-                    No streams configured yet.
-                  </p>
+                  <p className="text-sm text-gray-400 italic">No streams configured yet.</p>
                 )}
 
                 {grade.streams.map((stream) => {
@@ -189,9 +178,7 @@ export default function GradesPage() {
                           <input
                             type="text"
                             value={editForm.name}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, name: e.target.value })
-                            }
+                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                             className="w-24 rounded border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             autoFocus
                           />
@@ -215,7 +202,7 @@ export default function GradesPage() {
                               disabled={saving}
                               className="text-xs font-medium text-green-700 hover:text-green-800"
                             >
-                              {saving ? "Saving..." : "Save"}
+                              {saving ? 'Saving...' : 'Save'}
                             </button>
                             <button
                               onClick={() => setEditingStream(null)}
@@ -260,13 +247,13 @@ export default function GradesPage() {
                               disabled={stream._count.students > 0}
                               className={`text-xs font-medium ${
                                 stream._count.students > 0
-                                  ? "text-gray-400 cursor-not-allowed"
-                                  : "text-red-600 hover:text-red-800"
+                                  ? 'text-gray-400 cursor-not-allowed'
+                                  : 'text-red-600 hover:text-red-800'
                               }`}
                               title={
                                 stream._count.students > 0
-                                  ? "Cannot delete: students are enrolled"
-                                  : "Delete stream"
+                                  ? 'Cannot delete: students are enrolled'
+                                  : 'Delete stream'
                               }
                             >
                               Delete
@@ -283,9 +270,7 @@ export default function GradesPage() {
                     <input
                       type="text"
                       value={newStream.name}
-                      onChange={(e) =>
-                        setNewStream({ ...newStream, name: e.target.value })
-                      }
+                      onChange={(e) => setNewStream({ ...newStream, name: e.target.value })}
                       placeholder="Stream name (e.g. B)"
                       className="w-28 rounded border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       autoFocus
@@ -310,7 +295,7 @@ export default function GradesPage() {
                         disabled={saving || !newStream.name.trim()}
                         className="text-xs font-medium text-green-700 hover:text-green-800 disabled:opacity-50"
                       >
-                        {saving ? "Adding..." : "Add"}
+                        {saving ? 'Adding...' : 'Add'}
                       </button>
                       <button
                         onClick={() => setAddingToGrade(null)}
@@ -324,7 +309,7 @@ export default function GradesPage() {
                   <button
                     onClick={() => {
                       setAddingToGrade(grade.id);
-                      setNewStream({ name: "", capacity: 40 });
+                      setNewStream({ name: '', capacity: 40 });
                     }}
                     className="text-sm font-medium text-blue-600 hover:text-blue-800 mt-1"
                   >

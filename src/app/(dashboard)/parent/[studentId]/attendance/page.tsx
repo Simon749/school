@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Calendar, CheckCircle2, XCircle, Clock } from 'lucide-react';
 
 // Mock data type - replace with your actual API response type
 type AttendanceRecord = {
   date: string;
-  status: "present" | "absent" | "late";
+  status: 'present' | 'absent' | 'late';
   lessons: {
     subject: string;
-    status: "present" | "absent";
+    status: 'present' | 'absent';
     reason?: string;
   }[];
 };
@@ -22,10 +22,10 @@ export default function StudentAttendancePage() {
   const params = useParams();
   const router = useRouter();
   const studentId = params.studentId as string;
-  
+
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [studentName, setStudentName] = useState("Student");
+  const [studentName, setStudentName] = useState('Student');
 
   useEffect(() => {
     // TODO: Replace with your actual API call
@@ -33,15 +33,15 @@ export default function StudentAttendancePage() {
     setTimeout(() => {
       setAttendance([
         {
-          date: "2026-09-03",
-          status: "present",
+          date: '2026-09-03',
+          status: 'present',
           lessons: [
-            { subject: "Literacy", status: "present" },
-            { subject: "Numeracy", status: "absent", reason: "Sick" },
+            { subject: 'Literacy', status: 'present' },
+            { subject: 'Numeracy', status: 'absent', reason: 'Sick' },
           ],
         },
       ]);
-      setStudentName("Amara"); // Fetch from API
+      setStudentName('Amara'); // Fetch from API
       setLoading(false);
     }, 500);
   }, [studentId]);
@@ -77,24 +77,24 @@ export default function StudentAttendancePage() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-semibold">
-                    {new Date(day.date).toLocaleDateString("en-KE", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
+                    {new Date(day.date).toLocaleDateString('en-KE', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
                     })}
                   </CardTitle>
                   <Badge
                     className={
-                      day.status === "present"
-                        ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                        : day.status === "late"
-                        ? "bg-amber-100 text-amber-700 hover:bg-amber-100"
-                        : "bg-red-100 text-red-700 hover:bg-red-100"
+                      day.status === 'present'
+                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+                        : day.status === 'late'
+                          ? 'bg-amber-100 text-amber-700 hover:bg-amber-100'
+                          : 'bg-red-100 text-red-700 hover:bg-red-100'
                     }
                   >
-                    {day.status === "present" ? (
+                    {day.status === 'present' ? (
                       <CheckCircle2 className="mr-1 h-3 w-3" />
-                    ) : day.status === "late" ? (
+                    ) : day.status === 'late' ? (
                       <Clock className="mr-1 h-3 w-3" />
                     ) : (
                       <XCircle className="mr-1 h-3 w-3" />
@@ -115,15 +115,15 @@ export default function StudentAttendancePage() {
                         <span className="text-sm font-medium text-slate-700">{lesson.subject}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        {lesson.status === "absent" && lesson.reason && (
+                        {lesson.status === 'absent' && lesson.reason && (
                           <span className="text-xs text-slate-500">({lesson.reason})</span>
                         )}
                         <Badge
                           variant="outline"
                           className={
-                            lesson.status === "present"
-                              ? "border-emerald-200 text-emerald-700"
-                              : "border-red-200 text-red-700"
+                            lesson.status === 'present'
+                              ? 'border-emerald-200 text-emerald-700'
+                              : 'border-red-200 text-red-700'
                           }
                         >
                           {lesson.status}

@@ -1,40 +1,34 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/db";
-import { studentSchema } from "@/lib/validations/student.schema";
+import { NextRequest, NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth/current-user';
+import { prisma } from '@/lib/db';
+import { studentSchema } from '@/lib/validations/student.schema';
 
+// GET: List students (Admin only, scoped to school)
 export async function GET(req: NextRequest) {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { schoolId: true, role: true },
-  });
-
-  if (!user?.schoolId || user.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  // R1-14: Use central guard. Automatically checks auth, isActive, deletedAt, and role.
+  const guard = await requireUser(['admin']);
+  if (!guard.ok) return guard.response;
+  const { user } = guard;
 
   const { searchParams } = new URL(req.url);
-  const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50")));
-  const search = searchParams.get("search")?.trim();
-  const gradeId = searchParams.get("gradeId");
-  const streamId = searchParams.get("streamId");
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50', 10)));
+  const search = searchParams.get('search')?.trim();
+  const gradeId = searchParams.get('gradeId');
+  const streamId = searchParams.get('streamId');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
- const where: any = {
-    schoolId: user.schoolId,
+  const where: any = {
+    schoolId: user.schoolId, // SEC-11: Strictly scoped to caller's school
     deletedAt: null,
   };
 
   if (search) {
     where.OR = [
-      { firstName: { contains: search, mode: "insensitive" } },
-      { lastName: { contains: search, mode: "insensitive" } },
-      { nemisNumber: { contains: search, mode: "insensitive" } },
-      { admissionNumber: { contains: search, mode: "insensitive" } },
+      { firstName: { contains: search, mode: 'insensitive' } },
+      { lastName: { contains: search, mode: 'insensitive' } },
+      { nemisNumber: { contains: search, mode: 'insensitive' } },
+      { admissionNumber: { contains: search, mode: 'insensitive' } },
     ];
   }
 
@@ -51,7 +45,7 @@ export async function GET(req: NextRequest) {
       where,
       skip,
       take: limit,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: {
         stream: { include: { grade: true } },
         _count: { select: { guardians: true } },
@@ -71,39 +65,43 @@ export async function GET(req: NextRequest) {
   });
 }
 
+// POST: Create a new student (Admin only)
 export async function POST(req: NextRequest) {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // R1-14: Use central guard
+  const guard = await requireUser(['admin']);
+  if (!guard.ok) return guard.response;
+  const { user } = guard;
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { schoolId: true, role: true },
-  });
-
-  if (!user?.schoolId || user.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
   }
 
-  const body = await req.json();
   const parsed = studentSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Validation failed", issues: parsed.error.issues },
+      { error: 'Validation failed', issues: parsed.error.issues },
       { status: 400 }
     );
   }
 
-  // Verify stream belongs to school
+  // SEC-11: Verify stream belongs to the caller's school
   const stream = await prisma.stream.findFirst({
     where: { id: parsed.data.streamId, schoolId: user.schoolId },
   });
   if (!stream) {
-    return NextResponse.json({ error: "Invalid stream" }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid stream' }, { status: 400 });
   }
 
-  // Check NEMIS uniqueness
+  // Check NEMIS uniqueness within the school (ignoring soft-deleted records)
   const existing = await prisma.student.findFirst({
-    where: { nemisNumber: parsed.data.nemisNumber, schoolId: user.schoolId },
+    where: { 
+      nemisNumber: parsed.data.nemisNumber, 
+      schoolId: user.schoolId,
+      deletedAt: null 
+    },
   });
   if (existing) {
     return NextResponse.json(

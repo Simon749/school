@@ -1,8 +1,9 @@
-import { prisma } from "@/lib/db";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { prisma } from '@/lib/db';
+import { requirePageUser } from '@/lib/auth/current-user';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Users,
   CheckCircle2,
@@ -15,30 +16,20 @@ import {
   Shield,
   BookOpen,
   MapPin,
-} from "lucide-react";
-import Link from "next/link";
+} from 'lucide-react';
+import Link from 'next/link';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 // ── Shared helpers (match admin style) ────────────────────
 function initials(first: string, last: string) {
-  return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
+  return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase();
 }
 
-function SectionHeader({
-  title,
-  action,
-  href,
-}: {
-  title: string;
-  action?: string;
-  href?: string;
-}) {
+function SectionHeader({ title, action, href }: { title: string; action?: string; href?: string }) {
   return (
     <div className="mb-4 flex items-center justify-between">
-      <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">
-        {title}
-      </h2>
+      <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">{title}</h2>
       {action &&
         (href ? (
           <Link
@@ -73,14 +64,10 @@ function PulseCard({
 }) {
   return (
     <Card className="p-5 transition-shadow hover:shadow-md">
-      <div
-        className={`mb-3 flex h-9 w-9 items-center justify-center rounded-lg ${accent}`}
-      >
+      <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-lg ${accent}`}>
         <Icon className="h-4 w-4 text-white" />
       </div>
-      <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
-        {label}
-      </p>
+      <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
       <p className="text-2xl font-bold leading-none text-slate-900">{value}</p>
       <span className="mt-1 flex items-center gap-1 font-mono text-xs text-slate-500">
         {sublabel}
@@ -91,49 +78,52 @@ function PulseCard({
 
 function StatusDot({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    present: "bg-emerald-500",
-    late: "bg-amber-400",
-    absent: "bg-red-500",
-    covered: "bg-blue-500",
-    pending: "bg-slate-300",
+    present: 'bg-emerald-500',
+    late: 'bg-amber-400',
+    absent: 'bg-red-500',
+    covered: 'bg-blue-500',
+    pending: 'bg-slate-300',
   };
   return (
-    <span
-      className={`inline-block h-2 w-2 rounded-full ${styles[status] || styles.pending}`}
-    />
+    <span className={`inline-block h-2 w-2 rounded-full ${styles[status] || styles.pending}`} />
   );
 }
 
 // ── Page ──────────────────────────────────────────────────
 export default async function DeputyDashboardPage() {
+  // SEC-09: deputy/admin only, and everything below is scoped to the caller's own school.
+  const user = await requirePageUser(['deputy', 'admin']);
+  const schoolId = user.schoolId;
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const now = new Date();
   const dayOfWeek = today.getDay() || 1;
 
   const currentTerm = await prisma.term.findFirst({
-    where: { isCurrent: true },
-    orderBy: { startDate: "desc" },
+    where: { schoolId, isCurrent: true },
+    orderBy: { startDate: 'desc' },
   });
 
   // ── Stats ───────────────────────────────────────────────
-  const totalTeachers = await prisma.teacher.count();
+  const totalTeachers = await prisma.teacher.count({ where: { schoolId } });
   const checkedInToday = await prisma.teacherAttendance.count({
     where: {
+      schoolId,
       date: today,
-      status: { in: ["present", "late", "covered"] },
+      status: { in: ['present', 'late', 'covered'] },
     },
   });
   const absentToday = await prisma.teacherAttendance.count({
-    where: { date: today, status: "absent" },
+    where: { schoolId, date: today, status: 'absent' },
   });
   const lateToday = await prisma.teacherAttendance.count({
-    where: { date: today, status: "late" },
+    where: { schoolId, date: today, status: 'late' },
   });
 
   // ── Today's slots ──────────────────────────────────────
   const slotsToday = await prisma.timetableSlot.findMany({
-    where: { dayOfWeek, termId: currentTerm?.id },
+    where: { schoolId, dayOfWeek, termId: currentTerm?.id ?? { in: [] } },
     include: {
       teacher: { include: { user: true } },
       stream: { include: { grade: true } },
@@ -141,20 +131,16 @@ export default async function DeputyDashboardPage() {
       period: true,
       teacherAttendances: { where: { date: today } },
     },
-    orderBy: [{ period: { orderIndex: "asc" } }],
+    orderBy: [{ period: { orderIndex: 'asc' } }],
   });
 
   const uncovered = slotsToday.filter((slot) => {
-    const [h, m] = slot.period.startTime
-      .toISOString()
-      .slice(11, 16)
-      .split(":")
-      .map(Number);
+    const [h, m] = slot.period.startTime.toISOString().slice(11, 16).split(':').map(Number);
     const slotStart = new Date(today);
     slotStart.setHours(h, m, 0, 0);
     const windowStart = new Date(slotStart.getTime() - 30 * 60 * 1000);
     const hasAttendance = slot.teacherAttendances.some(
-      (a) => a.status === "present" || a.status === "late" || a.status === "covered"
+      (a) => a.status === 'present' || a.status === 'late' || a.status === 'covered'
     );
     return now >= windowStart && !hasAttendance;
   });
@@ -164,20 +150,20 @@ export default async function DeputyDashboardPage() {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const recentAttendance = await prisma.teacherAttendance.findMany({
-    where: { date: { gte: sevenDaysAgo } },
+    where: { schoolId, date: { gte: sevenDaysAgo } },
     include: {
       teacher: { include: { user: true } },
       slot: { include: { learningArea: true, period: true } },
     },
-    orderBy: { date: "desc" },
+    orderBy: { date: 'desc' },
     take: 8,
   });
 
-  const dateStr = today.toLocaleDateString("en-KE", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
+  const dateStr = today.toLocaleDateString('en-KE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
   });
 
   return (
@@ -185,12 +171,10 @@ export default async function DeputyDashboardPage() {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Deputy Principal
-          </h1>
+          <h1 className="text-2xl font-bold text-slate-900">Deputy Principal</h1>
           <p className="mt-0.5 text-sm text-slate-500">
             {dateStr}
-            {currentTerm ? ` · ${currentTerm.name}` : ""}
+            {currentTerm ? ` · ${currentTerm.name}` : ''}
           </p>
         </div>
         <div className="flex gap-2">
@@ -217,7 +201,7 @@ export default async function DeputyDashboardPage() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-slate-800">
                 {uncovered.length} Uncovered Lesson
-                {uncovered.length > 1 ? "s" : ""} Right Now
+                {uncovered.length > 1 ? 's' : ''} Right Now
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
                 Teachers have not checked in for the following periods.
@@ -267,7 +251,7 @@ export default async function DeputyDashboardPage() {
             sublabel={
               totalTeachers > 0
                 ? `${Math.round((checkedInToday / totalTeachers) * 100)}% rate`
-                : "No records"
+                : 'No records'
             }
           />
           <PulseCard
@@ -310,26 +294,24 @@ export default async function DeputyDashboardPage() {
               {slotsToday.map((slot) => {
                 const att = slot.teacherAttendances[0];
                 const isUncovered = uncovered.some((u) => u.id === slot.id);
-                const status = att?.status || "pending";
+                const status = att?.status || 'pending';
                 return (
                   <div
                     key={slot.id}
                     className={`flex items-center justify-between rounded-lg border p-3 ${
-                      isUncovered
-                        ? "border-red-200 bg-red-50"
-                        : "border-slate-100 bg-white"
+                      isUncovered ? 'border-red-200 bg-red-50' : 'border-slate-100 bg-white'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div
                         className={`flex h-8 w-8 items-center justify-center rounded-lg ${
                           isUncovered
-                            ? "bg-red-100 text-red-600"
-                            : status === "present"
-                            ? "bg-emerald-100 text-emerald-600"
-                            : status === "late"
-                            ? "bg-amber-100 text-amber-600"
-                            : "bg-slate-100 text-slate-500"
+                            ? 'bg-red-100 text-red-600'
+                            : status === 'present'
+                              ? 'bg-emerald-100 text-emerald-600'
+                              : status === 'late'
+                                ? 'bg-amber-100 text-amber-600'
+                                : 'bg-slate-100 text-slate-500'
                         }`}
                       >
                         <Clock className="h-3.5 w-3.5" />
@@ -340,7 +322,7 @@ export default async function DeputyDashboardPage() {
                         </p>
                         <p className="text-xs text-slate-500">
                           {slot.stream.grade.name}
-                          {slot.stream.name} · Room {slot.room || "TBD"}
+                          {slot.stream.name} · Room {slot.room || 'TBD'}
                         </p>
                       </div>
                     </div>
@@ -348,10 +330,7 @@ export default async function DeputyDashboardPage() {
                       <div className="flex items-center gap-1.5">
                         <Avatar className="h-5 w-5">
                           <AvatarFallback className="text-[9px] bg-slate-100 text-slate-600">
-                            {initials(
-                              slot.teacher.user.firstName,
-                              slot.teacher.user.lastName
-                            )}
+                            {initials(slot.teacher.user.firstName, slot.teacher.user.lastName)}
                           </AvatarFallback>
                         </Avatar>
                         <span className="hidden text-xs text-slate-600 sm:inline">
@@ -362,17 +341,17 @@ export default async function DeputyDashboardPage() {
                         <StatusDot status={status} />
                         <span
                           className={
-                            status === "present"
-                              ? "text-emerald-700"
-                              : status === "late"
-                              ? "text-amber-700"
-                              : isUncovered
-                              ? "text-red-700"
-                              : "text-slate-400"
+                            status === 'present'
+                              ? 'text-emerald-700'
+                              : status === 'late'
+                                ? 'text-amber-700'
+                                : isUncovered
+                                  ? 'text-red-700'
+                                  : 'text-slate-400'
                           }
                         >
                           {isUncovered
-                            ? "Missing"
+                            ? 'Missing'
                             : status.charAt(0).toUpperCase() + status.slice(1)}
                         </span>
                       </span>
@@ -395,13 +374,13 @@ export default async function DeputyDashboardPage() {
                 <div key={att.id} className="flex items-start gap-3">
                   <div
                     className={`mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${
-                      att.status === "present"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : att.status === "late"
-                        ? "bg-amber-100 text-amber-700"
-                        : att.status === "absent"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-slate-100 text-slate-600"
+                      att.status === 'present'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : att.status === 'late'
+                          ? 'bg-amber-100 text-amber-700'
+                          : att.status === 'absent'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-slate-100 text-slate-600'
                     }`}
                   >
                     <Shield className="h-3.5 w-3.5" />
@@ -410,29 +389,27 @@ export default async function DeputyDashboardPage() {
                     <p className="text-sm leading-snug text-slate-700">
                       <span className="font-medium">
                         {att.teacher.user.firstName} {att.teacher.user.lastName}
-                      </span>{" "}
-                      marked{" "}
+                      </span>{' '}
+                      marked{' '}
                       <span
                         className={
-                          att.status === "present"
-                            ? "text-emerald-700"
-                            : att.status === "late"
-                            ? "text-amber-700"
-                            : "text-red-700"
+                          att.status === 'present'
+                            ? 'text-emerald-700'
+                            : att.status === 'late'
+                              ? 'text-amber-700'
+                              : 'text-red-700'
                         }
                       >
                         {att.status}
-                      </span>{" "}
-                      for {att.slot?.learningArea.name || "a lesson"}
+                      </span>{' '}
+                      for {att.slot?.learningArea.name || 'a lesson'}
                     </p>
                     <p className="mt-0.5 font-mono text-xs text-slate-400">
-                      {att.date.toLocaleDateString("en-KE", {
-                        day: "numeric",
-                        month: "short",
+                      {att.date.toLocaleDateString('en-KE', {
+                        day: 'numeric',
+                        month: 'short',
                       })}
-                      {att.minutesLate
-                        ? ` · ${att.minutesLate} mins late`
-                        : ""}
+                      {att.minutesLate ? ` · ${att.minutesLate} mins late` : ''}
                     </p>
                   </div>
                 </div>

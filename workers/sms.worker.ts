@@ -1,16 +1,16 @@
 // src/workers/sms.worker.ts
-import { Worker, Job } from "bullmq";
-import { prisma } from "@/lib/db";
-import { redis } from "@/lib/redis";
-import { sendSMS } from "@/lib/sms/africastalking";
+import { Worker, Job } from 'bullmq';
+import { prisma } from '@/lib/db';
+import { redis } from '@/lib/redis';
+import { sendSMS } from '@/lib/sms/africastalking';
 
 interface SMSJobData {
   messageIds: string[];
-  priority?: "high" | "normal" | "low";
+  priority?: 'high' | 'normal' | 'low';
 }
 
 export const smsWorker = new Worker<SMSJobData>(
-  "sms-queue",
+  'sms-queue',
   async (job: Job<SMSJobData>) => {
     const { messageIds, priority } = job.data;
 
@@ -33,11 +33,14 @@ export const smsWorker = new Worker<SMSJobData>(
     });
 
     // Group by school for balance checking
-    const messagesBySchool = messages.reduce((acc, msg) => {
-      if (!acc[msg.schoolId]) acc[msg.schoolId] = [];
-      acc[msg.schoolId].push(msg);
-      return acc;
-    }, {} as Record<string, typeof messages>);
+    const messagesBySchool = messages.reduce(
+      (acc, msg) => {
+        if (!acc[msg.schoolId]) acc[msg.schoolId] = [];
+        acc[msg.schoolId].push(msg);
+        return acc;
+      },
+      {} as Record<string, typeof messages>
+    );
 
     for (const [schoolId, schoolMessages] of Object.entries(messagesBySchool)) {
       const school = schoolMessages[0].school;
@@ -45,12 +48,12 @@ export const smsWorker = new Worker<SMSJobData>(
 
       for (const message of schoolMessages) {
         // Check if recipient has app installed (skip SMS unless high priority)
-        if (message.recipient?.hasAppInstalled && priority !== "high") {
+        if (message.recipient?.hasAppInstalled && priority !== 'high') {
           console.log(`[SMS Worker] Skipping SMS for ${message.recipient.phone} - has app`);
           await prisma.message.update({
             where: { id: message.id },
             data: {
-              sentVia: { set: message.sentVia.filter((v) => v !== "sms") },
+              sentVia: { set: message.sentVia.filter((v) => v !== 'sms') },
             },
           });
           continue;
@@ -73,7 +76,7 @@ export const smsWorker = new Worker<SMSJobData>(
             where: { id: message.id },
             data: {
               smsSent: false,
-              sentVia: { set: message.sentVia.filter((v) => v !== "sms") },
+              sentVia: { set: message.sentVia.filter((v) => v !== 'sms') },
             },
           });
           continue;
@@ -88,7 +91,7 @@ export const smsWorker = new Worker<SMSJobData>(
 
           const recipient = result.recipients[0];
 
-          if (recipient.status === "Success") {
+          if (recipient.status === 'Success') {
             // Update message record
             await prisma.message.update({
               where: { id: message.id },
@@ -108,14 +111,18 @@ export const smsWorker = new Worker<SMSJobData>(
 
             availableBalance -= cost;
 
-            console.log(`[SMS Worker] SMS sent to ${message.recipient.phone} - Message ID: ${recipient.messageId}`);
+            console.log(
+              `[SMS Worker] SMS sent to ${message.recipient.phone} - Message ID: ${recipient.messageId}`
+            );
           } else {
-            console.error(`[SMS Worker] SMS failed for ${message.recipient.phone}: ${recipient.status}`);
+            console.error(
+              `[SMS Worker] SMS failed for ${message.recipient.phone}: ${recipient.status}`
+            );
             await prisma.message.update({
               where: { id: message.id },
               data: {
                 smsSent: false,
-                sentVia: { set: message.sentVia.filter((v) => v !== "sms") },
+                sentVia: { set: message.sentVia.filter((v) => v !== 'sms') },
               },
             });
           }
@@ -126,7 +133,7 @@ export const smsWorker = new Worker<SMSJobData>(
             where: { id: message.id },
             data: {
               smsSent: false,
-              sentVia: { set: message.sentVia.filter((v) => v !== "sms") },
+              sentVia: { set: message.sentVia.filter((v) => v !== 'sms') },
             },
           });
         }
@@ -145,10 +152,10 @@ export const smsWorker = new Worker<SMSJobData>(
   }
 );
 
-smsWorker.on("completed", (job) => {
+smsWorker.on('completed', (job) => {
   console.log(`[SMS Worker] Job ${job.id} completed`);
 });
 
-smsWorker.on("failed", (job, err) => {
+smsWorker.on('failed', (job, err) => {
   console.error(`[SMS Worker] Job ${job?.id} failed:`, err);
 });

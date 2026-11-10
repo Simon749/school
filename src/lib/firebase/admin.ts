@@ -1,6 +1,6 @@
 // src/lib/firebase/admin.ts
-import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getMessaging } from "firebase-admin/messaging";
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 
 // Initialize Firebase Admin (only once)
 if (getApps().length === 0) {
@@ -8,7 +8,7 @@ if (getApps().length === 0) {
     credential: cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     }),
   });
 }
@@ -26,7 +26,7 @@ export async function sendPushNotification(options: SendPushOptions) {
   const { tokens, title, body, data } = options;
 
   if (tokens.length === 0) {
-    console.log("[Firebase] No tokens provided, skipping push");
+    console.log('[Firebase] No tokens provided, skipping push');
     return;
   }
 
@@ -39,10 +39,10 @@ export async function sendPushNotification(options: SendPushOptions) {
       data: data || {},
       tokens,
       android: {
-        priority: "high" as const,
+        priority: 'high' as const,
         notification: {
-          channelId: "default",
-          sound: "default",
+          channelId: 'default',
+          sound: 'default',
         },
       },
     };
@@ -50,13 +50,15 @@ export async function sendPushNotification(options: SendPushOptions) {
     const response = await messaging.sendEachForMulticast(message);
 
     // Log results
-    console.log(`[Firebase] Push sent: ${response.successCount} success, ${response.failureCount} failed`);
+    console.log(
+      `[Firebase] Push sent: ${response.successCount} success, ${response.failureCount} failed`
+    );
 
     // Handle invalid tokens (remove them from DB)
     if (response.failureCount > 0) {
       const invalidTokens: string[] = [];
       response.responses.forEach((resp, idx) => {
-        if (!resp.success && resp.error?.code === "messaging/registration-token-not-registered") {
+        if (!resp.success && resp.error?.code === 'messaging/registration-token-not-registered') {
           invalidTokens.push(tokens[idx]);
         }
       });
@@ -69,7 +71,7 @@ export async function sendPushNotification(options: SendPushOptions) {
 
     return response;
   } catch (error: any) {
-    console.error("[Firebase] Push notification error:", error);
+    console.error('[Firebase] Push notification error:', error);
     throw new Error(`Failed to send push: ${error.message}`);
   }
 }

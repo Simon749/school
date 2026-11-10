@@ -1,7 +1,17 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { AlertTriangle, CheckCircle, Clock, MapPin, XCircle } from "lucide-react";
+import { useState, useEffect, useCallback } from 'react';
+import { AlertTriangle, CheckCircle, Clock, MapPin, XCircle } from 'lucide-react';
+
+// Helper to get YYYY-MM-DD in Africa/Nairobi (UTC+3) to prevent UTC skew on client init
+const getTodayNairobi = () => {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Nairobi',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+};
 
 interface AttendanceSlot {
   id: string;
@@ -10,7 +20,7 @@ interface AttendanceSlot {
   teacher: { user: { firstName: string; lastName: string } };
   stream: { name: string; grade: { name: string } };
   room: string | null;
-  status: "pending" | "present" | "late" | "absent";
+  status: 'pending' | 'present' | 'late' | 'absent';
   needsAlert: boolean;
   attendance: {
     checkedInAt: string;
@@ -24,19 +34,25 @@ interface AttendanceSlot {
 
 export default function AdminAttendancePage() {
   const [slots, setSlots] = useState<AttendanceSlot[]>([]);
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(getTodayNairobi());
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [error, setError] = useState<string | null>(null); // R6-10: Explicit error state
 
   const fetchAttendance = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/attendance/teacher?date=${date}`);
-      if (!res.ok) throw new Error("Failed to load");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to load attendance data');
+      }
       const data = await res.json();
       setSlots(data.slots || []);
     } catch (err) {
       console.error(err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -46,7 +62,6 @@ export default function AdminAttendancePage() {
     fetchAttendance();
   }, [fetchAttendance]);
 
-  // Auto-refresh every 30 seconds
   useEffect(() => {
     if (!autoRefresh) return;
     const id = setInterval(fetchAttendance, 30000);
@@ -54,12 +69,15 @@ export default function AdminAttendancePage() {
   }, [autoRefresh, fetchAttendance]);
 
   const alerts = slots.filter((s) => s.needsAlert);
-  const present = slots.filter((s) => s.status === "present").length;
-  const late = slots.filter((s) => s.status === "late").length;
-  const absent = slots.filter((s) => s.status === "absent").length;
-  const pending = slots.filter((s) => s.status === "pending").length;
+  const present = slots.filter((s) => s.status === 'present').length;
+  const late = slots.filter((s) => s.status === 'late').length;
+  const absent = slots.filter((s) => s.status === 'absent').length;
+  const pending = slots.filter((s) => s.status === 'pending').length;
 
-  const formatTime = (t: string) => (t.includes("T") ? new Date(t).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }) : t.slice(0, 5));
+  const formatTime = (t: string) =>
+    t.includes('T')
+      ? new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
+      : t.slice(0, 5);
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -87,7 +105,15 @@ export default function AdminAttendancePage() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* R6-10: Explicit Error State UI */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
+          {error}
+        </div>
+      )}
+
+      {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center gap-2 mb-1">
@@ -129,7 +155,8 @@ export default function AdminAttendancePage() {
           <div className="space-y-1">
             {alerts.map((s) => (
               <p key={s.id} className="text-xs text-red-700">
-                {s.period.name} ({formatTime(s.period.startTime)}) — {s.teacher.user.firstName} {s.teacher.user.lastName} · {s.stream.grade.name} {s.stream.name}
+                {s.period.name} ({formatTime(s.period.startTime)}) — {s.teacher.user.firstName}{' '}
+                {s.teacher.user.lastName} · {s.stream.grade.name} {s.stream.name}
               </p>
             ))}
           </div>
@@ -146,10 +173,10 @@ export default function AdminAttendancePage() {
           <div className="divide-y divide-gray-100">
             {slots.map((slot) => {
               const statusColors = {
-                present: "bg-green-50 border-green-200 text-green-800",
-                late: "bg-amber-50 border-amber-200 text-amber-800",
-                absent: "bg-red-50 border-red-200 text-red-800",
-                pending: "bg-gray-50 border-gray-200 text-gray-600",
+                present: 'bg-green-50 border-green-200 text-green-800',
+                late: 'bg-amber-50 border-amber-200 text-amber-800',
+                absent: 'bg-red-50 border-red-200 text-red-800',
+                pending: 'bg-gray-50 border-gray-200 text-gray-600',
               };
 
               const StatusIcon = {
@@ -160,11 +187,14 @@ export default function AdminAttendancePage() {
               }[slot.status];
 
               return (
-                <div key={slot.id} className={`p-4 border-l-4 ${statusColors[slot.status].split(" ")[2].replace("text-", "border-")}`}>
+                <div
+                  key={slot.id}
+                  className={`p-4 border-l-4 ${statusColors[slot.status].split(' ')[2].replace('text-', 'border-')}`}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${statusColors[slot.status].split(" ")[0]}`}>
-                        <StatusIcon className={`w-5 h-5 ${statusColors[slot.status].split(" ")[2]}`} />
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${statusColors[slot.status].split(' ')[0]}`}>
+                        <StatusIcon className={`w-5 h-5 ${statusColors[slot.status].split(' ')[2]}`} />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -174,7 +204,8 @@ export default function AdminAttendancePage() {
                           </span>
                         </div>
                         <div className="text-sm text-gray-600">
-                          {slot.teacher.user.firstName} {slot.teacher.user.lastName} · {slot.learningArea.name} · {slot.stream.grade.name} {slot.stream.name}
+                          {slot.teacher.user.firstName} {slot.teacher.user.lastName} ·{' '}
+                          {slot.learningArea.name} · {slot.stream.grade.name} {slot.stream.name}
                           {slot.room && <span className="text-gray-400"> · {slot.room}</span>}
                         </div>
                       </div>
@@ -184,7 +215,9 @@ export default function AdminAttendancePage() {
                         {slot.status.charAt(0).toUpperCase() + slot.status.slice(1)}
                       </span>
                       {slot.attendance?.minutesLate && (
-                        <p className="text-[10px] text-gray-500 mt-1">+{slot.attendance.minutesLate} min late</p>
+                        <p className="text-[10px] text-gray-500 mt-1">
+                          +{slot.attendance.minutesLate} min late
+                        </p>
                       )}
                     </div>
                   </div>
@@ -193,7 +226,11 @@ export default function AdminAttendancePage() {
                     <div className="mt-3 ml-14 text-xs text-gray-500 flex items-center gap-4">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        Checked in at {new Date(slot.attendance.checkedInAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                        Checked in at{' '}
+                        {new Date(slot.attendance.checkedInAt).toLocaleTimeString('en-GB', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </span>
                       {slot.attendance.checkInLat && (
                         <span className="flex items-center gap-1">
@@ -202,7 +239,9 @@ export default function AdminAttendancePage() {
                         </span>
                       )}
                       {slot.attendance.lessonNotes && (
-                        <span className="italic text-gray-400">"{slot.attendance.lessonNotes}"</span>
+                        <span className="italic text-gray-400">
+                          "{slot.attendance.lessonNotes}"
+                        </span>
                       )}
                     </div>
                   )}

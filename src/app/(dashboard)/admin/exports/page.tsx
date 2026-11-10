@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { FileText, Download, Users, Calendar, DollarSign } from "lucide-react";
+import Link from 'next/link';
+import { FileText, Download, Users, Calendar, DollarSign } from 'lucide-react';
 
 interface ExportCardProps {
   title: string;
@@ -33,9 +33,7 @@ export default function ExportsHubPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-          Export Center
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Export Center</h1>
         <p className="text-sm text-gray-500 mt-1">
           Generate reports and export data in CSV and PDF formats.
         </p>
@@ -43,9 +41,7 @@ export default function ExportsHubPage() {
 
       {/* Attendance Exports */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">
-          Attendance Reports
-        </h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Attendance Reports</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <ExportCard
             title="Class Attendance"
@@ -73,9 +69,7 @@ export default function ExportsHubPage() {
 
       {/* Fee Exports */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">
-          Fee Reports
-        </h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Fee Reports</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <ExportCard
             title="Fee Defaulters"
@@ -103,9 +97,7 @@ export default function ExportsHubPage() {
 
       {/* Results Exports */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">
-          Results & Academics
-        </h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Results & Academics</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <ExportCard
             title="Class Markbook"
@@ -126,9 +118,7 @@ export default function ExportsHubPage() {
 
       {/* Info Box */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-blue-900 mb-2">
-          How exports work
-        </h3>
+        <h3 className="text-sm font-medium text-blue-900 mb-2">How exports work</h3>
         <ul className="text-sm text-blue-800 space-y-1">
           <li>• Large exports run in the background (won't block your work)</li>
           <li>• You'll see a progress indicator and can download when ready</li>

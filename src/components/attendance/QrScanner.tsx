@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import jsQR from "jsqr";
+import { useEffect, useRef, useState } from 'react';
+import jsQR from 'jsqr';
 
 interface Props {
   onScan: (data: string) => void;
@@ -20,7 +20,7 @@ export function QrScanner({ onScan, onError }: Props) {
     async function startCamera() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
+          video: { facingMode: 'environment' },
         });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -41,7 +41,7 @@ export function QrScanner({ onScan, onError }: Props) {
 
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) {
         animationId = requestAnimationFrame(tick);
         return;
@@ -53,7 +53,7 @@ export function QrScanner({ onScan, onError }: Props) {
 
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "dontInvert",
+        inversionAttempts: 'dontInvert',
       });
 
       if (code) {

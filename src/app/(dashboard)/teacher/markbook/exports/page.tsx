@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 
 interface Stream {
   id: string;
@@ -23,11 +23,11 @@ export default function MarkbookExportPage() {
   const [streams, setStreams] = useState<Stream[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
   const [learningAreas, setLearningAreas] = useState<LearningArea[]>([]);
-  
-  const [selectedStreamId, setSelectedStreamId] = useState("");
-  const [selectedTermId, setSelectedTermId] = useState("");
-  const [selectedLearningAreaId, setSelectedLearningAreaId] = useState("");
-  
+
+  const [selectedStreamId, setSelectedStreamId] = useState('');
+  const [selectedTermId, setSelectedTermId] = useState('');
+  const [selectedLearningAreaId, setSelectedLearningAreaId] = useState('');
+
   const [isExporting, setIsExporting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
@@ -36,24 +36,24 @@ export default function MarkbookExportPage() {
     const fetchData = async () => {
       try {
         const [streamsRes, termsRes, areasRes] = await Promise.all([
-          fetch("/api/streams"),
-          fetch("/api/terms"),
-          fetch("/api/learning-areas"),
+          fetch('/api/streams'),
+          fetch('/api/terms'),
+          fetch('/api/learning-areas'),
         ]);
-        
+
         const streamsData = await streamsRes.json();
         const termsData = await termsRes.json();
         const areasData = await areasRes.json();
-        
+
         setStreams(streamsData);
         setTerms(termsData);
         setLearningAreas(areasData);
-        
+
         // Auto-select current term
         const currentTerm = termsData.find((t: Term) => t.isCurrent);
         if (currentTerm) setSelectedTermId(currentTerm.id);
       } catch (err) {
-        console.error("Failed to fetch data:", err);
+        console.error('Failed to fetch data:', err);
       }
     };
     fetchData();
@@ -61,26 +61,26 @@ export default function MarkbookExportPage() {
 
   const handleExport = async () => {
     if (!selectedStreamId || !selectedTermId) {
-      alert("Please select stream and term");
+      alert('Please select stream and term');
       return;
     }
 
     setIsExporting(true);
-    setStatus("Queuing export...");
+    setStatus('Queuing export...');
     setDownloadUrl(null);
 
     try {
-      const res = await fetch("/api/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: "results-markbook",
+          type: 'results-markbook',
           filters: {
             streamId: selectedStreamId,
             termId: selectedTermId,
             learningAreaId: selectedLearningAreaId || undefined,
           },
-          format: "csv",
+          format: 'csv',
         }),
       });
 
@@ -102,11 +102,11 @@ export default function MarkbookExportPage() {
 
         setStatus(data.status);
 
-        if (data.status === "completed") {
+        if (data.status === 'completed') {
           clearInterval(interval);
           setDownloadUrl(data.downloadUrl);
           setIsExporting(false);
-        } else if (data.status === "failed") {
+        } else if (data.status === 'failed') {
           clearInterval(interval);
           alert(`Export failed: ${data.error}`);
           setIsExporting(false);
@@ -121,9 +121,7 @@ export default function MarkbookExportPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-          Export Class Markbook
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Export Class Markbook</h1>
         <p className="text-sm text-gray-500 mt-1">
           Export all assessment results for a class as a CSV spreadsheet.
         </p>
@@ -132,9 +130,7 @@ export default function MarkbookExportPage() {
       <div className="bg-white border rounded-lg p-6 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Stream
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Stream</label>
             <select
               value={selectedStreamId}
               onChange={(e) => setSelectedStreamId(e.target.value)}
@@ -150,9 +146,7 @@ export default function MarkbookExportPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Term
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Term</label>
             <select
               value={selectedTermId}
               onChange={(e) => setSelectedTermId(e.target.value)}
@@ -161,7 +155,7 @@ export default function MarkbookExportPage() {
               <option value="">Select term...</option>
               {terms.map((term) => (
                 <option key={term.id} value={term.id}>
-                  {term.name} {term.isCurrent && "(Current)"}
+                  {term.name} {term.isCurrent && '(Current)'}
                 </option>
               ))}
             </select>
@@ -191,11 +185,11 @@ export default function MarkbookExportPage() {
           disabled={isExporting || !selectedStreamId || !selectedTermId}
           className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
             isExporting || !selectedStreamId || !selectedTermId
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700"
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700'
           }`}
         >
-          {isExporting ? "Exporting..." : "Export to CSV"}
+          {isExporting ? 'Exporting...' : 'Export to CSV'}
         </button>
 
         {status && (
@@ -215,9 +209,7 @@ export default function MarkbookExportPage() {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-blue-900 mb-2">
-          What's included in this export:
-        </h3>
+        <h3 className="text-sm font-medium text-blue-900 mb-2">What's included in this export:</h3>
         <ul className="text-sm text-blue-800 space-y-1">
           <li>• All students in the selected stream</li>
           <li>• All published assessments for the term</li>

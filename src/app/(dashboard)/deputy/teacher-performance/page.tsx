@@ -1,7 +1,8 @@
-import { prisma } from "@/lib/db";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { prisma } from '@/lib/db';
+import { requirePageUser } from '@/lib/auth/current-user';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   ArrowLeft,
   TrendingUp,
@@ -12,21 +13,19 @@ import {
   CheckCircle2,
   AlertCircle,
   BookOpen,
-} from "lucide-react";
-import Link from "next/link";
+} from 'lucide-react';
+import Link from 'next/link';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function initials(first: string, last: string) {
-  return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
+  return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase();
 }
 
 function SectionHeader({ title }: { title: string }) {
   return (
     <div className="mb-4 flex items-center justify-between">
-      <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">
-        {title}
-      </h2>
+      <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">{title}</h2>
     </div>
   );
 }
@@ -44,21 +43,14 @@ function Stat({
   label: string;
   value: string;
   sublabel: string;
-  trend?: "up" | "down" | "neutral";
+  trend?: 'up' | 'down' | 'neutral';
 }) {
   const trendColor =
-    trend === "up"
-      ? "text-emerald-600"
-      : trend === "down"
-      ? "text-red-500"
-      : "text-slate-500";
-  const TrendIcon =
-    trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
+    trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-500' : 'text-slate-500';
+  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
   return (
     <div>
-      <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
-        {label}
-      </p>
+      <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
       <p className="text-2xl font-bold leading-none text-slate-900">{value}</p>
       <span className={`mt-1 flex items-center gap-1 font-mono text-xs ${trendColor}`}>
         {trend && <TrendIcon className="h-2.5 w-2.5" />}
@@ -69,56 +61,54 @@ function Stat({
 }
 
 export default async function TeacherPerformancePage() {
+  // SEC-09: deputy/admin only, and everything below is scoped to the caller's own school.
+  const user = await requirePageUser(['deputy', 'admin']);
+  const schoolId = user.schoolId;
+
   const currentTerm = await prisma.term.findFirst({
-    where: { isCurrent: true },
-    orderBy: { startDate: "desc" },
+    where: { schoolId, isCurrent: true },
+    orderBy: { startDate: 'desc' },
   });
 
   const termStart = currentTerm?.startDate ?? new Date();
   const termEnd = currentTerm?.endDate ?? new Date();
 
   const teachers = await prisma.teacher.findMany({
+    where: { schoolId },
     include: {
       user: true,
       classTeacherStream: { include: { grade: true } },
       timetableSlots: {
-        where: currentTerm ? { termId: currentTerm.id } : {},
+        where: { schoolId, termId: currentTerm?.id ?? { in: [] } },
         include: { period: true, learningArea: true, stream: { include: { grade: true } } },
       },
     },
   });
 
   const allAttendance = await prisma.teacherAttendance.findMany({
-    where: { date: { gte: termStart, lte: termEnd } },
+    where: { schoolId, date: { gte: termStart, lte: termEnd } },
   });
 
   const teacherStats = teachers.map((teacher) => {
     const teacherAtt = allAttendance.filter((a) => a.teacherId === teacher.id);
     const totalSlots = teacher.timetableSlots.length;
-    const present = teacherAtt.filter((a) => a.status === "present").length;
-    const late = teacherAtt.filter((a) => a.status === "late").length;
-    const absent = teacherAtt.filter((a) => a.status === "absent").length;
-    const covered = teacherAtt.filter((a) => a.status === "covered").length;
+    const present = teacherAtt.filter((a) => a.status === 'present').length;
+    const late = teacherAtt.filter((a) => a.status === 'late').length;
+    const absent = teacherAtt.filter((a) => a.status === 'absent').length;
+    const covered = teacherAtt.filter((a) => a.status === 'covered').length;
 
     const totalMarked = present + late + absent + covered;
-    const punctualityRate =
-      totalMarked > 0 ? Math.round((present / totalMarked) * 100) : 0;
+    const punctualityRate = totalMarked > 0 ? Math.round((present / totalMarked) * 100) : 0;
     const reliabilityRate =
-      totalMarked > 0
-        ? Math.round(((present + late + covered) / totalMarked) * 100)
-        : 0;
+      totalMarked > 0 ? Math.round(((present + late + covered) / totalMarked) * 100) : 0;
 
     const weeksInTerm = Math.max(
       1,
-      Math.ceil(
-        (termEnd.getTime() - termStart.getTime()) / (7 * 24 * 60 * 60 * 1000)
-      )
+      Math.ceil((termEnd.getTime() - termStart.getTime()) / (7 * 24 * 60 * 60 * 1000))
     );
     const estimatedLessons = totalSlots * weeksInTerm * 5;
     const completionRate =
-      estimatedLessons > 0
-        ? Math.round(((present + late + covered) / estimatedLessons) * 100)
-        : 0;
+      estimatedLessons > 0 ? Math.round(((present + late + covered) / estimatedLessons) * 100) : 0;
 
     return {
       ...teacher,
@@ -141,20 +131,16 @@ export default async function TeacherPerformancePage() {
   const avgPunctuality =
     teacherStats.length > 0
       ? Math.round(
-          teacherStats.reduce((s, t) => s + t.stats.punctualityRate, 0) /
-            teacherStats.length
+          teacherStats.reduce((s, t) => s + t.stats.punctualityRate, 0) / teacherStats.length
         )
       : 0;
   const avgReliability =
     teacherStats.length > 0
       ? Math.round(
-          teacherStats.reduce((s, t) => s + t.stats.reliabilityRate, 0) /
-            teacherStats.length
+          teacherStats.reduce((s, t) => s + t.stats.reliabilityRate, 0) / teacherStats.length
         )
       : 0;
-  const teachersWithIssues = teacherStats.filter(
-    (t) => t.stats.reliabilityRate < 80
-  ).length;
+  const teachersWithIssues = teacherStats.filter((t) => t.stats.reliabilityRate < 80).length;
   const totalLate = teacherStats.reduce((s, t) => s + t.stats.late, 0);
 
   return (
@@ -167,11 +153,9 @@ export default async function TeacherPerformancePage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Teacher Performance
-          </h1>
+          <h1 className="text-2xl font-bold text-slate-900">Teacher Performance</h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            {currentTerm?.name ?? "Current Term"} · Attendance & Punctuality
+            {currentTerm?.name ?? 'Current Term'} · Attendance & Punctuality
           </p>
         </div>
       </div>
@@ -188,7 +172,7 @@ export default async function TeacherPerformancePage() {
               label="Avg. Punctuality"
               value={`${avgPunctuality}%`}
               sublabel="On-time arrivals"
-              trend={avgPunctuality >= 90 ? "up" : "neutral"}
+              trend={avgPunctuality >= 90 ? 'up' : 'neutral'}
             />
           </Card>
           <Card className="p-5">
@@ -199,7 +183,7 @@ export default async function TeacherPerformancePage() {
               label="Avg. Reliability"
               value={`${avgReliability}%`}
               sublabel="Present + covered"
-              trend={avgReliability >= 90 ? "up" : "neutral"}
+              trend={avgReliability >= 90 ? 'up' : 'neutral'}
             />
           </Card>
           <Card className="p-5">
@@ -210,7 +194,7 @@ export default async function TeacherPerformancePage() {
               label="Teachers with Issues"
               value={String(teachersWithIssues)}
               sublabel="Below 80% reliability"
-              trend={teachersWithIssues > 0 ? "down" : "up"}
+              trend={teachersWithIssues > 0 ? 'down' : 'up'}
             />
           </Card>
           <Card className="p-5">
@@ -235,10 +219,7 @@ export default async function TeacherPerformancePage() {
         ) : (
           <div className="space-y-5">
             {teacherStats.map((t) => (
-              <div
-                key={t.id}
-                className="rounded-xl border border-slate-100 p-4"
-              >
+              <div key={t.id} className="rounded-xl border border-slate-100 p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
@@ -251,31 +232,31 @@ export default async function TeacherPerformancePage() {
                         {t.user.firstName} {t.user.lastName}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {t.specialisation || "No specialisation"}
+                        {t.specialisation || 'No specialisation'}
                         {t.classTeacherStream
                           ? ` · Class teacher ${t.classTeacherStream.grade.name}${t.classTeacherStream.name}`
-                          : ""}
+                          : ''}
                       </p>
                     </div>
                   </div>
                   <span
                     className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
                       t.stats.reliabilityRate >= 95
-                        ? "bg-emerald-100 text-emerald-700"
+                        ? 'bg-emerald-100 text-emerald-700'
                         : t.stats.reliabilityRate >= 80
-                        ? "bg-blue-100 text-blue-700"
-                        : t.stats.reliabilityRate >= 60
-                        ? "bg-amber-100 text-amber-700"
-                        : "bg-red-100 text-red-700"
+                          ? 'bg-blue-100 text-blue-700'
+                          : t.stats.reliabilityRate >= 60
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-red-100 text-red-700'
                     }`}
                   >
                     {t.stats.reliabilityRate >= 95
-                      ? "Excellent"
+                      ? 'Excellent'
                       : t.stats.reliabilityRate >= 80
-                      ? "Good"
-                      : t.stats.reliabilityRate >= 60
-                      ? "Needs Attention"
-                      : "Critical"}
+                        ? 'Good'
+                        : t.stats.reliabilityRate >= 60
+                          ? 'Needs Attention'
+                          : 'Critical'}
                   </span>
                 </div>
 
@@ -283,17 +264,15 @@ export default async function TeacherPerformancePage() {
                 <div className="space-y-2">
                   {/* Reliability */}
                   <div className="flex items-center gap-3">
-                    <span className="w-20 flex-shrink-0 text-xs text-slate-500">
-                      Reliability
-                    </span>
+                    <span className="w-20 flex-shrink-0 text-xs text-slate-500">Reliability</span>
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                       <div
                         className={`h-full rounded-full ${
                           t.stats.reliabilityRate >= 80
-                            ? "bg-emerald-500"
+                            ? 'bg-emerald-500'
                             : t.stats.reliabilityRate >= 60
-                            ? "bg-amber-400"
-                            : "bg-red-400"
+                              ? 'bg-amber-400'
+                              : 'bg-red-400'
                         }`}
                         style={{ width: `${Math.min(100, t.stats.reliabilityRate)}%` }}
                       />
@@ -305,9 +284,7 @@ export default async function TeacherPerformancePage() {
 
                   {/* Punctuality */}
                   <div className="flex items-center gap-3">
-                    <span className="w-20 flex-shrink-0 text-xs text-slate-500">
-                      Punctuality
-                    </span>
+                    <span className="w-20 flex-shrink-0 text-xs text-slate-500">Punctuality</span>
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                       <div
                         className="h-full rounded-full bg-teal-500"
@@ -321,9 +298,7 @@ export default async function TeacherPerformancePage() {
 
                   {/* Completion */}
                   <div className="flex items-center gap-3">
-                    <span className="w-20 flex-shrink-0 text-xs text-slate-500">
-                      Completion
-                    </span>
+                    <span className="w-20 flex-shrink-0 text-xs text-slate-500">Completion</span>
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                       <div
                         className="h-full rounded-full bg-violet-400"

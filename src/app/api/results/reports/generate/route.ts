@@ -1,52 +1,92 @@
 // src/app/api/results/reports/generate/route.ts
-import { auth } from "@clerk/nextjs/server";
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { generateTermReportSchema } from "@/lib/validations/term-report.schema";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { requireUser } from '@/lib/auth/current-user';
+import { logAudit } from '@/lib/audit';
+import { generateTermReportSchema } from '@/lib/validations/term-report.schema';
 
+/**
+ * Create/refresh a student's term report.
+ *
+ * Who may do it (SEC-26; tracker 3.4):
+ *  - admin / deputy: any student in their own school
+ *  - a class teacher: only students in THEIR OWN class stream
+ *  - only an admin may set the principal's comment
+ *  - a report that has already been published is never silently regenerated
+ *
+ * NOTE: the score/attendance calculation below is unchanged on purpose. It is not the CBC
+ * report the design needs (finding FEAT-10 / decision D13) and is replaced in R6-03.
+ */
 export async function POST(request: NextRequest) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guard = await requireUser(['admin', 'deputy', 'teacher']);
+  if (!guard.ok) return guard.response;
+  const { user } = guard;
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-    include: { teacher: true },
-  });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
+  }
 
-  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  const parsed = generateTermReportSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Validation failed', details: parsed.error.errors },
+      { status: 400 }
+    );
+  }
+  const data = parsed.data;
 
-  // Only class teachers and admins can generate reports
-  const isClassTeacher = user.teacher?.isClassTeacher;
-  const isAdmin = user.role === "admin" || user.role === "deputy";
-
-  if (!isClassTeacher && !isAdmin) {
-    return NextResponse.json({ error: "Access denied" }, { status: 403 });
+  if (data.principalComment !== undefined && user.role !== 'admin') {
+    return NextResponse.json(
+      { error: "Only the school admin can set the principal's comment" },
+      { status: 403 }
+    );
   }
 
   try {
-    const body = await request.json();
-    const data = generateTermReportSchema.parse(body);
+    // Term and student must both belong to the caller's school.
+    const [term, student] = await Promise.all([
+      prisma.term.findFirst({ where: { id: data.termId, schoolId: user.schoolId } }),
+      prisma.student.findFirst({
+        where: { id: data.studentId, schoolId: user.schoolId, deletedAt: null },
+        select: { streamId: true, schoolId: true },
+      }),
+    ]);
+    if (!term) return NextResponse.json({ error: 'Term not found' }, { status: 404 });
+    if (!student) return NextResponse.json({ error: 'Student not found' }, { status: 404 });
 
-    // 1. Calculate attendance summary
-    const term = await prisma.term.findUnique({
-      where: { id: data.termId },
-    });
-
-    if (!term) {
-      return NextResponse.json({ error: "Term not found" }, { status: 404 });
+    // A class teacher may only report on their own class.
+    if (user.role === 'teacher') {
+      const teacher = await prisma.teacher.findFirst({
+        where: { userId: user.id, schoolId: user.schoolId },
+        select: { isClassTeacher: true, classTeacherStreamId: true },
+      });
+      if (
+        !teacher?.isClassTeacher ||
+        !teacher.classTeacherStreamId ||
+        teacher.classTeacherStreamId !== student.streamId
+      ) {
+        return NextResponse.json(
+          { error: "Only the class teacher of this student's class can generate their report" },
+          { status: 403 }
+        );
+      }
     }
 
-    // Get student's stream
-    const student = await prisma.student.findUnique({
-      where: { id: data.studentId },
-      select: { streamId: true, schoolId: true },
+    const existing = await prisma.termReport.findUnique({
+      where: { studentId_termId: { studentId: data.studentId, termId: data.termId } },
+      select: { id: true, publishedAt: true },
     });
-
-    if (!student) {
-      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    if (existing?.publishedAt) {
+      return NextResponse.json(
+        { error: 'This report has already been published and cannot be regenerated' },
+        { status: 409 }
+      );
     }
 
-    // Count total lessons and attended lessons for this term
+    // 1. Attendance summary
     const [totalLessons, lessonsAttended] = await Promise.all([
       prisma.studentLessonAttendance.count({
         where: {
@@ -58,18 +98,18 @@ export async function POST(request: NextRequest) {
         where: {
           studentId: data.studentId,
           date: { gte: term.startDate, lte: term.endDate },
-          status: "present",
+          status: 'present',
         },
       }),
     ]);
 
-    // 2. Calculate overall score from published assessments
+    // 2. Overall score from published assessments (replaced by the CBC model in R6-03)
     const assessments = await prisma.assessment.findMany({
       where: {
         schoolId: student.schoolId,
         streamId: student.streamId,
         termId: data.termId,
-        status: "published",
+        status: 'published',
       },
       include: {
         AssessmentResult: {
@@ -113,7 +153,7 @@ export async function POST(request: NextRequest) {
         streamId: student.streamId,
       },
       create: {
-        schoolId: student.schoolId,
+        schoolId: user.schoolId,
         studentId: data.studentId,
         termId: data.termId,
         streamId: student.streamId,
@@ -126,12 +166,22 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    await logAudit({
+      schoolId: user.schoolId,
+      actorId: user.id,
+      action: 'term_report.generated',
+      tableName: 'term_reports',
+      recordId: report.id,
+      newData: {
+        studentId: data.studentId,
+        termId: data.termId,
+        principalCommentSet: data.principalComment !== undefined,
+      },
+    });
+
     return NextResponse.json(report);
-  } catch (error: any) {
-    if (error.name === "ZodError") {
-      return NextResponse.json({ error: "Validation failed", details: error.errors }, { status: 400 });
-    }
-    console.error("Term report generation error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error) {
+    console.error('Term report generation error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

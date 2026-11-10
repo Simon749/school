@@ -1,8 +1,8 @@
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/db';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -10,41 +10,37 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { CreateEditUserDialog } from "@/components/it-admin/CreateEditUserDialog";
+} from '@/components/ui/table';
+import { CreateEditUserDialog } from '@/components/it-admin/CreateEditUserDialog';
 
 interface SearchParams {
   page?: string;
   limit?: string;
 }
 
-export default async function ItAdminUsersPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function ItAdminUsersPage({ searchParams }: { searchParams: SearchParams }) {
   const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  if (!userId) redirect('/sign-in');
 
   const currentUser = await prisma.user.findUnique({
     where: { clerkId: userId },
     select: { schoolId: true, role: true },
   });
 
-  if (!currentUser || currentUser.role !== "it_admin") {
-    redirect("/unauthorized");
+  if (!currentUser || currentUser.role !== 'it_admin') {
+    redirect('/unauthorized');
   }
 
   // Pagination parameters
-  const page = parseInt(searchParams.page || "1", 10);
-  const limit = parseInt(searchParams.limit || "20", 10);
+  const page = parseInt(searchParams.page || '1', 10);
+  const limit = parseInt(searchParams.limit || '20', 10);
   const skip = (page - 1) * limit;
 
   // Fetch users with pagination
   const [users, totalCount] = await Promise.all([
     prisma.user.findMany({
       where: { schoolId: currentUser.schoolId, deletedAt: null },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         firstName: true,
@@ -70,14 +66,14 @@ export default async function ItAdminUsersPage({
 
   const getRoleBadgeColor = (role: string) => {
     const colors: Record<string, string> = {
-      admin: "bg-red-100 text-red-800",
-      deputy: "bg-orange-100 text-orange-800",
-      teacher: "bg-blue-100 text-blue-800",
-      bursar: "bg-green-100 text-green-800",
-      parent: "bg-purple-100 text-purple-800",
-      it_admin: "bg-gray-100 text-gray-800",
+      admin: 'bg-red-100 text-red-800',
+      deputy: 'bg-orange-100 text-orange-800',
+      teacher: 'bg-blue-100 text-blue-800',
+      bursar: 'bg-green-100 text-green-800',
+      parent: 'bg-purple-100 text-purple-800',
+      it_admin: 'bg-gray-100 text-gray-800',
     };
-    return colors[role] || "bg-gray-100 text-gray-800";
+    return colors[role] || 'bg-gray-100 text-gray-800';
   };
 
   const getPageUrl = (pageNum: number) => `/it_admin/users?page=${pageNum}`;
@@ -88,11 +84,9 @@ export default async function ItAdminUsersPage({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
-          <p className="text-slate-500">
-            Manage school staff, teachers, and parent accounts.
-          </p>
+          <p className="text-slate-500">Manage school staff, teachers, and parent accounts.</p>
         </div>
-        <CreateEditUserDialog schoolId={currentUser.schoolId} mode="create" />
+        <CreateEditUserDialog mode="create" />
       </div>
 
       <Card>
@@ -134,31 +128,29 @@ export default async function ItAdminUsersPage({
                       </TableCell>
                       <TableCell>
                         <Badge className={getRoleBadgeColor(user.role)}>
-                          {user.role.replace("_", " ").toUpperCase()}
+                          {user.role.replace('_', ' ').toUpperCase()}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm whitespace-nowrap">
                           {user.email && <div>{user.email}</div>}
-                          {user.phone && (
-                            <div className="text-slate-500">{user.phone}</div>
-                          )}
+                          {user.phone && <div className="text-slate-500">{user.phone}</div>}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.isActive ? "default" : "secondary"}>
-                          {user.isActive ? "Active" : "Inactive"}
+                        <Badge variant={user.isActive ? 'default' : 'secondary'}>
+                          {user.isActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-sm text-slate-500 whitespace-nowrap">
-                        {new Date(user.createdAt).toLocaleDateString("en-KE")}
+                        {new Date(user.createdAt).toLocaleDateString('en-KE')}
                       </TableCell>
                       <TableCell className="text-right">
-                        <CreateEditUserDialog
-                          schoolId={currentUser.schoolId}
-                          mode="edit"
-                          user={user}
-                        />
+                        {['deputy', 'teacher', 'parent'].includes(user.role) ? (
+                          <CreateEditUserDialog mode="edit" user={user} />
+                        ) : (
+                          <span className="text-xs text-slate-400">Managed by school admin</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
@@ -173,13 +165,13 @@ export default async function ItAdminUsersPage({
               <div className="text-sm text-slate-500 text-center sm:text-left">
                 Page {page} of {totalPages} ({totalCount} total users)
               </div>
-              
+
               <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-center">
                 {/* Previous Link (Styled exactly like shadcn Button variant="outline") */}
                 <a
-                  href={hasPrevPage ? getPageUrl(page - 1) : "#"}
+                  href={hasPrevPage ? getPageUrl(page - 1) : '#'}
                   className={`inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 ${
-                    !hasPrevPage ? "pointer-events-none opacity-50" : ""
+                    !hasPrevPage ? 'pointer-events-none opacity-50' : ''
                   }`}
                   aria-disabled={!hasPrevPage}
                   tabIndex={hasPrevPage ? 0 : -1}
@@ -202,8 +194,8 @@ export default async function ItAdminUsersPage({
                       href={getPageUrl(pageNum)}
                       className={`inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-9 w-9 ${
                         isActive
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                          : 'border border-input bg-background hover:bg-accent hover:text-accent-foreground'
                       }`}
                     >
                       {pageNum}
@@ -213,9 +205,9 @@ export default async function ItAdminUsersPage({
 
                 {/* Next Link (Styled exactly like shadcn Button variant="outline") */}
                 <a
-                  href={hasNextPage ? getPageUrl(page + 1) : "#"}
+                  href={hasNextPage ? getPageUrl(page + 1) : '#'}
                   className={`inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 ${
-                    !hasNextPage ? "pointer-events-none opacity-50" : ""
+                    !hasNextPage ? 'pointer-events-none opacity-50' : ''
                   }`}
                   aria-disabled={!hasNextPage}
                   tabIndex={hasNextPage ? 0 : -1}

@@ -1,14 +1,14 @@
-import { Worker } from "bullmq";
-import { connection } from "@/lib/queue/connection";
-import { prisma } from "@/lib/db";
-import { notificationQueue } from "@/lib/queue";
+import { Worker } from 'bullmq';
+import { connection } from '@/lib/queue/connection';
+import { prisma } from '@/lib/db';
+import { notificationQueue } from '@/lib/queue';
 
 export const attendanceWorker = new Worker(
-  "attendance",
+  'attendance',
   async (job) => {
     const { type, payload } = job.data;
 
-    if (type === "teacher-check-in") {
+    if (type === 'teacher-check-in') {
       const {
         teacherId,
         schoolId,
@@ -62,7 +62,7 @@ export const attendanceWorker = new Worker(
       return record;
     }
 
-    if (type === "student-register") {
+    if (type === 'student-register') {
       const { schoolId, slotId, date, markedBy, entries } = payload;
 
       const results = await prisma.$transaction([
@@ -111,17 +111,17 @@ export const attendanceWorker = new Worker(
       });
 
       for (const entry of entries) {
-        if (entry.status !== "absent") continue;
-        const reason = entry.absenceReason || "unknown";
-        if (reason !== "unknown") continue;
+        if (entry.status !== 'absent') continue;
+        const reason = entry.absenceReason || 'unknown';
+        if (reason !== 'unknown') continue;
 
         const notifyJob = await notificationQueue.add(
-          "absence-alert",
+          'absence-alert',
           {
             studentId: entry.studentId,
             slotId,
             date,
-            lessonName: slot?.learningArea.name || "Lesson",
+            lessonName: slot?.learningArea.name || 'Lesson',
             reason,
           },
           { delay: 15 * 60 * 1000, jobId: `absence-${entry.studentId}-${slotId}-${date}` }
@@ -153,10 +153,10 @@ export const attendanceWorker = new Worker(
   { connection, concurrency: 5 }
 );
 
-attendanceWorker.on("completed", (job) => {
+attendanceWorker.on('completed', (job) => {
   console.log(`[AttendanceWorker] Job ${job.id} completed`);
 });
 
-attendanceWorker.on("failed", (job, err) => {
-  console.error(`[AttendanceWorker] Job ${job?.id} failed:`, (error as Error).message);
+attendanceWorker.on('failed', (job, err) => {
+  console.error(`[AttendanceWorker] Job ${job?.id} failed:`, err.message);
 });

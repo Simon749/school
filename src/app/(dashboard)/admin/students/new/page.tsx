@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 
 interface Grade {
   id: string;
@@ -16,10 +16,10 @@ export default function NewStudentPage() {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [selectedGrade, setSelectedGrade] = useState("");
+  const [selectedGrade, setSelectedGrade] = useState('');
 
   const fetchGrades = useCallback(async () => {
-    const res = await fetch("/api/grades");
+    const res = await fetch('/api/grades');
     if (res.ok) {
       const data = await res.json();
       setGrades(data.grades || []);
@@ -39,27 +39,27 @@ export default function NewStudentPage() {
 
     const formData = new FormData(e.currentTarget);
     const data = {
-      firstName: formData.get("firstName") as string,
-      lastName: formData.get("lastName") as string,
-      nemisNumber: formData.get("nemisNumber") as string,
-      admissionNumber: formData.get("admissionNumber") as string,
-      dateOfBirth: formData.get("dateOfBirth") as string,
-      gender: formData.get("gender") as string,
-      streamId: formData.get("streamId") as string,
-      isBoarding: formData.get("isBoarding") === "on",
-      photoUrl: formData.get("photoUrl") as string,
-      medicalNotes: formData.get("medicalNotes") as string,
-      previousSchool: formData.get("previousSchool") as string,
+      firstName: formData.get('firstName') as string,
+      lastName: formData.get('lastName') as string,
+      nemisNumber: formData.get('nemisNumber') as string,
+      admissionNumber: formData.get('admissionNumber') as string,
+      dateOfBirth: formData.get('dateOfBirth') as string,
+      gender: formData.get('gender') as string,
+      streamId: formData.get('streamId') as string,
+      isBoarding: formData.get('isBoarding') === 'on',
+      photoUrl: formData.get('photoUrl') as string,
+      medicalNotes: formData.get('medicalNotes') as string,
+      previousSchool: formData.get('previousSchool') as string,
     };
 
     try {
-      const res = await fetch("/api/students", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to enrol student");
+      if (!res.ok) throw new Error(json.error || 'Failed to enrol student');
 
       router.push(`/admin/students/${json.student.id}`);
     } catch (error: any) {
@@ -82,7 +82,10 @@ export default function NewStudentPage() {
         <h1 className="text-2xl font-bold text-gray-900">Enrol New Student</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 md:p-8 space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white rounded-xl border border-gray-200 p-6 md:p-8 space-y-6"
+      >
         {errors.form && (
           <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-100">
             {errors.form}
@@ -91,9 +94,7 @@ export default function NewStudentPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              First Name *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
             <input
               name="firstName"
               required
@@ -102,9 +103,7 @@ export default function NewStudentPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Last Name *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
             <input
               name="lastName"
               required
@@ -113,9 +112,7 @@ export default function NewStudentPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              NEMIS Number *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">NEMIS Number *</label>
             <input
               name="nemisNumber"
               required
@@ -125,9 +122,7 @@ export default function NewStudentPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Admission Number
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Admission Number</label>
             <input
               name="admissionNumber"
               placeholder="Optional"
@@ -136,9 +131,7 @@ export default function NewStudentPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date of Birth
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
             <input
               name="dateOfBirth"
               type="date"
@@ -147,9 +140,7 @@ export default function NewStudentPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Gender
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
             <select
               name="gender"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -162,9 +153,7 @@ export default function NewStudentPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Grade *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Grade *</label>
             <select
               required
               value={selectedGrade}
@@ -181,9 +170,7 @@ export default function NewStudentPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Stream *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Stream *</label>
             <select
               name="streamId"
               required
@@ -200,9 +187,7 @@ export default function NewStudentPage() {
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Photo URL
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Photo URL</label>
             <input
               name="photoUrl"
               type="url"
@@ -212,9 +197,7 @@ export default function NewStudentPage() {
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Previous School
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Previous School</label>
             <input
               name="previousSchool"
               placeholder="If transfer student"
@@ -223,9 +206,7 @@ export default function NewStudentPage() {
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Medical Notes
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Medical Notes</label>
             <textarea
               name="medicalNotes"
               rows={3}
@@ -260,7 +241,7 @@ export default function NewStudentPage() {
             className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? "Enrolling..." : "Enrol Student"}
+            {loading ? 'Enrolling...' : 'Enrol Student'}
           </button>
         </div>
       </form>

@@ -1,22 +1,47 @@
 // src/components/results/MarksEntryTable.tsx
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { toast } from "sonner"; // Ensure you have sonner installed, or swap for your toast lib
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { useRouter } from "next/navigation";
-import { strict } from "assert";
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { toast } from 'sonner'; // Ensure you have sonner installed, or swap for your toast lib
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
+import { strict } from 'assert';
 
-interface Student { id: string; firstName: string; lastName: string; admissionNumber: string | null; }
-interface SubStrand { id: string; name: string; strandName: string; }
+interface Student {
+  id: string;
+  firstName: string;
+  lastName: string;
+  admissionNumber: string | null;
+}
+interface SubStrand {
+  id: string;
+  name: string;
+  strandName: string;
+}
 interface ExistingResult {
-  id: string; studentId: string; marksObtained: number | string | null; teacherComment: string | null;
-  rubricScores: { id: string; subStrandId: string; score: string; comment: string | null; }[];
+  id: string;
+  studentId: string;
+  marksObtained: number | string | null;
+  teacherComment: string | null;
+  rubricScores: { id: string; subStrandId: string; score: string; comment: string | null }[];
 }
 
 interface MarksEntryTableProps {
@@ -36,10 +61,16 @@ type StudentState = {
 };
 
 export function MarksEntryTable({
-  assessmentId, students, subStrands, existingResults, isLocked, hasRubric, maxMarks,
+  assessmentId,
+  students,
+  subStrands,
+  existingResults,
+  isLocked,
+  hasRubric,
+  maxMarks,
 }: MarksEntryTableProps) {
   const router = useRouter();
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [isPublishing, setIsPublishing] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -49,12 +80,16 @@ export function MarksEntryTable({
     students.forEach((student) => {
       const existing = existingResults.find((r) => r.studentId === student.id);
       initial[student.id] = {
-        marksObtained: existing?.marksObtained?.toString() ?? "",
-        teacherComment: existing?.teacherComment ?? "",
-        rubricScores: existing?.rubricScores.reduce((acc, score) => {
-          acc[score.subStrandId] = score.score;
-          return acc;
-        }, {} as Record<string, string>) ?? {},
+        marksObtained: existing?.marksObtained?.toString() ?? '',
+        teacherComment: existing?.teacherComment ?? '',
+        rubricScores:
+          existing?.rubricScores.reduce(
+            (acc, score) => {
+              acc[score.subStrandId] = score.score;
+              return acc;
+            },
+            {} as Record<string, string>
+          ) ?? {},
       };
     });
     return initial;
@@ -63,36 +98,41 @@ export function MarksEntryTable({
   // Debounced auto-save (2 seconds of inactivity)
   const triggerSave = useCallback(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    
+
     saveTimeoutRef.current = setTimeout(async () => {
-      setSaveStatus("saving");
+      setSaveStatus('saving');
       try {
         const payload = Object.entries(studentStates).map(([studentId, state]) => ({
           studentId,
           marksObtained: state.marksObtained ? parseFloat(state.marksObtained) : null,
           teacherComment: state.teacherComment || null,
           rubricScores: hasRubric
-            ? Object.entries(state.rubricScores).map(([subStrandId, score]) => ({ subStrandId, score }))
+            ? Object.entries(state.rubricScores).map(([subStrandId, score]) => ({
+                subStrandId,
+                score,
+              }))
             : undefined,
         }));
 
         const res = await fetch(`/api/assessments/${assessmentId}/results`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ results: payload }),
         });
 
-        if (!res.ok) throw new Error("Failed to save");
-        setSaveStatus("saved");
+        if (!res.ok) throw new Error('Failed to save');
+        setSaveStatus('saved');
       } catch (error) {
-        toast.error("Failed to auto-save marks. Please check your connection.");
-        setSaveStatus("idle");
+        toast.error('Failed to auto-save marks. Please check your connection.');
+        setSaveStatus('idle');
       }
     }, 2000);
   }, [studentStates, assessmentId, hasRubric]);
 
   useEffect(() => {
-    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
   }, []);
 
   const updateStudentState = (studentId: string, field: keyof StudentState, value: any) => {
@@ -112,15 +152,16 @@ export function MarksEntryTable({
   };
 
   const handlePublish = async () => {
-    if (!confirm("Publish these results to parents? They will be able to see them immediately.")) return;
+    if (!confirm('Publish these results to parents? They will be able to see them immediately.'))
+      return;
     setIsPublishing(true);
     try {
-      const res = await fetch(`/api/assessments/${assessmentId}/publish`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to publish");
-      toast.success("Results published successfully!");
+      const res = await fetch(`/api/assessments/${assessmentId}/publish`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to publish');
+      toast.success('Results published successfully!');
       router.refresh();
     } catch (error) {
-      toast.error("Failed to publish results.");
+      toast.error('Failed to publish results.');
     } finally {
       setIsPublishing(false);
     }
@@ -130,12 +171,12 @@ export function MarksEntryTable({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          {saveStatus === "saving" && <Badge variant="outline">Saving...</Badge>}
-          {saveStatus === "saved" && <Badge variant="secondary">All changes saved</Badge>}
+          {saveStatus === 'saving' && <Badge variant="outline">Saving...</Badge>}
+          {saveStatus === 'saved' && <Badge variant="secondary">All changes saved</Badge>}
         </div>
         {!isLocked && (
           <Button onClick={handlePublish} disabled={isPublishing}>
-            {isPublishing ? "Publishing..." : "Publish to Parents"}
+            {isPublishing ? 'Publishing...' : 'Publish to Parents'}
           </Button>
         )}
       </div>
@@ -149,12 +190,13 @@ export function MarksEntryTable({
               {!hasRubric && maxMarks && (
                 <TableHead className="w-[120px]">Marks (/{maxMarks})</TableHead>
               )}
-              {hasRubric && subStrands.map((ss) => (
-                <TableHead key={ss.id} className="min-w-[120px]">
-                  <div className="text-xs font-normal text-muted-foreground">{ss.strandName}</div>
-                  <div className="text-sm font-medium">{ss.name}</div>
-                </TableHead>
-              ))}
+              {hasRubric &&
+                subStrands.map((ss) => (
+                  <TableHead key={ss.id} className="min-w-[120px]">
+                    <div className="text-xs font-normal text-muted-foreground">{ss.strandName}</div>
+                    <div className="text-sm font-medium">{ss.name}</div>
+                  </TableHead>
+                ))}
               <TableHead className="w-[200px]">Teacher Comment</TableHead>
             </TableRow>
           </TableHeader>
@@ -163,46 +205,55 @@ export function MarksEntryTable({
               const state = studentStates[student.id];
               return (
                 <TableRow key={student.id}>
-                  <TableCell className="font-medium">{student.admissionNumber || "-"}</TableCell>
-                  <TableCell>{student.firstName} {student.lastName}</TableCell>
-                  
+                  <TableCell className="font-medium">{student.admissionNumber || '-'}</TableCell>
+                  <TableCell>
+                    {student.firstName} {student.lastName}
+                  </TableCell>
+
                   {!hasRubric && maxMarks && (
                     <TableCell>
                       <Input
                         type="number"
                         value={state.marksObtained}
-                        onChange={(e) => updateStudentState(student.id, "marksObtained", e.target.value)}
+                        onChange={(e) =>
+                          updateStudentState(student.id, 'marksObtained', e.target.value)
+                        }
                         disabled={isLocked}
                         max={maxMarks}
                         min={0}
                       />
                     </TableCell>
                   )}
-                  
-                  {hasRubric && subStrands.map((ss) => (
-                    <TableCell key={ss.id}>
-                      <Select
-                        value={state.rubricScores[ss.id] || ""}
-                        onValueChange={(val : string | null) => updateRubricScore(student.id, ss.id, val || "")}
-                        disabled={isLocked}
-                      >
-                        <SelectTrigger className="w-[100px]">
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="EE">EE</SelectItem>
-                          <SelectItem value="ME">ME</SelectItem>
-                          <SelectItem value="AE">AE</SelectItem>
-                          <SelectItem value="BE">BE</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                  ))}
-                  
+
+                  {hasRubric &&
+                    subStrands.map((ss) => (
+                      <TableCell key={ss.id}>
+                        <Select
+                          value={state.rubricScores[ss.id] || ''}
+                          onValueChange={(val: string | null) =>
+                            updateRubricScore(student.id, ss.id, val || '')
+                          }
+                          disabled={isLocked}
+                        >
+                          <SelectTrigger className="w-[100px]">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="EE">EE</SelectItem>
+                            <SelectItem value="ME">ME</SelectItem>
+                            <SelectItem value="AE">AE</SelectItem>
+                            <SelectItem value="BE">BE</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    ))}
+
                   <TableCell>
                     <Textarea
                       value={state.teacherComment}
-                      onChange={(e) => updateStudentState(student.id, "teacherComment", e.target.value)}
+                      onChange={(e) =>
+                        updateStudentState(student.id, 'teacherComment', e.target.value)
+                      }
                       disabled={isLocked}
                       className="min-h-[60px]"
                     />

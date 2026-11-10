@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { redis } from "@/lib/redis";
-import { exportQueue } from "@/lib/export/queue";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { redis } from '@/lib/redis';
+import { exportQueue } from '@/lib/export/queue';
 
 // Never cache this route — it must reflect live system state
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 interface CheckResult {
   ok: boolean;
@@ -21,7 +21,7 @@ async function measure(fn: () => Promise<unknown>): Promise<CheckResult> {
     return {
       ok: false,
       latencyMs: Date.now() - start,
-      error: err instanceof Error ? (err as Error).message : "unknown error",
+      error: err instanceof Error ? (err as Error).message : 'unknown error',
     };
   }
 }
@@ -49,7 +49,7 @@ export async function GET() {
 
   return NextResponse.json(
     {
-      status: healthy ? (degraded ? "degraded" : "ok") : "down",
+      status: healthy ? (degraded ? 'degraded' : 'ok') : 'down',
       timestamp: new Date().toISOString(),
       checks: {
         database,

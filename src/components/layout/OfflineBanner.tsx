@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { WifiOff } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { WifiOff } from 'lucide-react';
 
 export function OfflineBanner() {
   const [offline, setOffline] = useState(false);
@@ -10,11 +10,11 @@ export function OfflineBanner() {
     setOffline(!navigator.onLine);
     const onOffline = () => setOffline(true);
     const onOnline = () => setOffline(false);
-    window.addEventListener("offline", onOffline);
-    window.addEventListener("online", onOnline);
+    window.addEventListener('offline', onOffline);
+    window.addEventListener('online', onOnline);
     return () => {
-      window.removeEventListener("offline", onOffline);
-      window.removeEventListener("online", onOnline);
+      window.removeEventListener('offline', onOffline);
+      window.removeEventListener('online', onOnline);
     };
   }, []);
 

@@ -1,22 +1,22 @@
 // src/app/(dashboard)/parent/messages/page.tsx
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { MessageItem } from "@/components/messages/MessageItem";
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/db';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { MessageItem } from '@/components/messages/MessageItem';
 
 export default async function ParentMessagesPage() {
   const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  if (!userId) redirect('/sign-in');
 
   const user = await prisma.user.findUnique({
     where: { clerkId: userId },
   });
 
-  if (!user) redirect("/");
+  if (!user) redirect('/');
 
   const messages = await prisma.message.findMany({
     where: {
@@ -33,7 +33,7 @@ export default async function ParentMessagesPage() {
         },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: 'desc' },
     take: 50,
   });
 
@@ -55,7 +55,7 @@ export default async function ParentMessagesPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
           <p className="text-muted-foreground">
-            {unreadCount > 0 ? `${unreadCount} unread messages` : "All messages read"}
+            {unreadCount > 0 ? `${unreadCount} unread messages` : 'All messages read'}
           </p>
         </div>
       </div>

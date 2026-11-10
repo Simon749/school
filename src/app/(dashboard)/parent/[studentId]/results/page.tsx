@@ -1,34 +1,30 @@
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { AssessmentDetail } from "@/components/results/AssessmentDetail";
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/db';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { AssessmentDetail } from '@/components/results/AssessmentDetail';
 
 const getRubricColor = (score: string) => {
   const colors: Record<string, string> = {
-    EE: "bg-green-100 text-green-800 border-green-300",
-    ME: "bg-blue-100 text-blue-800 border-blue-300",
-    AE: "bg-yellow-100 text-yellow-800 border-yellow-300",
-    BE: "bg-red-100 text-red-800 border-red-300",
+    EE: 'bg-green-100 text-green-800 border-green-300',
+    ME: 'bg-blue-100 text-blue-800 border-blue-300',
+    AE: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    BE: 'bg-red-100 text-red-800 border-red-300',
   };
-  return colors[score] || "bg-gray-100 text-gray-800";
+  return colors[score] || 'bg-gray-100 text-gray-800';
 };
 
-export default async function ParentResultsPage({
-  params,
-}: {
-  params: { studentId: string };
-}) {
+export default async function ParentResultsPage({ params }: { params: { studentId: string } }) {
   const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  if (!userId) redirect('/sign-in');
 
   // ✅ FIX: Match via user.clerkId, not the raw Clerk userId against Guardian.userId
   const guardian = await prisma.guardian.findFirst({
-    where: { 
-      user: { clerkId: userId }, 
-      studentId: params.studentId, 
-      isActive: true 
+    where: {
+      user: { clerkId: userId },
+      studentId: params.studentId,
+      isActive: true,
     },
     include: {
       student: {
@@ -64,7 +60,7 @@ export default async function ParentResultsPage({
     where: {
       schoolId: guardian.student.schoolId,
       streamId: guardian.student.streamId,
-      status: "published",
+      status: 'published',
       termId: currentTerm?.id,
     },
     include: {
@@ -80,7 +76,7 @@ export default async function ParentResultsPage({
         },
       },
     },
-    orderBy: { assessmentDate: "desc" },
+    orderBy: { assessmentDate: 'desc' },
   });
 
   const assessmentsWithResults = assessments.filter((a) => a.AssessmentResult.length > 0);
@@ -88,8 +84,12 @@ export default async function ParentResultsPage({
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{guardian.student.firstName}'s Results</h1>
-        <p className="text-muted-foreground">{guardian.student.stream.name} • {currentTerm?.name || "Current Term"}</p>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {guardian.student.firstName}'s Results
+        </h1>
+        <p className="text-muted-foreground">
+          {guardian.student.stream.name} • {currentTerm?.name || 'Current Term'}
+        </p>
       </div>
 
       {assessmentsWithResults.length === 0 ? (
@@ -111,11 +111,12 @@ export default async function ParentResultsPage({
                     <div>
                       <CardTitle className="text-lg">{assessment.title}</CardTitle>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {assessment.learningArea.name} • {assessment.teacher.user.firstName} {assessment.teacher.user.lastName}
+                        {assessment.learningArea.name} • {assessment.teacher.user.firstName}{' '}
+                        {assessment.teacher.user.lastName}
                       </p>
                     </div>
                     <Badge variant="outline">
-                      {new Date(assessment.assessmentDate!).toLocaleDateString("en-KE")}
+                      {new Date(assessment.assessmentDate!).toLocaleDateString('en-KE')}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -165,7 +166,8 @@ export default async function ParentResultsPage({
                       }}
                       result={{
                         ...result,
-                        marksObtained: result.marksObtained === null ? null : Number(result.marksObtained),
+                        marksObtained:
+                          result.marksObtained === null ? null : Number(result.marksObtained),
                       }}
                     />
                   </div>

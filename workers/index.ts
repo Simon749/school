@@ -1,13 +1,13 @@
-import { Worker } from "bullmq";
-import { redis } from "@/lib/redis";
-import { prisma } from "@/lib/db";
-import { exportWorker } from "./export.worker";
+import { Worker } from 'bullmq';
+import { redis } from '@/lib/redis';
+import { prisma } from '@/lib/db';
+import { exportWorker } from './export.worker';
 
-console.log("[Workers] Starting all workers...");
+console.log('[Workers] Starting all workers...');
 
 // 1. Notification Worker
 export const notificationWorker = new Worker(
-  "notification-queue",
+  'notification-queue',
   async (job) => {
     console.log(`[Notification Worker] Processing job ${job.id}:`, job.data);
     // TODO: Add FCM / Africa's Talking logic here
@@ -17,7 +17,7 @@ export const notificationWorker = new Worker(
 
 // 2. SMS Worker
 export const smsWorker = new Worker(
-  "sms-queue",
+  'sms-queue',
   async (job) => {
     console.log(`[SMS Worker] Processing job ${job.id}:`, job.data);
     // TODO: Add Africa's Talking SMS logic here
@@ -27,7 +27,7 @@ export const smsWorker = new Worker(
 
 // 3. Attendance Worker (Prevents jobs from hanging)
 export const attendanceWorker = new Worker(
-  "attendance-queue",
+  'attendance-queue',
   async (job) => {
     console.log(`[Attendance Worker] Processing job ${job.id}:`, job.data);
     // Example: await prisma.teacherAttendance.create({ data: job.data });
@@ -37,7 +37,7 @@ export const attendanceWorker = new Worker(
 
 // 4. MPesa Worker (Prevents jobs from hanging)
 export const mpesaWorker = new Worker(
-  "mpesa-queue",
+  'mpesa-queue',
   async (job) => {
     console.log(`[MPesa Worker] Processing job ${job.id}:`, job.data);
     // Example: Process callback and update fee_payments
@@ -45,11 +45,11 @@ export const mpesaWorker = new Worker(
   { connection: redis }
 );
 
-console.log("✅ All workers are now listening.");
+console.log('✅ All workers are now listening.');
 
 // Graceful shutdown
 const closeWorkers = async () => {
-  console.log("[Workers] Shutting down gracefully...");
+  console.log('[Workers] Shutting down gracefully...');
   await Promise.all([
     notificationWorker.close(),
     smsWorker.close(),
@@ -60,5 +60,5 @@ const closeWorkers = async () => {
   process.exit(0);
 };
 
-process.on("SIGTERM", closeWorkers);
-process.on("SIGINT", closeWorkers);
+process.on('SIGTERM', closeWorkers);
+process.on('SIGINT', closeWorkers);

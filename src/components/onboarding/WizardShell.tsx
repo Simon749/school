@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { ReactNode } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { ReactNode } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 const steps = [
-  { id: 1, label: "School Identity", path: "/onboarding/step-1-school" },
-  { id: 2, label: "Geofence", path: "/onboarding/step-2-geofence" },
-  { id: 3, label: "Calendar", path: "/onboarding/step-3-calendar" },
-  { id: 4, label: "Grades & Streams", path: "/onboarding/step-4-grades" },
-  { id: 5, label: "Fees", path: "/onboarding/step-5-fees" },
-  { id: 6, label: "Done", path: "/onboarding/step-6-done" },
+  { id: 1, label: 'School Identity', path: '/onboarding/step-1-school' },
+  { id: 2, label: 'Geofence', path: '/onboarding/step-2-geofence' },
+  { id: 3, label: 'Calendar', path: '/onboarding/step-3-calendar' },
+  { id: 4, label: 'Grades & Streams', path: '/onboarding/step-4-grades' },
+  { id: 5, label: 'Fees', path: '/onboarding/step-5-fees' },
+  { id: 6, label: 'Done', path: '/onboarding/step-6-done' },
 ];
 
 export function WizardShell({
@@ -33,22 +33,22 @@ export function WizardShell({
                 key={s.id}
                 className={`flex flex-col items-center ${
                   s.id === currentStep
-                    ? "text-blue-600 font-semibold"
+                    ? 'text-blue-600 font-semibold'
                     : s.id < currentStep
-                    ? "text-blue-400"
-                    : "text-gray-400"
+                      ? 'text-blue-400'
+                      : 'text-gray-400'
                 }`}
               >
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm mb-1 ${
                     s.id === currentStep
-                      ? "bg-blue-600 text-white"
+                      ? 'bg-blue-600 text-white'
                       : s.id < currentStep
-                      ? "bg-blue-200 text-blue-700"
-                      : "bg-gray-200 text-gray-500"
+                        ? 'bg-blue-200 text-blue-700'
+                        : 'bg-gray-200 text-gray-500'
                   }`}
                 >
-                  {s.id < currentStep ? "✓" : s.id}
+                  {s.id < currentStep ? '✓' : s.id}
                 </div>
               </div>
             ))}
@@ -64,7 +64,7 @@ export function WizardShell({
               <span
                 key={s.id}
                 className={`text-[10px] uppercase tracking-wide ${
-                  s.id === currentStep ? "text-blue-600 font-medium" : "text-gray-500"
+                  s.id === currentStep ? 'text-blue-600 font-medium' : 'text-gray-500'
                 }`}
               >
                 {s.label}
@@ -112,7 +112,7 @@ export function StepNav({
         <Link
           href={`${nextHref}?schoolId=${schoolId}`}
           className={`px-6 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 ${
-            isNextDisabled ? "opacity-50 pointer-events-none" : ""
+            isNextDisabled ? 'opacity-50 pointer-events-none' : ''
           }`}
         >
           Continue →

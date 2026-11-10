@@ -1,18 +1,30 @@
 // src/components/messages/TeacherComposeMessage.tsx
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { createMessageSchema, CreateMessageInput } from "@/lib/validations/message.schema";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { createMessageSchema, CreateMessageInput } from '@/lib/validations/message.schema';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 interface Student {
   id: string;
@@ -33,24 +45,27 @@ export function TeacherComposeMessage({ students, teacherId }: TeacherComposeMes
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
 
-  const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm<
-    CreateMessageFormInput,
-    unknown,
-    CreateMessageInput
-  >({
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+    reset,
+  } = useForm<CreateMessageFormInput, unknown, CreateMessageInput>({
     resolver: zodResolver(createMessageSchema),
     defaultValues: {
-      messageType: "direct",
-      body: "",
+      messageType: 'direct',
+      body: '',
       sendViaSms: false,
     },
   });
 
-  const bodyLength = watch("body")?.length || 0;
+  const bodyLength = watch('body')?.length || 0;
 
   const onSubmit = async (data: CreateMessageInput) => {
     if (!selectedStudent) {
-      toast.error("Please select a student");
+      toast.error('Please select a student');
       return;
     }
 
@@ -58,11 +73,11 @@ export function TeacherComposeMessage({ students, teacherId }: TeacherComposeMes
     try {
       // Get the primary guardian for this student
       const res = await fetch(`/api/students/${selectedStudent}/guardian`);
-      if (!res.ok) throw new Error("Failed to fetch guardian");
+      if (!res.ok) throw new Error('Failed to fetch guardian');
       const { guardian } = await res.json();
 
       if (!guardian) {
-        toast.error("This student has no linked guardian");
+        toast.error('This student has no linked guardian');
         setIsSubmitting(false);
         return;
       }
@@ -72,18 +87,18 @@ export function TeacherComposeMessage({ students, teacherId }: TeacherComposeMes
         recipientId: guardian.userId,
       };
 
-      const sendRes = await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const sendRes = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(messageData),
       });
 
       if (!sendRes.ok) {
         const err = await sendRes.json();
-        throw new Error(err.error || "Failed to send message");
+        throw new Error(err.error || 'Failed to send message');
       }
 
-      toast.success("Message sent successfully");
+      toast.success('Message sent successfully');
       setOpen(false);
       reset();
       setSelectedStudent(null);
@@ -129,20 +144,25 @@ export function TeacherComposeMessage({ students, teacherId }: TeacherComposeMes
           <div className="space-y-2">
             <Label>Message (500 characters max)</Label>
             <Textarea
-              {...register("body")}
+              {...register('body')}
               placeholder="Type your message here..."
               className="min-h-[120px]"
             />
             <div className="flex justify-between items-center">
               {errors.body && <p className="text-sm text-red-500">{errors.body.message}</p>}
-              <p className={`text-xs ${bodyLength > 500 ? "text-red-500" : "text-muted-foreground"}`}>
+              <p
+                className={`text-xs ${bodyLength > 500 ? 'text-red-500' : 'text-muted-foreground'}`}
+              >
                 {bodyLength}/500
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2">
-            <Checkbox id="sendViaSms" onCheckedChange={(checked) => setValue("sendViaSms", !!checked)} />
+            <Checkbox
+              id="sendViaSms"
+              onCheckedChange={(checked) => setValue('sendViaSms', !!checked)}
+            />
             <Label htmlFor="sendViaSms" className="text-sm">
               Also send via SMS (if parent doesn't have the app)
             </Label>
@@ -153,7 +173,7 @@ export function TeacherComposeMessage({ students, teacherId }: TeacherComposeMes
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting || !selectedStudent}>
-              {isSubmitting ? "Sending..." : "Send Message"}
+              {isSubmitting ? 'Sending...' : 'Send Message'}
             </Button>
           </div>
         </form>

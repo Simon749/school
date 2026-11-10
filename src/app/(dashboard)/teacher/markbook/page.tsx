@@ -1,32 +1,37 @@
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { CreateAssessmentDialog } from "@/components/assessment/CreateAssessmentDialog";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/db';
+import { CreateAssessmentDialog } from '@/components/assessment/CreateAssessmentDialog';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import Link from "next/link";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import Link from 'next/link';
 
 // Helper to format status
 const getStatusBadge = (status: string) => {
   const styles: Record<string, string> = {
-    draft: "bg-gray-100 text-gray-800",
-    hod_review: "bg-yellow-100 text-yellow-800",
-    published: "bg-green-100 text-green-800",
-    locked: "bg-blue-100 text-blue-800",
+    draft: 'bg-gray-100 text-gray-800',
+    hod_review: 'bg-yellow-100 text-yellow-800',
+    published: 'bg-green-100 text-green-800',
+    locked: 'bg-blue-100 text-blue-800',
   };
   return (
-    <Badge className={styles[status] || "bg-gray-100"}>
-      {status.replace("_", " ").toUpperCase()}
+    <Badge className={styles[status] || 'bg-gray-100'}>
+      {status.replace('_', ' ').toUpperCase()}
     </Badge>
   );
 };
 
 export default async function TeacherMarkbookPage() {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  const { userId } =  auth();
+  if (!userId) redirect('/sign-in');
 
   // FIX: First find the User by clerkId, then get the teacher
   const user = await prisma.user.findUnique({
@@ -64,7 +69,7 @@ export default async function TeacherMarkbookPage() {
       learningArea: { select: { name: true } },
       term: { select: { name: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: 'desc' },
   });
 
   return (
@@ -78,9 +83,11 @@ export default async function TeacherMarkbookPage() {
         <CreateAssessmentDialog
           streams={teacher.school.streams}
           learningAreas={teacher.school.learningAreas}
-          terms={teacher.school.terms.map(t => ({ id: t.id, name: t.name || "Unnamed Term" }))} onSuccess={function (): void {
-            throw new Error("Function not implemented.");
-          } }        />
+          terms={teacher.school.terms.map((t) => ({ id: t.id, name: t.name || 'Unnamed Term' }))}
+          onSuccess={function (): void {
+            throw new Error('Function not implemented.');
+          }}
+        />
       </div>
 
       <Card>
@@ -111,11 +118,11 @@ export default async function TeacherMarkbookPage() {
                     <TableCell className="font-medium">{assessment.title}</TableCell>
                     <TableCell>{assessment.learningArea.name}</TableCell>
                     <TableCell>{assessment.stream.name}</TableCell>
-                    <TableCell>{assessment.term.name || "Unnamed Term"}</TableCell>
+                    <TableCell>{assessment.term.name || 'Unnamed Term'}</TableCell>
                     <TableCell>
-                      {assessment.assessmentDate 
-                        ? new Date(assessment.assessmentDate).toLocaleDateString("en-KE")
-                        : "Not set"}
+                      {assessment.assessmentDate
+                        ? new Date(assessment.assessmentDate).toLocaleDateString('en-KE')
+                        : 'Not set'}
                     </TableCell>
                     <TableCell>{getStatusBadge(assessment.status)}</TableCell>
                     <TableCell className="text-right">

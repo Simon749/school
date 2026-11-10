@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/db";
-import { subDays, startOfDay, endOfDay } from "date-fns";
+import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { prisma } from '@/lib/db';
+import { subDays, startOfDay, endOfDay } from 'date-fns';
 
 export async function GET() {
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify user is a bursar
@@ -16,8 +16,8 @@ export async function GET() {
       select: { role: true, schoolId: true },
     });
 
-    if (!user || user.role !== "bursar") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!user || user.role !== 'bursar') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const schoolId = user.schoolId;
@@ -82,14 +82,14 @@ export async function GET() {
     const disputesOpen = await prisma.paymentDispute.count({
       where: {
         schoolId,
-        status: "open",
+        status: 'open',
       },
     });
 
     // Count defaulters (students with balance > 0)
     // This requires calculating per-student balance
     const studentBalances = await prisma.studentFee.groupBy({
-      by: ["studentId"],
+      by: ['studentId'],
       _sum: { amountDue: true },
       where: {
         schoolId,
@@ -98,7 +98,7 @@ export async function GET() {
     });
 
     const paymentsByStudent = await prisma.feePayment.groupBy({
-      by: ["studentId"],
+      by: ['studentId'],
       _sum: { amount: true },
       where: {
         schoolId,
@@ -131,7 +131,7 @@ export async function GET() {
           },
         },
       },
-      orderBy: { paidAt: "desc" },
+      orderBy: { paidAt: 'desc' },
       take: 10,
     });
 
@@ -165,11 +165,13 @@ export async function GET() {
 
         return {
           id: studentId,
-          studentName: student ? `${student.firstName} ${student.lastName}` : "Unknown",
-          stream: student?.stream.name || "Unknown",
+          studentName: student ? `${student.firstName} ${student.lastName}` : 'Unknown',
+          stream: student?.stream.name || 'Unknown',
           balance,
           daysOverdue: student
-            ? Math.floor((today.getTime() - student.enrollmentDate.getTime()) / (1000 * 60 * 60 * 24))
+            ? Math.floor(
+                (today.getTime() - student.enrollmentDate.getTime()) / (1000 * 60 * 60 * 24)
+              )
             : 0,
         };
       })
@@ -177,7 +179,7 @@ export async function GET() {
 
     // Payment methods breakdown
     const paymentMethodsData = await prisma.feePayment.groupBy({
-      by: ["paymentMethod"],
+      by: ['paymentMethod'],
       _sum: { amount: true },
       _count: true,
       where: {
@@ -187,13 +189,19 @@ export async function GET() {
       },
     });
 
-    const totalByAllMethods = paymentMethodsData.reduce((sum, pm) => sum + Number(pm._sum.amount || 0), 0);
+    const totalByAllMethods = paymentMethodsData.reduce(
+      (sum, pm) => sum + Number(pm._sum.amount || 0),
+      0
+    );
 
     const paymentMethods = paymentMethodsData.map((pm) => ({
       method: pm.paymentMethod,
       amount: Number(pm._sum.amount || 0),
       count: pm._count,
-      percentage: totalByAllMethods > 0 ? Math.round((Number(pm._sum.amount || 0) / totalByAllMethods) * 100) : 0,
+      percentage:
+        totalByAllMethods > 0
+          ? Math.round((Number(pm._sum.amount || 0) / totalByAllMethods) * 100)
+          : 0,
     }));
 
     // Daily collections (last 7 days)
@@ -214,7 +222,7 @@ export async function GET() {
 
       dailyCollections.push({
         date: date.toISOString(),
-        dayLabel: date.toLocaleDateString("en-KE", { weekday: "short" }),
+        dayLabel: date.toLocaleDateString('en-KE', { weekday: 'short' }),
         amount: Number(dayResult._sum.amount || 0),
       });
     }
@@ -244,7 +252,7 @@ export async function GET() {
 
     const dashboardData = {
       school: {
-        name: school?.name || "Unknown School",
+        name: school?.name || 'Unknown School',
         term: currentTerm?.name || null,
       },
       generatedAt: new Date().toISOString(),
@@ -271,10 +279,7 @@ export async function GET() {
 
     return NextResponse.json(dashboardData);
   } catch (error) {
-    console.error("Bursar dashboard error:", error);
-    return NextResponse.json(
-      { error: "Failed to load bursar dashboard" },
-      { status: 500 }
-    );
+    console.error('Bursar dashboard error:', error);
+    return NextResponse.json({ error: 'Failed to load bursar dashboard' }, { status: 500 });
   }
 }

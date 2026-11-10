@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 
 type Period = {
   id: string;
@@ -40,35 +40,35 @@ export function SlotModal({
   streams,
   selectedStreamId,
 }: Props) {
-  const [learningAreaId, setLearningAreaId] = useState("");
-  const [teacherId, setTeacherId] = useState("");
-  const [room, setRoom] = useState("");
-  const [streamId, setStreamId] = useState(selectedStreamId || "");
+  const [learningAreaId, setLearningAreaId] = useState('');
+  const [teacherId, setTeacherId] = useState('');
+  const [room, setRoom] = useState('');
+  const [streamId, setStreamId] = useState(selectedStreamId || '');
   const [isDoubleLesson, setIsDoubleLesson] = useState(false);
-  const [secondPeriodId, setSecondPeriodId] = useState("");
+  const [secondPeriodId, setSecondPeriodId] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const existingSlot = initialData?.existingSlot;
 
   useEffect(() => {
     if (open) {
       if (existingSlot) {
-        setLearningAreaId(existingSlot.learningAreaId || "");
-        setTeacherId(existingSlot.teacherId || "");
-        setRoom(existingSlot.room || "");
-        setStreamId(existingSlot.streamId || "");
+        setLearningAreaId(existingSlot.learningAreaId || '');
+        setTeacherId(existingSlot.teacherId || '');
+        setRoom(existingSlot.room || '');
+        setStreamId(existingSlot.streamId || '');
         setIsDoubleLesson(existingSlot.isDoubleLesson || false);
-        setSecondPeriodId(existingSlot.secondPeriodId || "");
+        setSecondPeriodId(existingSlot.secondPeriodId || '');
       } else {
-        setLearningAreaId("");
-        setTeacherId("");
-        setRoom("");
-        setStreamId(selectedStreamId || "");
+        setLearningAreaId('');
+        setTeacherId('');
+        setRoom('');
+        setStreamId(selectedStreamId || '');
         setIsDoubleLesson(false);
-        setSecondPeriodId("");
+        setSecondPeriodId('');
       }
-      setError("");
+      setError('');
     }
   }, [open, existingSlot, selectedStreamId]);
 
@@ -77,17 +77,17 @@ export function SlotModal({
   const data = initialData;
   const { periodId, dayOfWeek } = data;
   const currentPeriod = periods.find((p) => p.id === data.periodId);
-  const dayLabel = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][data.dayOfWeek];
+  const dayLabel = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][data.dayOfWeek];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!learningAreaId || !teacherId || !streamId) {
-      setError("Learning area, teacher, and stream are required.");
+      setError('Learning area, teacher, and stream are required.');
       return;
     }
 
     setLoading(true);
-    setError("");
+    setError('');
 
     try {
       await onSave({
@@ -104,7 +104,7 @@ export function SlotModal({
       });
       onClose();
     } catch (error: any) {
-      setError((error as Error).message || "Failed to save slot");
+      setError((error as Error).message || 'Failed to save slot');
     } finally {
       setLoading(false);
     }
@@ -112,13 +112,13 @@ export function SlotModal({
 
   async function handleDelete() {
     if (!existingSlot || !onDelete) return;
-    if (!confirm("Delete this slot?")) return;
+    if (!confirm('Delete this slot?')) return;
     setLoading(true);
     try {
       await onDelete(existingSlot.id);
       onClose();
     } catch (error: any) {
-      setError((error as Error).message || "Failed to delete");
+      setError((error as Error).message || 'Failed to delete');
     } finally {
       setLoading(false);
     }
@@ -134,13 +134,17 @@ export function SlotModal({
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h3 className="text-lg font-bold text-gray-900">
-              {existingSlot ? "Edit Slot" : "Add Slot"}
+              {existingSlot ? 'Edit Slot' : 'Add Slot'}
             </h3>
             <p className="text-xs text-gray-500">
-              {currentPeriod?.name} on {dayLabel} · {currentPeriod?.startTime?.slice(0, 5)}–{currentPeriod?.endTime?.slice(0, 5)}
+              {currentPeriod?.name} on {dayLabel} · {currentPeriod?.startTime?.slice(0, 5)}–
+              {currentPeriod?.endTime?.slice(0, 5)}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+          >
             ×
           </button>
         </div>
@@ -224,7 +228,7 @@ export function SlotModal({
                   if (e.target.checked && nextPeriod) {
                     setSecondPeriodId(nextPeriod.id);
                   } else {
-                    setSecondPeriodId("");
+                    setSecondPeriodId('');
                   }
                 }}
                 className="w-4 h-4 text-blue-600 rounded"
@@ -232,14 +236,10 @@ export function SlotModal({
               <span className="text-sm font-medium text-gray-700">Double lesson</span>
             </label>
             {isDoubleLesson && nextPeriod && (
-              <p className="text-xs text-gray-500 mt-1 ml-6">
-                Spans into {nextPeriod.name}
-              </p>
+              <p className="text-xs text-gray-500 mt-1 ml-6">Spans into {nextPeriod.name}</p>
             )}
             {isDoubleLesson && !nextPeriod && (
-              <p className="text-xs text-amber-600 mt-1 ml-6">
-                No subsequent period available.
-              </p>
+              <p className="text-xs text-amber-600 mt-1 ml-6">No subsequent period available.</p>
             )}
           </div>
 
@@ -269,7 +269,7 @@ export function SlotModal({
                 disabled={loading}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
               >
-                {loading ? "Saving..." : existingSlot ? "Update" : "Add"}
+                {loading ? 'Saving...' : existingSlot ? 'Update' : 'Add'}
               </button>
             </div>
           </div>

@@ -1,29 +1,54 @@
-import { PrismaClient, UserRole } from "@prisma/client";
+import { readFileSync } from 'node:fs';
+import { PrismaClient, UserRole } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const TEST_USERS = [
-  { email: "simonmwangi749+admin@gmail.com",   clerkId: "user_3IAsHPaDeNE4bFTbbg5PKmyD6aH", role: UserRole.admin,   firstName: "Admin",   lastName: "User" },
-  { email: "simonmwangi749+deputy@gmail.com",  clerkId: "user_3IAsNAQbBn6wDoY5v2QVo022TVV", role: UserRole.deputy,  firstName: "Deputy",  lastName: "User" },
-  { email: "simonmwangi749+teacher@gmail.com", clerkId: "user_3IAsctpuzldhH66boPLW9tZvQfj", role: UserRole.teacher, firstName: "Teacher", lastName: "User" },
-  { email: "simonmwangi749+parent@gmail.com",  clerkId: "user_3IAsgGGmLDxt4Sjg238VN0Dl68m", role: UserRole.parent,  firstName: "Parent",  lastName: "User" },
-  { email: "simonmwangi749+bursar@gmail.com",  clerkId: "user_3IAsjGBhMbzWHeRzB3jSdrgaIdS", role: UserRole.bursar,  firstName: "Bursar",  lastName: "User" },
-];
+// Usage: pnpm tsx scripts/sync-clerk-users.ts [path/to/clerk-users.local.json]
+// Default path: scripts/clerk-users.local.json (git-ignored). Copy clerk-users.example.json to start.
+interface TestUser {
+  email: string;
+  clerkId: string;
+  role: keyof typeof UserRole;
+  firstName: string;
+  lastName: string;
+}
+
+function loadUsers(): TestUser[] {
+  const path = process.argv[2] ?? 'scripts/clerk-users.local.json';
+  let raw: string;
+  try {
+    raw = readFileSync(path, 'utf8');
+  } catch {
+    console.error(`❌ Cannot read ${path}. Copy scripts/clerk-users.example.json and fill it in.`);
+    process.exit(1);
+  }
+  const parsed = JSON.parse(raw) as TestUser[];
+  for (const u of parsed) {
+    if (!u.email || !u.clerkId || !(u.role in UserRole)) {
+      throw new Error(`Invalid entry in ${path}: ${JSON.stringify(u)}`);
+    }
+  }
+  return parsed;
+}
 
 async function main() {
   const school = await prisma.school.findFirst();
-  if (!school) throw new Error("Run prisma db seed first — no school found.");
+  if (!school) throw new Error('Run prisma db seed first — no school found.');
 
-  for (const u of TEST_USERS) {
+  for (const u of loadUsers()) {
+    const role = UserRole[u.role];
     await prisma.user.upsert({
       where: { email: u.email },
-      update: { clerkId: u.clerkId, role: u.role, schoolId: school.id, isActive: true },
-      create:  { ...u, schoolId: school.id, isActive: true },
+      update: { clerkId: u.clerkId, role, schoolId: school.id, isActive: true },
+      create: { ...u, role, schoolId: school.id, isActive: true },
     });
     console.log(`✓ Synced ${u.email} → ${u.role}`);
   }
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
   .finally(() => prisma.$disconnect());

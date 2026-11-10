@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import err from "next/error";
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import err from 'next/error';
 import {
   ArrowLeft,
   Edit2,
@@ -16,7 +16,7 @@ import {
   MapPin,
   AlertCircle,
   Trash2,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface Guardian {
   id: string;
@@ -62,12 +62,12 @@ export default function StudentProfilePage() {
   const fetchStudent = useCallback(async () => {
     try {
       const res = await fetch(`/api/students/${id}`);
-      if (!res.ok) throw new Error("Not found");
+      if (!res.ok) throw new Error('Not found');
       const data = await res.json();
       setStudent(data.student);
       setEditForm(data.student);
     } catch (err) {
-      router.push("/admin/students");
+      router.push('/admin/students');
     } finally {
       setLoading(false);
     }
@@ -82,8 +82,8 @@ export default function StudentProfilePage() {
     setSaving(true);
     try {
       const res = await fetch(`/api/students/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           firstName: editForm.firstName,
           lastName: editForm.lastName,
@@ -98,7 +98,7 @@ export default function StudentProfilePage() {
         }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Update failed");
+      if (!res.ok) throw new Error(json.error || 'Update failed');
       setStudent(json.student);
       setIsEditing(false);
     } catch (error: any) {
@@ -109,20 +109,18 @@ export default function StudentProfilePage() {
   }
 
   async function handleDelete() {
-    if (!confirm("Are you sure? This will soft-delete the student record.")) return;
+    if (!confirm('Are you sure? This will soft-delete the student record.')) return;
     try {
-      const res = await fetch(`/api/students/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
-      router.push("/admin/students");
+      const res = await fetch(`/api/students/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      router.push('/admin/students');
     } catch (error: any) {
       alert((error as Error).message);
     }
   }
 
   if (loading) {
-    return (
-      <div className="p-8 text-center text-gray-500">Loading student profile...</div>
-    );
+    return <div className="p-8 text-center text-gray-500">Loading student profile...</div>;
   }
 
   if (!student) return null;
@@ -142,7 +140,11 @@ export default function StudentProfilePage() {
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
               {student.photoUrl ? (
-                <img src={student.photoUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                <img
+                  src={student.photoUrl}
+                  alt=""
+                  className="w-full h-full rounded-full object-cover"
+                />
               ) : (
                 <UserCircle className="w-10 h-10" />
               )}
@@ -153,9 +155,9 @@ export default function StudentProfilePage() {
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm text-gray-500">NEMIS: {student.nemisNumber}</span>
-                {student.status !== "active" && (
+                {student.status !== 'active' && (
                   <span className="text-[10px] font-medium px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full capitalize">
-                    {student.status.replace("_", " ")}
+                    {student.status.replace('_', ' ')}
                   </span>
                 )}
               </div>
@@ -181,7 +183,7 @@ export default function StudentProfilePage() {
                   className="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
-                  {saving ? "Saving..." : "Save"}
+                  {saving ? 'Saving...' : 'Save'}
                 </button>
               </>
             ) : (
@@ -219,42 +221,42 @@ export default function StudentProfilePage() {
                 value={student.firstName}
                 editing={isEditing}
                 onChange={(v) => setEditForm({ ...editForm, firstName: v })}
-                editValue={editForm.firstName || ""}
+                editValue={editForm.firstName || ''}
               />
               <Field
                 label="Last Name"
                 value={student.lastName}
                 editing={isEditing}
                 onChange={(v) => setEditForm({ ...editForm, lastName: v })}
-                editValue={editForm.lastName || ""}
+                editValue={editForm.lastName || ''}
               />
               <Field
                 label="NEMIS Number"
                 value={student.nemisNumber}
                 editing={isEditing}
                 onChange={(v) => setEditForm({ ...editForm, nemisNumber: v })}
-                editValue={editForm.nemisNumber || ""}
+                editValue={editForm.nemisNumber || ''}
               />
               <Field
                 label="Admission Number"
-                value={student.admissionNumber || "—"}
+                value={student.admissionNumber || '—'}
                 editing={isEditing}
                 onChange={(v) => setEditForm({ ...editForm, admissionNumber: v })}
-                editValue={editForm.admissionNumber || ""}
+                editValue={editForm.admissionNumber || ''}
               />
               <Field
                 label="Date of Birth"
-                value={student.dateOfBirth || "—"}
+                value={student.dateOfBirth || '—'}
                 editing={isEditing}
                 type="date"
                 onChange={(v) => setEditForm({ ...editForm, dateOfBirth: v })}
-                editValue={editForm.dateOfBirth || ""}
+                editValue={editForm.dateOfBirth || ''}
               />
               <div>
                 <label className="text-xs font-medium text-gray-500">Gender</label>
                 {isEditing ? (
                   <select
-                    value={editForm.gender || ""}
+                    value={editForm.gender || ''}
                     onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
                     className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
                   >
@@ -264,7 +266,7 @@ export default function StudentProfilePage() {
                     <option value="other">Other</option>
                   </select>
                 ) : (
-                  <p className="mt-1 text-sm text-gray-900 capitalize">{student.gender || "—"}</p>
+                  <p className="mt-1 text-sm text-gray-900 capitalize">{student.gender || '—'}</p>
                 )}
               </div>
               <div className="col-span-2">
@@ -272,12 +274,12 @@ export default function StudentProfilePage() {
                 {isEditing ? (
                   <input
                     type="url"
-                    value={editForm.photoUrl || ""}
+                    value={editForm.photoUrl || ''}
                     onChange={(e) => setEditForm({ ...editForm, photoUrl: e.target.value })}
                     className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
                   />
                 ) : (
-                  <p className="mt-1 text-sm text-gray-900 truncate">{student.photoUrl || "—"}</p>
+                  <p className="mt-1 text-sm text-gray-900 truncate">{student.photoUrl || '—'}</p>
                 )}
               </div>
             </div>
@@ -292,23 +294,23 @@ export default function StudentProfilePage() {
                 <label className="text-xs font-medium text-gray-500">Medical Notes</label>
                 {isEditing ? (
                   <textarea
-                    value={editForm.medicalNotes || ""}
+                    value={editForm.medicalNotes || ''}
                     onChange={(e) => setEditForm({ ...editForm, medicalNotes: e.target.value })}
                     rows={3}
                     className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
                   />
                 ) : (
                   <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
-                    {student.medicalNotes || "No medical notes recorded."}
+                    {student.medicalNotes || 'No medical notes recorded.'}
                   </p>
                 )}
               </div>
               <Field
                 label="Previous School"
-                value={student.previousSchool || "—"}
+                value={student.previousSchool || '—'}
                 editing={isEditing}
                 onChange={(v) => setEditForm({ ...editForm, previousSchool: v })}
-                editValue={editForm.previousSchool || ""}
+                editValue={editForm.previousSchool || ''}
               />
             </div>
           </div>
@@ -335,7 +337,7 @@ export default function StudentProfilePage() {
                 <div>
                   <p className="text-xs text-gray-500">Boarding Status</p>
                   <p className="text-sm font-medium text-gray-900">
-                    {student.isBoarding ? "Boarding" : "Day Scholar"}
+                    {student.isBoarding ? 'Boarding' : 'Day Scholar'}
                   </p>
                 </div>
               </div>
@@ -378,10 +380,7 @@ export default function StudentProfilePage() {
             ) : (
               <div className="space-y-3">
                 {student.guardians.map((g) => (
-                  <div
-                    key={g.id}
-                    className="p-3 bg-gray-50 rounded-lg border border-gray-100"
-                  >
+                  <div key={g.id} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-medium text-sm text-gray-900">
                         {g.user.firstName} {g.user.lastName}
@@ -415,7 +414,7 @@ function Field({
   label,
   value,
   editing,
-  type = "text",
+  type = 'text',
   onChange,
   editValue,
 }: {

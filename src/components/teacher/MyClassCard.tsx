@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Users, ArrowRight } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Users, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Stream {
   id: string;
@@ -55,7 +55,7 @@ export function MyClassCard({ stream, studentCount }: MyClassCardProps) {
           </div>
         </div>
 
-        <Button 
+        <Button
           onClick={() => router.push(`/teacher/class/${stream.id}`)}
           variant="outline"
           className="w-full border-blue-300 text-blue-700 hover:bg-blue-100"

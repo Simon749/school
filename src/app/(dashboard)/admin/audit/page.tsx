@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 
 interface AuditLog {
   id: string;
@@ -19,11 +19,11 @@ export default function AuditLogPage() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const res = await fetch("/api/admin/audit-logs?limit=100");
+        const res = await fetch('/api/admin/audit-logs?limit=100');
         const data = await res.json();
         setLogs(data);
       } catch (error) {
-        console.error("Failed to fetch audit logs:", error);
+        console.error('Failed to fetch audit logs:', error);
       } finally {
         setIsLoading(false);
       }
@@ -33,9 +33,9 @@ export default function AuditLogPage() {
 
   const formatAction = (action: string) => {
     return action
-      .split(".")
+      .split('.')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+      .join(' ');
   };
 
   if (isLoading) {
@@ -45,9 +45,7 @@ export default function AuditLogPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-          Audit Logs
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Audit Logs</h1>
         <p className="text-sm text-gray-500 mt-1">
           Track all sensitive actions performed in the system.
         </p>
@@ -78,7 +76,7 @@ export default function AuditLogPage() {
             {logs.map((log) => (
               <tr key={log.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-                  {new Date(log.createdAt).toLocaleString("en-KE")}
+                  {new Date(log.createdAt).toLocaleString('en-KE')}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900">
                   <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
@@ -86,15 +84,13 @@ export default function AuditLogPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900">
-                  {log.actor
-                    ? `${log.actor.firstName} ${log.actor.lastName}`
-                    : "System"}
+                  {log.actor ? `${log.actor.firstName} ${log.actor.lastName}` : 'System'}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-500 font-mono text-xs">
                   {log.tableName}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-500 font-mono text-xs">
-                  {log.ipAddress || "—"}
+                  {log.ipAddress || '—'}
                 </td>
               </tr>
             ))}

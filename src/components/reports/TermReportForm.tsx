@@ -1,16 +1,25 @@
 // src/components/reports/TermReportForm.tsx
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { generateTermReportSchema, GenerateTermReportInput } from "@/lib/validations/term-report.schema";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  generateTermReportSchema,
+  GenerateTermReportInput,
+} from '@/lib/validations/term-report.schema';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface TermReportFormProps {
   studentId: string;
@@ -26,12 +35,17 @@ export function TermReportForm({ studentId, termId, existingReport }: TermReport
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<GenerateTermReportInput>({
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<GenerateTermReportInput>({
     resolver: zodResolver(generateTermReportSchema),
     defaultValues: {
       studentId,
       termId,
-      classTeacherComment: existingReport?.classTeacherComment || "",
+      classTeacherComment: existingReport?.classTeacherComment || '',
       conduct: (existingReport?.conduct as any) || undefined,
     },
   });
@@ -39,18 +53,18 @@ export function TermReportForm({ studentId, termId, existingReport }: TermReport
   const onSubmit = async (data: GenerateTermReportInput) => {
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/results/reports/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/results/reports/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Failed to save report");
+        throw new Error(err.error || 'Failed to save report');
       }
 
-      toast.success("Report saved successfully");
+      toast.success('Report saved successfully');
       router.refresh();
     } catch (error: any) {
       toast.error(error.message);
@@ -64,7 +78,7 @@ export function TermReportForm({ studentId, termId, existingReport }: TermReport
       <div className="space-y-2">
         <Label>Class Teacher Comment</Label>
         <Textarea
-          {...register("classTeacherComment")}
+          {...register('classTeacherComment')}
           placeholder="e.g., Amara has shown excellent progress in Mathematics this term. She participates actively in class discussions..."
           className="min-h-[120px]"
         />
@@ -76,7 +90,7 @@ export function TermReportForm({ studentId, termId, existingReport }: TermReport
       <div className="space-y-2">
         <Label>Conduct Rating</Label>
         <Select
-          onValueChange={(v) => setValue("conduct", v as any)}
+          onValueChange={(v) => setValue('conduct', v as any)}
           defaultValue={existingReport?.conduct || undefined}
         >
           <SelectTrigger>
@@ -95,7 +109,7 @@ export function TermReportForm({ studentId, termId, existingReport }: TermReport
 
       <div className="flex justify-end gap-2">
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : "Save Report"}
+          {isSubmitting ? 'Saving...' : 'Save Report'}
         </Button>
       </div>
     </form>

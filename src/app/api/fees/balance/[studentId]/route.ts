@@ -1,12 +1,6 @@
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/db";
-
-interface UserData {
-  id: string;
-  schoolId: string;
-  role: string;
-}
+import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth/current-user';
+import { prisma } from '@/lib/db';
 
 interface FeeAllocation {
   feeItemId?: string;
@@ -45,34 +39,43 @@ export async function GET(
   _req: Request,
   { params }: { params: { studentId: string } }
 ): Promise<NextResponse<BalanceResponse | { error: string }>> {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // SEC-05: admin and bursar see any student in their own school; a parent only their own
+  // active child; every other role is refused. (Unchanged for now: the arithmetic below is one
+  // of several divergent balance calculations — PAY-07/PAY-15, replaced by a single ledger in R3.)
+  const guard = await requireUser(['admin', 'bursar', 'parent']);
+  if (!guard.ok) return guard.response as NextResponse<{ error: string }>;
+  const { user } = guard;
 
-  const user = (await prisma.user.findUnique({
-    where: { clerkId },
-    select: { id: true, schoolId: true, role: true },
-  })) as UserData | null;
-  if (!user?.schoolId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const notFound = () => NextResponse.json({ error: 'Student not found' }, { status: 404 });
 
-  // Ownership check for parents
-  if (user.role === "parent") {
+  if (user.role === 'parent') {
     const link = await prisma.guardian.findFirst({
       where: { userId: user.id, studentId: params.studentId, isActive: true },
+      select: { id: true },
     });
-    if (!link) return NextResponse.json({ error: "Not your child" }, { status: 403 });
+    if (!link) return notFound();
+  } else {
+    const student = await prisma.student.findFirst({
+      where: { id: params.studentId, schoolId: user.schoolId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!student) return notFound();
   }
 
- const [fees, payments] = await Promise.all([
-  prisma.studentFee.findMany({
-    where: { studentId: params.studentId },
-    include: { feeItem: true },
-  }),
-  prisma.feePayment.findMany({
-    where: { studentId: params.studentId, isReversed: false },
-  }),
-]);
+  const [fees, payments] = await Promise.all([
+    prisma.studentFee.findMany({
+      where: { studentId: params.studentId, schoolId: user.schoolId },
+      include: { feeItem: true },
+    }),
+    prisma.feePayment.findMany({
+      where: { studentId: params.studentId, schoolId: user.schoolId, isReversed: false },
+    }),
+  ]);
 
-  const totalDue = fees.reduce((sum, f) => sum + Number(f.amountDue) - Number(f.discount) + Number(f.carryForwardAmount), 0);
+  const totalDue = fees.reduce(
+    (sum, f) => sum + Number(f.amountDue) - Number(f.discount) + Number(f.carryForwardAmount),
+    0
+  );
   const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
   const balance = totalDue - totalPaid;
 

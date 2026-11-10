@@ -1,14 +1,14 @@
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { MessageList } from "@/components/messages/MessageList";
-import { TeacherComposeMessage } from "@/components/messages/TeacherComposeMessage";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare } from "lucide-react";
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/db';
+import { MessageList } from '@/components/messages/MessageList';
+import { TeacherComposeMessage } from '@/components/messages/TeacherComposeMessage';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { MessageSquare } from 'lucide-react';
 
 export default async function TeacherMessagesPage() {
   const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  if (!userId) redirect('/sign-in');
 
   // Get teacher with students
   const user = await prisma.user.findUnique({
@@ -24,7 +24,7 @@ export default async function TeacherMessagesPage() {
                 },
               },
               students: {
-                where: { status: "active" },
+                where: { status: 'active' },
                 select: {
                   id: true,
                   firstName: true,
@@ -67,10 +67,7 @@ export default async function TeacherMessagesPage() {
             </p>
           </div>
         </div>
-        <TeacherComposeMessage 
-          students={students} 
-          teacherId={teacher.id}
-        />
+        <TeacherComposeMessage students={students} teacherId={teacher.id} />
       </div>
 
       {/* Info card for class teachers */}
@@ -79,8 +76,12 @@ export default async function TeacherMessagesPage() {
           <CardContent className="pt-4">
             <p className="text-sm text-blue-900">
               <strong>Class Teacher Mode:</strong> You can message parents of students in
-              <strong> {teacher.classTeacherStream.grade?.name ?? "Class"} {teacher.classTeacherStream.name}</strong>.
-              {students.length} students available.
+              <strong>
+                {' '}
+                {teacher.classTeacherStream.grade?.name ?? 'Class'}{' '}
+                {teacher.classTeacherStream.name}
+              </strong>
+              .{students.length} students available.
             </p>
           </CardContent>
         </Card>

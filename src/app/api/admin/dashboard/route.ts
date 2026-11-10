@@ -30,9 +30,9 @@
 // (AGENTS.md §79) but should be revisited before onboarding schools with
 // many terms of history (AGENTS.md §94).
 
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/db";
+import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth/current-user';
+import { prisma } from '@/lib/db';
 
 const DEFAULT_BALANCE_THRESHOLD_PCT = 0.5;
 const DEFAULT_NEEDS_ATTENTION_PCT = 50;
@@ -46,7 +46,7 @@ interface DashboardSettings {
 }
 
 function dateOnly(d: Date): Date {
-  return new Date(d.toISOString().split("T")[0]);
+  return new Date(d.toISOString().split('T')[0]);
 }
 
 function pct(numerator: number, denominator: number): number | null {
@@ -55,26 +55,14 @@ function pct(numerator: number, denominator: number): number | null {
 }
 
 export async function GET() {
-  const { userId: clerkId } = auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const authUser = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { schoolId: true, role: true },
-  });
-  if (!authUser?.schoolId || authUser.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const allowed = ["admin", "it_admin"];
-  if (!allowed.includes(authUser.role)) {
-    console.log(`🔴 Forbidden: DB role is "${authUser.role}", expected one of ${allowed.join(", ")}`);
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-  const schoolId = authUser.schoolId;
+    // R1-13: Central guard migration (Admin dashboard is strictly admin-only)
+  const guard = await requireUser(['admin']);
+  if (!guard.ok) return guard.response;
+  const { user } = guard;
+  const schoolId = user.schoolId;
 
   const school = await prisma.school.findUnique({ where: { id: schoolId } });
-  if (!school) return NextResponse.json({ error: "School not found" }, { status: 404 });
+  if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
 
   const settings = (school.settings ?? {}) as DashboardSettings;
   const balanceThresholdPct =
@@ -87,48 +75,59 @@ export async function GET() {
   const fourWeekWindowStart = new Date(today);
   fourWeekWindowStart.setDate(fourWeekWindowStart.getDate() - 27);
 
-  const [currentTerm, calendarDayToday, activeStudents, teachers, dailyAttendanceToday, teacherAttendanceToday] =
-    await Promise.all([
-      prisma.term.findFirst({ where: { schoolId, isCurrent: true } }),
-      prisma.schoolCalendarDay.findUnique({
-        where: { schoolId_date: { schoolId, date: today } },
-      }),
-      prisma.student.findMany({
-        where: { schoolId, deletedAt: null, status: "active" },
-        select: {
-          id: true,
-          gender: true,
-          isBoarding: true,
-          enrollmentDate: true,
-          stream: { select: { grade: { select: { name: true, level: true } } } },
-        },
-      }),
-      prisma.teacher.findMany({
-        where: { schoolId, user: { isActive: true, deletedAt: null } },
-        select: { id: true },
-      }),
-      prisma.studentDailyAttendance.findMany({
-        where: { schoolId, date: today },
-        select: { status: true },
-      }),
-      prisma.teacherAttendance.findMany({
-        where: { schoolId, date: today, checkedInAt: { not: null } },
-        select: { teacherId: true },
-      }),
-    ]);
+  const [
+    currentTerm,
+    calendarDayToday,
+    activeStudents,
+    teachers,
+    dailyAttendanceToday,
+    teacherAttendanceToday,
+  ] = await Promise.all([
+    prisma.term.findFirst({ where: { schoolId, isCurrent: true } }),
+    prisma.schoolCalendarDay.findUnique({
+      where: { schoolId_date: { schoolId, date: today } },
+    }),
+    prisma.student.findMany({
+      where: { schoolId, deletedAt: null, status: 'active' },
+      select: {
+        id: true,
+        gender: true,
+        isBoarding: true,
+        enrollmentDate: true,
+        stream: { select: { grade: { select: { name: true, level: true } } } },
+      },
+    }),
+    prisma.teacher.findMany({
+      where: { schoolId, user: { isActive: true, deletedAt: null } },
+      select: { id: true },
+    }),
+    prisma.studentDailyAttendance.findMany({
+      where: { schoolId, date: today },
+      select: { status: true },
+    }),
+    prisma.teacherAttendance.findMany({
+      where: { schoolId, date: today, checkedInAt: { not: null } },
+      select: { teacherId: true },
+    }),
+  ]);
 
   // ---- Calendar -----------------------------------------------------
-  const isSchoolDayToday = calendarDayToday?.dayType === "school_day";
+  const isSchoolDayToday = calendarDayToday?.dayType === 'school_day';
   const dayType = calendarDayToday?.dayType ?? null;
-  
 
   // ---- Enrolment (term-independent) ----------------------------------
   const newThisTermCount = currentTerm
-    ? activeStudents.filter((s: { enrollmentDate: Date; }) => s.enrollmentDate >= currentTerm.startDate).length
+    ? activeStudents.filter(
+        (s: { enrollmentDate: Date }) => s.enrollmentDate >= currentTerm.startDate
+      ).length
     : 0;
-  const boardingCount = activeStudents.filter((s: { isBoarding: any; }) => s.isBoarding).length;
-  const girlsCount = activeStudents.filter((s: { gender: string | null; }) => s.gender === "F").length;
-  const boysCount = activeStudents.filter((s: { gender: string | null; }) => s.gender === "M").length;
+  const boardingCount = activeStudents.filter((s: { isBoarding: any }) => s.isBoarding).length;
+  const girlsCount = activeStudents.filter(
+    (s: { gender: string | null }) => s.gender === 'F'
+  ).length;
+  const boysCount = activeStudents.filter(
+    (s: { gender: string | null }) => s.gender === 'M'
+  ).length;
 
   const byGradeMap = new Map<string, { count: number; level: number }>();
   for (const s of activeStudents) {
@@ -144,15 +143,17 @@ export async function GET() {
   // ---- Attendance (today) --------------------------------------------
   const studentRecordedToday = dailyAttendanceToday.length;
   const studentPresentToday = dailyAttendanceToday.filter(
-    (a: { status: string; }) => a.status === "present" || a.status === "late"
+    (a: { status: string }) => a.status === 'present' || a.status === 'late'
   ).length;
-  const teachersCheckedInToday = new Set(teacherAttendanceToday.map((a: { teacherId: any; }) => a.teacherId)).size;
+  const teachersCheckedInToday = new Set(
+    teacherAttendanceToday.map((a: { teacherId: any }) => a.teacherId)
+  ).size;
   const activeTeachersCount = teachers.length;
 
   // ---- Alerts (built up as we go) ------------------------------------
   const alerts: Array<{
     id: string;
-    severity: "critical" | "high" | "medium" | "low";
+    severity: 'critical' | 'high' | 'medium' | 'low';
     title: string;
     detail: string;
     actionLabel: string;
@@ -186,68 +187,85 @@ export async function GET() {
     unpublishedAssessments: 0,
   };
 
-  let recentActivity: { type: "enrolment" | "payment" | "assessment"; text: string; time: string }[] = [];
+  let recentActivity: {
+    type: 'enrolment' | 'payment' | 'assessment';
+    text: string;
+    time: string;
+  }[] = [];
 
   if (!currentTerm) {
     alerts.push({
-      id: "no-current-term",
-      severity: "critical",
-      title: "No current term configured",
+      id: 'no-current-term',
+      severity: 'critical',
+      title: 'No current term configured',
       detail:
         "Fees, attendance summaries and results can't be tracked until an academic term is marked current.",
-      actionLabel: "Go to calendar",
-      actionHref: "/admin/calendar",
+      actionLabel: 'Go to calendar',
+      actionHref: '/admin/calendar',
     });
   } else {
-    const [studentFees, feePayments, assessmentsForTerm, results, recentStudents] = await Promise.all([
-      prisma.studentFee.findMany({
-        where: { schoolId, termId: currentTerm.id },
-        select: { studentId: true, amountDue: true, discount: true, carryForwardAmount: true },
-      }),
-      prisma.feePayment.findMany({
-        where: { schoolId, termId: currentTerm.id, isReversed: false },
-        include: {
-          student: { select: { firstName: true, lastName: true, stream: { select: { name: true, grade: { select: { name: true } } } } } },
-        },
-        orderBy: { paidAt: "desc" },
-      }),
-      prisma.assessment.findMany({
-        where: { schoolId, termId: currentTerm.id },
-        select: { id: true, status: true },
-      }),
-      prisma.assessmentResult.findMany({
-        where: {
-          marksObtained: { not: null },
-          assessment: { schoolId, termId: currentTerm.id, status: "published", maxMarks: { not: null } },
-        },
-        select: {
-          marksObtained: true,
-          assessment: {
-            select: {
-              maxMarks: true,
-              learningArea: { select: { name: true } },
-              stream: { select: { grade: { select: { name: true } } } },
+    const [studentFees, feePayments, assessmentsForTerm, results, recentStudents] =
+      await Promise.all([
+        prisma.studentFee.findMany({
+          where: { schoolId, termId: currentTerm.id },
+          select: { studentId: true, amountDue: true, discount: true, carryForwardAmount: true },
+        }),
+        prisma.feePayment.findMany({
+          where: { schoolId, termId: currentTerm.id, isReversed: false },
+          include: {
+            student: {
+              select: {
+                firstName: true,
+                lastName: true,
+                stream: { select: { name: true, grade: { select: { name: true } } } },
+              },
             },
           },
-        },
-      }),
-      prisma.student.findMany({
-        where: { schoolId, deletedAt: null, status: "active" },
-        select: { firstName: true, lastName: true, enrollmentDate: true },
-        orderBy: { enrollmentDate: "desc" },
-        take: 5,
-      }),
-    ]);
+          orderBy: { paidAt: 'desc' },
+        }),
+        prisma.assessment.findMany({
+          where: { schoolId, termId: currentTerm.id },
+          select: { id: true, status: true },
+        }),
+        prisma.assessmentResult.findMany({
+          where: {
+            schoolId,
+            marksObtained: { not: null },
+            assessment: {
+              schoolId,
+              termId: currentTerm.id,
+              status: 'published',
+              maxMarks: { not: null },
+            },
+          },
+          select: {
+            marksObtained: true,
+            assessment: {
+              select: {
+                maxMarks: true,
+                learningArea: { select: { name: true } },
+                stream: { select: { grade: { select: { name: true } } } },
+              },
+            },
+          },
+        }),
+        prisma.student.findMany({
+          where: { schoolId, deletedAt: null, status: 'active' },
+          select: { firstName: true, lastName: true, enrollmentDate: true },
+          orderBy: { enrollmentDate: 'desc' },
+          take: 5,
+        }),
+      ]);
 
     // Fee structure existence check (used both for balance calc + an alert)
     if (studentFees.length === 0) {
       alerts.push({
-        id: "no-fee-structure",
-        severity: "high",
-        title: "No fee items assigned for this term",
-        detail: `No student fee records exist yet for ${currentTerm.name || "the current term"}.`,
-        actionLabel: "Set up fees",
-        actionHref: "/bursar/fees/structure",
+        id: 'no-fee-structure',
+        severity: 'high',
+        title: 'No fee items assigned for this term',
+        detail: `No student fee records exist yet for ${currentTerm.name || 'the current term'}.`,
+        actionLabel: 'Set up fees',
+        actionHref: '/bursar/fees/structure',
       });
     }
 
@@ -268,10 +286,11 @@ export async function GET() {
     const collectionRatePct = target > 0 ? Math.round((collected / target) * 100) : 0;
 
     const todayMpesaPayments = feePayments.filter(
-      (p: { paymentMethod: string; paidAt: Date; }) => p.paymentMethod === "mpesa" && dateOnly(p.paidAt).getTime() === today.getTime()
+      (p: { paymentMethod: string; paidAt: Date }) =>
+        p.paymentMethod === 'mpesa' && dateOnly(p.paidAt).getTime() === today.getTime()
     );
     const todayMpesa = {
-      amount: todayMpesaPayments.reduce((s: number, p: { amount: any; }) => s + Number(p.amount), 0),
+      amount: todayMpesaPayments.reduce((s: number, p: { amount: any }) => s + Number(p.amount), 0),
       count: todayMpesaPayments.length,
     };
 
@@ -284,24 +303,34 @@ export async function GET() {
       const mondayOffset = day === 0 ? -6 : 1 - day;
       const weekStart = new Date(d);
       weekStart.setDate(d.getDate() + mondayOffset);
-      const key = weekStart.toISOString().split("T")[0];
+      const key = weekStart.toISOString().split('T')[0];
       weekBuckets.set(key, (weekBuckets.get(key) ?? 0) + Number(p.amount));
     }
     const weeklyTrend = [...weekBuckets.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([weekStart, amount]) => ({
-        weekLabel: `Week of ${new Date(weekStart).toLocaleDateString("en-KE", { day: "numeric", month: "short" })}`,
+        weekLabel: `Week of ${new Date(weekStart).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })}`,
         amount,
       }));
 
-    const recentPayments = feePayments.slice(0, 5).map((p: { id: any; student: { firstName: any; lastName: any; stream: { grade: { name: any; }; name: any; }; }; amount: any; paymentMethod: any; paidAt: { toISOString: () => any; }; }) => ({
-      id: p.id,
-      name: `${p.student.firstName} ${p.student.lastName}`,
-      stream: `${p.student.stream.grade.name} ${p.student.stream.name}`,
-      amount: Number(p.amount),
-      method: p.paymentMethod,
-      time: p.paidAt.toISOString(),
-    }));
+    const recentPayments = feePayments
+      .slice(0, 5)
+      .map(
+        (p: {
+          id: any;
+          student: { firstName: any; lastName: any; stream: { grade: { name: any }; name: any } };
+          amount: any;
+          paymentMethod: any;
+          paidAt: { toISOString: () => any };
+        }) => ({
+          id: p.id,
+          name: `${p.student.firstName} ${p.student.lastName}`,
+          stream: `${p.student.stream.grade.name} ${p.student.stream.name}`,
+          amount: Number(p.amount),
+          method: p.paymentMethod,
+          time: p.paidAt.toISOString(),
+        })
+      );
 
     const activeStudentCount = activeStudents.length;
     const avgDuePerStudent = activeStudentCount > 0 ? target / activeStudentCount : 0;
@@ -326,28 +355,44 @@ export async function GET() {
 
     if (studentsOverBalanceThreshold > 0) {
       alerts.push({
-        id: "students-over-balance",
-        severity: "medium",
-        title: `${studentsOverBalanceThreshold} student${studentsOverBalanceThreshold === 1 ? "" : "s"} over the balance flag`,
+        id: 'students-over-balance',
+        severity: 'medium',
+        title: `${studentsOverBalanceThreshold} student${studentsOverBalanceThreshold === 1 ? '' : 's'} over the balance flag`,
         detail: `Fee balance exceeds KES ${Math.round(balanceThreshold).toLocaleString()} (${Math.round(balanceThresholdPct * 100)}% of this term's average amount due).`,
-        actionLabel: "View defaulters",
-        actionHref: "/bursar/fees/payments",
+        actionLabel: 'View defaulters',
+        actionHref: '/bursar/fees/payments',
       });
     }
 
     // ---- Academic ----------------------------------------------------
-    const unpublishedAssessments = assessmentsForTerm.filter((a: { status: string; }) => a.status === "draft").length;
+    const unpublishedAssessments = assessmentsForTerm.filter(
+      (a: { status: string }) => a.status === 'draft'
+    ).length;
 
     const scored = results
-      .filter((r: { assessment: { maxMarks: any; }; }) => r.assessment.maxMarks && Number(r.assessment.maxMarks) > 0)
-      .map((r: { marksObtained: any; assessment: { maxMarks: any; stream: { grade: { name: any; }; }; learningArea: { name: any; }; }; }) => ({
-        pct: (Number(r.marksObtained) / Number(r.assessment.maxMarks)) * 100,
-        grade: r.assessment.stream.grade.name,
-        subject: r.assessment.learningArea.name,
-      }));
+      .filter(
+        (r: { assessment: { maxMarks: any } }) =>
+          r.assessment.maxMarks && Number(r.assessment.maxMarks) > 0
+      )
+      .map(
+        (r: {
+          marksObtained: any;
+          assessment: {
+            maxMarks: any;
+            stream: { grade: { name: any } };
+            learningArea: { name: any };
+          };
+        }) => ({
+          pct: (Number(r.marksObtained) / Number(r.assessment.maxMarks)) * 100,
+          grade: r.assessment.stream.grade.name,
+          subject: r.assessment.learningArea.name,
+        })
+      );
 
     const overallScorePct =
-      scored.length > 0 ? Math.round(scored.reduce((s: any, r: { pct: any; }) => s + r.pct, 0) / scored.length) : null;
+      scored.length > 0
+        ? Math.round(scored.reduce((s: any, r: { pct: any }) => s + r.pct, 0) / scored.length)
+        : null;
 
     const gradeAgg = new Map<string, { sum: number; count: number }>();
     for (const r of scored) {
@@ -362,10 +407,18 @@ export async function GET() {
       count: v.count,
     }));
 
-    const subjectGradeAgg = new Map<string, { sum: number; count: number; subject: string; grade: string }>();
+    const subjectGradeAgg = new Map<
+      string,
+      { sum: number; count: number; subject: string; grade: string }
+    >();
     for (const r of scored) {
       const key = `${r.subject}::${r.grade}`;
-      const e = subjectGradeAgg.get(key) ?? { sum: 0, count: 0, subject: r.subject, grade: r.grade };
+      const e = subjectGradeAgg.get(key) ?? {
+        sum: 0,
+        count: 0,
+        subject: r.subject,
+        grade: r.grade,
+      };
       e.sum += r.pct;
       e.count += 1;
       subjectGradeAgg.set(key, e);
@@ -380,38 +433,44 @@ export async function GET() {
 
     if (unpublishedAssessments > 0) {
       alerts.push({
-        id: "unpublished-assessments",
-        severity: "low",
-        title: `${unpublishedAssessments} assessment${unpublishedAssessments === 1 ? "" : "s"} not yet published`,
+        id: 'unpublished-assessments',
+        severity: 'low',
+        title: `${unpublishedAssessments} assessment${unpublishedAssessments === 1 ? '' : 's'} not yet published`,
         detail: "Parents won't see these results until a teacher publishes them.",
-        actionLabel: "Review",
-        actionHref: "/admin/reports",
+        actionLabel: 'Review',
+        actionHref: '/admin/reports',
       });
     }
 
     // ---- Recent activity (merge enrolments + payments + published assessments) ----
     const publishedAssessments = await prisma.assessment.findMany({
-      where: { schoolId, termId: currentTerm.id, status: "published" },
+      where: { schoolId, termId: currentTerm.id, status: 'published' },
       select: { title: true, publishedAt: true, learningArea: { select: { name: true } } },
-      orderBy: { publishedAt: "desc" },
+      orderBy: { publishedAt: 'desc' },
       take: 5,
     });
 
-    const activityItems: { type: "enrolment" | "payment" | "assessment"; text: string; time: string }[] = [
-      ...recentStudents.map((s: { firstName: any; lastName: any; enrollmentDate: { toISOString: () => any; }; }) => ({
-        type: "enrolment" as const,
-        text: `${s.firstName} ${s.lastName} enrolled`,
-        time: s.enrollmentDate.toISOString(),
-      })),
-      ...recentPayments.map((p: { name: any; amount: number; method: any; time: any; }) => ({
-        type: "payment" as const,
+    const activityItems: {
+      type: 'enrolment' | 'payment' | 'assessment';
+      text: string;
+      time: string;
+    }[] = [
+      ...recentStudents.map(
+        (s: { firstName: any; lastName: any; enrollmentDate: { toISOString: () => any } }) => ({
+          type: 'enrolment' as const,
+          text: `${s.firstName} ${s.lastName} enrolled`,
+          time: s.enrollmentDate.toISOString(),
+        })
+      ),
+      ...recentPayments.map((p: { name: any; amount: number; method: any; time: any }) => ({
+        type: 'payment' as const,
         text: `${p.name} paid ${formatKesServer(p.amount)} (${p.method})`,
         time: p.time,
       })),
       ...publishedAssessments
-        .filter((a: { publishedAt: Date | null; }) => a.publishedAt)
-        .map((a: { learningArea: { name: string; }; title: string; publishedAt: Date | null; }) => ({
-          type: "assessment" as const,
+        .filter((a: { publishedAt: Date | null }) => a.publishedAt)
+        .map((a: { learningArea: { name: string }; title: string; publishedAt: Date | null }) => ({
+          type: 'assessment' as const,
           text: `${a.learningArea.name} — ${a.title} published`,
           time: (a.publishedAt as Date).toISOString(),
         })),
@@ -427,25 +486,40 @@ export async function GET() {
       select: { date: true, status: true },
     }),
     prisma.teacherAttendance.findMany({
-      where: { schoolId, date: { gte: sevenDayWindowStart, lte: today }, checkedInAt: { not: null } },
+      where: {
+        schoolId,
+        date: { gte: sevenDayWindowStart, lte: today },
+        checkedInAt: { not: null },
+      },
       select: { date: true, teacherId: true },
     }),
   ]);
 
-  const attendanceWeeklyTrend: { date: string; dayLabel: string; students: number | null; teachers: number | null }[] = [];
+  const attendanceWeeklyTrend: {
+    date: string;
+    dayLabel: string;
+    students: number | null;
+    teachers: number | null;
+  }[] = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(sevenDayWindowStart);
     d.setDate(d.getDate() + i);
-    const key = d.toISOString().split("T")[0];
-    const dayRecords = dailyLast7.filter((r: { date: Date; }) => dateOnly(r.date).toISOString().split("T")[0] === key);
-    const dayPresent = dayRecords.filter((r: { status: string; }) => r.status === "present" || r.status === "late").length;
+    const key = d.toISOString().split('T')[0];
+    const dayRecords = dailyLast7.filter(
+      (r: { date: Date }) => dateOnly(r.date).toISOString().split('T')[0] === key
+    );
+    const dayPresent = dayRecords.filter(
+      (r: { status: string }) => r.status === 'present' || r.status === 'late'
+    ).length;
     const teacherDayCheckedIn = new Set(
-      teacherLast7.filter((r: { date: Date; }) => dateOnly(r.date).toISOString().split("T")[0] === key).map((r: { teacherId: any; }) => r.teacherId)
+      teacherLast7
+        .filter((r: { date: Date }) => dateOnly(r.date).toISOString().split('T')[0] === key)
+        .map((r: { teacherId: any }) => r.teacherId)
     ).size;
 
     attendanceWeeklyTrend.push({
       date: key,
-      dayLabel: d.toLocaleDateString("en-KE", { weekday: "short" }),
+      dayLabel: d.toLocaleDateString('en-KE', { weekday: 'short' }),
       students: pct(dayPresent, dayRecords.length),
       teachers: pct(teacherDayCheckedIn, activeTeachersCount),
     });

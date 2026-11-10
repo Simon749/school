@@ -1,43 +1,82 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/db";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { requireUser } from '@/lib/auth/current-user';
+import { logAudit, getRequestMetadata } from '@/lib/audit';
+import { getCalendarDay } from '@/lib/calendar';
+import { getNairobiDateString, getNairobiNow } from '@/lib/time';
 
-/** Gate arrival scan or manual receptionist entry */
 export async function POST(req: NextRequest) {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // 1. Role gating: Only admin or deputy can mark gate arrivals (ATT-07)
+  const guard = await requireUser(['admin', 'deputy']);
+  if (!guard.ok) return guard.response;
+  const user = guard.user;
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { id: true, schoolId: true, role: true },
-  });
-  if (!user?.schoolId || !["admin", "teacher", "it_admin"].includes(user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
   }
 
-  const body = await req.json();
-  const { studentId, arrivedAt } = body as { studentId: string; arrivedAt?: string };
-  if (!studentId) return NextResponse.json({ error: "studentId required" }, { status: 400 });
+  // IGNORE client-supplied arrivedAt to prevent backdating attacks
+  const { studentId } = body; 
 
-  const student = await prisma.student.findFirst({
+  if (!studentId || typeof studentId !== 'string') {
+    return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
+  }
+
+  // 2. IDOR prevention: Verify student belongs to caller's school
+  const student = await prisma.student.findUnique({
     where: { id: studentId, schoolId: user.schoolId, deletedAt: null },
+    select: { id: true, firstName: true, lastName: true, admissionNumber: true },
   });
-  if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 });
 
-  const today = new Date().toISOString().split("T")[0];
-  const arrival = arrivedAt ? new Date(arrivedAt) : new Date();
+  if (!student) {
+    return NextResponse.json({ error: 'Student not found or not in your school' }, { status: 404 });
+  }
 
-  const record = await prisma.studentDailyAttendance.upsert({
-    where: { studentId_date: { studentId, date: new Date(today) } },
-    update: { arrivedAt: arrival, status: "present" },
-    create: {
+  // 3. Server time & Calendar validation (ATT-07, ATT-10)
+  const now = getNairobiNow();
+  const todayStr = getNairobiDateString(now);
+  
+  const calendarDay = await getCalendarDay(user.schoolId, new Date(`${todayStr}T00:00:00.000Z`));
+  if (!calendarDay || calendarDay.dayType !== 'school_day') {
+    return NextResponse.json({ error: `Gate arrival cannot be recorded on a ${calendarDay?.dayType || 'non-school'} day.` }, { status: 400 });
+  }
+
+  const auditMeta = getRequestMetadata(req);
+
+  // 4. Transactional upsert + Immutable Audit (R5-01, AUD-02)
+  const record = await prisma.$transaction(async (tx) => {
+    const attendance = await tx.studentDailyAttendance.upsert({
+      where: { studentId_date: { studentId, date: new Date(`${todayStr}T00:00:00.000Z`) } },
+      update: { arrivedAt: now, status: 'present' },
+      create: {
+        schoolId: user.schoolId,
+        studentId,
+        date: new Date(`${todayStr}T00:00:00.000Z`),
+        arrivedAt: now,
+        status: 'present',
+      },
+    });
+
+    await logAudit({
       schoolId: user.schoolId,
-      studentId,
-      date: new Date(today),
-      arrivedAt: arrival,
-      status: "present",
-    },
+      actorId: user.id,
+      action: 'STUDENT_GATE_ARRIVAL',
+      tableName: 'StudentDailyAttendance',
+      recordId: attendance.id,
+      newData: { studentId, arrivedAt: now.toISOString(), status: 'present' },
+      ipAddress: auditMeta.ipAddress,
+      userAgent: auditMeta.userAgent,
+    });
+
+    return attendance;
   });
 
-  return NextResponse.json({ success: true, record }, { status: 201 });
+  return NextResponse.json({ 
+    success: true, 
+    message: `${student.firstName} ${student.lastName} marked present at ${now.toLocaleTimeString('en-GB', { timeZone: 'Africa/Nairobi' })}`,
+    record: { id: record.id, studentId: record.studentId, arrivedAt: record.arrivedAt, status: record.status }
+  }, { status: 201 });
 }

@@ -1,79 +1,95 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 export default function ItAdminExportPage() {
-  const [exportType, setExportType] = useState("");
+  const [exportType, setExportType] = useState('');
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async (type: string) => {
     setExportType(type);
     setIsExporting(true);
-    
+
     let pollInterval: ReturnType<typeof setInterval> | null = null;
     let attempts = 0;
     const maxAttempts = 30; // Stop polling after 30 seconds
 
     try {
       // 1. Enqueue the job
-      const res = await fetch("/api/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, format: "csv" }),
+      const res = await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, format: 'csv' }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to queue export");
+      if (!res.ok) throw new Error(data.error || 'Failed to queue export');
 
       const jobId = data.jobId;
-      toast.info("Export queued. Generating file...");
+      toast.info('Export queued. Generating file...');
 
       // 2. Poll for completion with a safety timeout
       pollInterval = setInterval(async () => {
         attempts++;
-        
+
         // SAFETY NET: Stop polling if it takes too long
         if (attempts > maxAttempts) {
           if (pollInterval !== null) clearInterval(pollInterval);
-          toast.error("Export is taking too long. Please check if the worker is running.");
+          toast.error('Export is taking too long. Please check if the worker is running.');
           setIsExporting(false);
-          setExportType("");
+          setExportType('');
           return;
         }
 
         const statusRes = await fetch(`/api/export/status?jobId=${jobId}`);
         const statusData = await statusRes.json();
 
-        if (statusData.state === "completed") {
+        if (statusData.state === 'completed') {
           if (pollInterval !== null) clearInterval(pollInterval);
-          toast.success("Export ready! Downloading...");
-          window.open(`/api/export/download?jobId=${jobId}`, "_blank");
+          toast.success('Export ready! Downloading...');
+          const downloadUrl: string | undefined = statusData.data?.downloadUrl;
+          if (downloadUrl) {
+            window.open(downloadUrl, '_blank');
+          } else {
+            toast.error('The export finished but no download link was returned.');
+          }
           setIsExporting(false);
-          setExportType("");
-        } else if (statusData.state === "failed") {
+          setExportType('');
+        } else if (statusData.state === 'failed') {
           if (pollInterval !== null) clearInterval(pollInterval);
           toast.error(`Export failed: ${statusData.failedReason}`);
           setIsExporting(false);
-          setExportType("");
+          setExportType('');
         }
-      }, 1000); 
-
+      }, 1000);
     } catch (error: any) {
       if (pollInterval !== null) clearInterval(pollInterval);
       console.error(error);
-      toast.error(error.message || "Export failed");
+      toast.error(error.message || 'Export failed');
       setIsExporting(false);
-      setExportType("");
+      setExportType('');
     }
   };
 
   const exports = [
-    { id: "students", title: "Student Roster", desc: "All active students with stream and guardian details." },
-    { id: "fees-defaulters", title: "Fee Defaulters", desc: "Students with outstanding fee balances for the current term." },
-    { id: "attendance-student", title: "Attendance Summary", desc: "Term-level attendance statistics for all students." },
+    {
+      id: 'students',
+      title: 'Student Roster',
+      desc: 'All active students with stream and guardian details.',
+    },
+    {
+      id: 'fees-defaulters',
+      title: 'Fee Defaulters',
+      desc: 'Students with outstanding fee balances for the current term.',
+    },
+    {
+      id: 'attendance-student',
+      title: 'Attendance Summary',
+      desc: 'Term-level attendance statistics for all students.',
+    },
   ];
 
   return (
@@ -91,13 +107,13 @@ export default function ItAdminExportPage() {
               <CardDescription>{exp.desc}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button 
-                className="w-full" 
-                variant={exp.id === "students" ? "default" : "outline"}
+              <Button
+                className="w-full"
+                variant={exp.id === 'students' ? 'default' : 'outline'}
                 onClick={() => handleExport(exp.id)}
                 disabled={isExporting}
               >
-                {isExporting && exportType === exp.id ? "Generating..." : "Download CSV"}
+                {isExporting && exportType === exp.id ? 'Generating...' : 'Download CSV'}
               </Button>
             </CardContent>
           </Card>

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   Users,
   ClipboardCheck,
@@ -20,7 +20,7 @@ import {
   Smartphone,
   ChevronRight,
   ArrowRight,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   AreaChart,
   Area,
@@ -33,8 +33,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-} from "recharts";
-import { Card } from "@/components/ui/card";
+} from 'recharts';
+import { Card } from '@/components/ui/card';
 
 // ---------------------------------------------------------------------------
 // Types — mirror the exact shape returned by /api/admin/dashboard.
@@ -44,7 +44,7 @@ import { Card } from "@/components/ui/card";
 
 interface Alert {
   id: string;
-  severity: "critical" | "high" | "medium" | "low";
+  severity: 'critical' | 'high' | 'medium' | 'low';
   title: string;
   detail: string;
   actionLabel: string;
@@ -88,7 +88,12 @@ interface DashboardData {
     teacherTodayPct: number | null;
     teachersCheckedInToday: number;
     activeTeachersCount: number;
-    weeklyTrend: { date: string; dayLabel: string; students: number | null; teachers: number | null }[];
+    weeklyTrend: {
+      date: string;
+      dayLabel: string;
+      students: number | null;
+      teachers: number | null;
+    }[];
   };
   academic: {
     overallScorePct: number | null;
@@ -105,7 +110,7 @@ interface DashboardData {
     boys: number;
     byGrade: { grade: string; count: number }[];
   };
-  recentActivity: { type: "enrolment" | "payment" | "assessment"; text: string; time: string }[];
+  recentActivity: { type: 'enrolment' | 'payment' | 'assessment'; text: string; time: string }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -146,11 +151,11 @@ function Stat({
   label: string;
   value: string;
   sublabel: string;
-  trend?: "up" | "down" | "neutral";
+  trend?: 'up' | 'down' | 'neutral';
 }) {
   const trendColor =
-    trend === "up" ? "text-emerald-600" : trend === "down" ? "text-red-500" : "text-slate-500";
-  const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
+    trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-500' : 'text-slate-500';
+  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
   return (
     <div>
       <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
@@ -182,13 +187,13 @@ function PulseCard({
 }
 
 const SEVERITY_STYLES: Record<
-  Alert["severity"],
+  Alert['severity'],
   { border: string; icon: React.ElementType; iconColor: string }
 > = {
-  critical: { border: "border-l-red-500", icon: AlertCircle, iconColor: "text-red-500" },
-  high: { border: "border-l-orange-400", icon: AlertTriangle, iconColor: "text-orange-500" },
-  medium: { border: "border-l-amber-400", icon: AlertTriangle, iconColor: "text-amber-500" },
-  low: { border: "border-l-blue-400", icon: Info, iconColor: "text-blue-500" },
+  critical: { border: 'border-l-red-500', icon: AlertCircle, iconColor: 'text-red-500' },
+  high: { border: 'border-l-orange-400', icon: AlertTriangle, iconColor: 'text-orange-500' },
+  medium: { border: 'border-l-amber-400', icon: AlertTriangle, iconColor: 'text-amber-500' },
+  low: { border: 'border-l-blue-400', icon: Info, iconColor: 'text-blue-500' },
 };
 
 function AlertCard({ alert }: { alert: Alert }) {
@@ -231,14 +236,18 @@ function FinancialHealth({ data }: { data: DashboardData }) {
       <SectionHeader title="Financial Health" action="Bursar dashboard" href="/bursar" />
 
       {!hasTerm ? (
-        <EmptyState>No current term is set up yet — fee figures will appear once one is.</EmptyState>
+        <EmptyState>
+          No current term is set up yet — fee figures will appear once one is.
+        </EmptyState>
       ) : financial.target === 0 ? (
         <EmptyState>No fee structure has been set up for this term yet.</EmptyState>
       ) : (
         <>
           <div className="mb-6">
             <div className="mb-2 flex items-baseline justify-between">
-              <span className="text-xs uppercase tracking-wide text-slate-500">Collection vs Target</span>
+              <span className="text-xs uppercase tracking-wide text-slate-500">
+                Collection vs Target
+              </span>
               <span className="font-mono text-sm font-medium text-slate-800">{pct}% collected</span>
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-slate-100">
@@ -261,7 +270,9 @@ function FinancialHealth({ data }: { data: DashboardData }) {
               </p>
             </div>
             <div className="rounded-lg bg-red-50 p-3 text-center">
-              <p className="mb-1 text-xs text-red-500">Balances &gt; {formatKes(financial.balanceThreshold)}</p>
+              <p className="mb-1 text-xs text-red-500">
+                Balances &gt; {formatKes(financial.balanceThreshold)}
+              </p>
               <p className="font-mono text-sm font-semibold text-red-700">
                 {financial.studentsOverBalanceThreshold}
               </p>
@@ -280,20 +291,34 @@ function FinancialHealth({ data }: { data: DashboardData }) {
             <div>
               <p className="mb-3 text-xs uppercase tracking-wide text-slate-500">Payment Trend</p>
               <ResponsiveContainer width="100%" height={100}>
-                <AreaChart data={financial.weeklyTrend} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <AreaChart
+                  data={financial.weeklyTrend}
+                  margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
+                >
                   <defs>
                     <linearGradient id="feeGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="weekLabel" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <XAxis
+                    dataKey="weekLabel"
+                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
                   <YAxis hide />
                   <Tooltip
-                    formatter={(v) => [formatKes(Number(v ?? 0)), "Collected"]}
-                    contentStyle={{ fontSize: 11, border: "1px solid #e2e8f0", borderRadius: 6 }}
+                    formatter={(v) => [formatKes(Number(v ?? 0)), 'Collected']}
+                    contentStyle={{ fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 6 }}
                   />
-                  <Area type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={2} fill="url(#feeGrad)" />
+                  <Area
+                    type="monotone"
+                    dataKey="amount"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    fill="url(#feeGrad)"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -317,7 +342,10 @@ function FinancialHealth({ data }: { data: DashboardData }) {
                         KES {p.amount.toLocaleString()}
                       </span>
                       <span className="text-slate-400">
-                        {new Date(p.time).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(p.time).toLocaleTimeString('en-KE', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </span>
                     </div>
                   </div>
@@ -340,12 +368,16 @@ function AttendanceSection({ data }: { data: DashboardData }) {
 
   return (
     <Card className="p-6">
-      <SectionHeader title="Attendance & Operations" action="Full report" href="/admin/attendance" />
+      <SectionHeader
+        title="Attendance & Operations"
+        action="Full report"
+        href="/admin/attendance"
+      />
 
       {!calendar.isSchoolDayToday && (
         <div className="mb-4 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700">
           {calendar.dayType
-            ? `Today is marked as "${calendar.dayType.replace("_", " ")}" — normal lesson attendance is not expected.`
+            ? `Today is marked as "${calendar.dayType.replace('_', ' ')}" — normal lesson attendance is not expected.`
             : "The school calendar has no entry for today, so attendance can't be calculated yet."}
         </div>
       )}
@@ -354,18 +386,18 @@ function AttendanceSection({ data }: { data: DashboardData }) {
         <div className="rounded-xl bg-slate-50 p-4">
           <p className="mb-2 text-xs text-slate-500">Student Attendance Today</p>
           <p className="text-3xl font-bold text-emerald-600">
-            {attendance.studentToday.pct !== null ? `${attendance.studentToday.pct}%` : "—"}
+            {attendance.studentToday.pct !== null ? `${attendance.studentToday.pct}%` : '—'}
           </p>
           <p className="mt-1 font-mono text-xs text-slate-500">
             {attendance.studentToday.recorded > 0
               ? `${attendance.studentToday.present} of ${attendance.studentToday.recorded} recorded present`
-              : "No records yet today"}
+              : 'No records yet today'}
           </p>
         </div>
         <div className="rounded-xl bg-slate-50 p-4">
           <p className="mb-2 text-xs text-slate-500">Teacher Attendance Today</p>
           <p className="text-3xl font-bold text-slate-800">
-            {attendance.teacherTodayPct !== null ? `${attendance.teacherTodayPct}%` : "—"}
+            {attendance.teacherTodayPct !== null ? `${attendance.teacherTodayPct}%` : '—'}
           </p>
           <p className="mt-1 font-mono text-xs text-slate-500">
             {attendance.teachersCheckedInToday} of {attendance.activeTeachersCount} checked in
@@ -377,25 +409,40 @@ function AttendanceSection({ data }: { data: DashboardData }) {
         <div>
           <p className="mb-3 text-xs uppercase tracking-wide text-slate-500">Weekly Trend</p>
           <ResponsiveContainer width="100%" height={110}>
-            <LineChart data={attendance.weeklyTrend} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+            <LineChart
+              data={attendance.weeklyTrend}
+              margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="dayLabel" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+              <XAxis
+                dataKey="dayLabel"
+                tick={{ fontSize: 10, fill: '#94a3b8' }}
+                axisLine={false}
+                tickLine={false}
+              />
               <YAxis domain={[0, 100]} hide />
               <Tooltip
                 formatter={(v, name) => [
-                  v === null || v === undefined ? "No data" : `${v}%`,
-                  name === "students" ? "Students" : "Teachers",
+                  v === null || v === undefined ? 'No data' : `${v}%`,
+                  name === 'students' ? 'Students' : 'Teachers',
                 ]}
-                contentStyle={{ fontSize: 11, border: "1px solid #e2e8f0", borderRadius: 6 }}
+                contentStyle={{ fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 6 }}
               />
-              <Line type="monotone" dataKey="students" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: "#10b981" }} connectNulls={false} />
+              <Line
+                type="monotone"
+                dataKey="students"
+                stroke="#10b981"
+                strokeWidth={2}
+                dot={{ r: 3, fill: '#10b981' }}
+                connectNulls={false}
+              />
               <Line
                 type="monotone"
                 dataKey="teachers"
                 stroke="#64748b"
                 strokeWidth={2}
                 strokeDasharray="4 2"
-                dot={{ r: 3, fill: "#64748b" }}
+                dot={{ r: 3, fill: '#64748b' }}
                 connectNulls={false}
               />
             </LineChart>
@@ -405,12 +452,15 @@ function AttendanceSection({ data }: { data: DashboardData }) {
               <span className="inline-block h-0.5 w-3 bg-emerald-500" /> Students
             </span>
             <span className="flex items-center gap-1.5 text-slate-500">
-              <span className="inline-block h-0.5 w-3 border-t-2 border-dashed border-slate-500" /> Teachers
+              <span className="inline-block h-0.5 w-3 border-t-2 border-dashed border-slate-500" />{' '}
+              Teachers
             </span>
           </div>
         </div>
       ) : (
-        <EmptyState>No school days recorded on the calendar yet — set up the calendar to see trends.</EmptyState>
+        <EmptyState>
+          No school days recorded on the calendar yet — set up the calendar to see trends.
+        </EmptyState>
       )}
     </Card>
   );
@@ -443,19 +493,28 @@ function AcademicHealth({ data }: { data: DashboardData }) {
 
           {academic.byGrade.length > 0 && (
             <div className="mb-5">
-              <p className="mb-3 text-xs uppercase tracking-wide text-slate-500">Performance by Grade</p>
+              <p className="mb-3 text-xs uppercase tracking-wide text-slate-500">
+                Performance by Grade
+              </p>
               <div className="space-y-2">
                 {academic.byGrade.map((g) => (
                   <div key={g.grade} className="flex items-center gap-3">
                     <span className="w-20 flex-shrink-0 text-xs text-slate-600">{g.grade}</span>
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                       <div
-                        className={`h-full rounded-full ${g.scorePct >= 75 ? "bg-emerald-500" : g.scorePct >= 60 ? "bg-amber-400" : "bg-red-400"
-                          }`}
+                        className={`h-full rounded-full ${
+                          g.scorePct >= 75
+                            ? 'bg-emerald-500'
+                            : g.scorePct >= 60
+                              ? 'bg-amber-400'
+                              : 'bg-red-400'
+                        }`}
                         style={{ width: `${g.scorePct}%` }}
                       />
                     </div>
-                    <span className="w-10 text-right font-mono text-xs text-slate-800">{g.scorePct}%</span>
+                    <span className="w-10 text-right font-mono text-xs text-slate-800">
+                      {g.scorePct}%
+                    </span>
                   </div>
                 ))}
               </div>
@@ -467,7 +526,10 @@ function AcademicHealth({ data }: { data: DashboardData }) {
               <p className="mb-2 text-xs uppercase tracking-wide text-slate-500">Needs Attention</p>
               <div className="space-y-1.5">
                 {academic.needsAttention.map((s) => (
-                  <div key={`${s.subject}-${s.grade}`} className="flex items-center justify-between text-xs">
+                  <div
+                    key={`${s.subject}-${s.grade}`}
+                    className="flex items-center justify-between text-xs"
+                  >
                     <span className="text-slate-700">
                       {s.subject} · <span className="text-slate-500">{s.grade}</span>
                     </span>
@@ -489,14 +551,17 @@ function AcademicHealth({ data }: { data: DashboardData }) {
 
 function EnrolmentSection({ data }: { data: DashboardData }) {
   const { enrolment } = data;
-  const boardingPct = enrolment.total > 0 ? Math.round((enrolment.boarding / enrolment.total) * 100) : 0;
+  const boardingPct =
+    enrolment.total > 0 ? Math.round((enrolment.boarding / enrolment.total) * 100) : 0;
   const girlsPct = enrolment.total > 0 ? Math.round((enrolment.girls / enrolment.total) * 100) : 0;
 
   if (enrolment.total === 0) {
     return (
       <Card className="p-6">
         <SectionHeader title="Enrolment" action="Manage students" href="/admin/students" />
-        <EmptyState>No active students yet — enrol your first student to see this section.</EmptyState>
+        <EmptyState>
+          No active students yet — enrol your first student to see this section.
+        </EmptyState>
       </Card>
     );
   }
@@ -523,15 +588,22 @@ function EnrolmentSection({ data }: { data: DashboardData }) {
       <div className="mb-4">
         <p className="mb-2 text-xs uppercase tracking-wide text-slate-500">Day vs Boarding</p>
         <div className="flex h-2.5 overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full rounded-l-full bg-slate-700" style={{ width: `${100 - boardingPct}%` }} />
-          <div className="h-full rounded-r-full bg-emerald-500" style={{ width: `${boardingPct}%` }} />
+          <div
+            className="h-full rounded-l-full bg-slate-700"
+            style={{ width: `${100 - boardingPct}%` }}
+          />
+          <div
+            className="h-full rounded-r-full bg-emerald-500"
+            style={{ width: `${boardingPct}%` }}
+          />
         </div>
         <div className="mt-1.5 flex justify-between font-mono text-xs text-slate-500">
           <span className="flex items-center gap-1">
             <span className="inline-block h-2 w-2 rounded-full bg-slate-700" /> Day {enrolment.day}
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" /> Boarding {enrolment.boarding}
+            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" /> Boarding{' '}
+            {enrolment.boarding}
           </span>
         </div>
       </div>
@@ -540,11 +612,15 @@ function EnrolmentSection({ data }: { data: DashboardData }) {
         <p className="mb-2 text-xs uppercase tracking-wide text-slate-500">Gender Distribution</p>
         <div className="flex h-2.5 overflow-hidden rounded-full bg-slate-100">
           <div className="h-full rounded-l-full bg-violet-400" style={{ width: `${girlsPct}%` }} />
-          <div className="h-full rounded-r-full bg-sky-400" style={{ width: `${100 - girlsPct}%` }} />
+          <div
+            className="h-full rounded-r-full bg-sky-400"
+            style={{ width: `${100 - girlsPct}%` }}
+          />
         </div>
         <div className="mt-1.5 flex justify-between font-mono text-xs text-slate-500">
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2 w-2 rounded-full bg-violet-400" /> Girls {enrolment.girls}
+            <span className="inline-block h-2 w-2 rounded-full bg-violet-400" /> Girls{' '}
+            {enrolment.girls}
           </span>
           <span className="flex items-center gap-1">
             <span className="inline-block h-2 w-2 rounded-full bg-sky-400" /> Boys {enrolment.boys}
@@ -557,11 +633,16 @@ function EnrolmentSection({ data }: { data: DashboardData }) {
           <p className="mb-3 text-xs uppercase tracking-wide text-slate-500">Students by Grade</p>
           <ResponsiveContainer width="100%" height={130}>
             <BarChart data={enrolment.byGrade} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
-              <XAxis dataKey="grade" tick={{ fontSize: 9, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+              <XAxis
+                dataKey="grade"
+                tick={{ fontSize: 9, fill: '#94a3b8' }}
+                axisLine={false}
+                tickLine={false}
+              />
               <YAxis hide />
               <Tooltip
-                formatter={(v) => [Number(v ?? 0), "Students"]}
-                contentStyle={{ fontSize: 11, border: "1px solid #e2e8f0", borderRadius: 6 }}
+                formatter={(v) => [Number(v ?? 0), 'Students']}
+                contentStyle={{ fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 6 }}
               />
               <Bar dataKey="count" fill="#0d9488" radius={[3, 3, 0, 0]} maxBarSize={18} />
             </BarChart>
@@ -577,12 +658,12 @@ function EnrolmentSection({ data }: { data: DashboardData }) {
 // ---------------------------------------------------------------------------
 
 const ACTIVITY_ICON: Record<
-  DashboardData["recentActivity"][number]["type"],
+  DashboardData['recentActivity'][number]['type'],
   { icon: React.ElementType; color: string }
 > = {
-  payment: { icon: CreditCard, color: "bg-emerald-100 text-emerald-700" },
-  enrolment: { icon: UserCheck, color: "bg-violet-100 text-violet-700" },
-  assessment: { icon: BookOpen, color: "bg-amber-100 text-amber-700" },
+  payment: { icon: CreditCard, color: 'bg-emerald-100 text-emerald-700' },
+  enrolment: { icon: UserCheck, color: 'bg-violet-100 text-violet-700' },
+  assessment: { icon: BookOpen, color: 'bg-amber-100 text-amber-700' },
 };
 
 function RecentActivity({ data }: { data: DashboardData }) {
@@ -598,12 +679,17 @@ function RecentActivity({ data }: { data: DashboardData }) {
             const Icon = cfg.icon;
             return (
               <div key={i} className="flex items-start gap-3">
-                <div className={`mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${cfg.color}`}>
+                <div
+                  className={`mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${cfg.color}`}
+                >
                   <Icon className="h-3.5 w-3.5" />
                 </div>
                 <p className="flex-1 text-sm leading-snug text-slate-700">{item.text}</p>
                 <span className="flex-shrink-0 font-mono text-xs text-slate-400">
-                  {new Date(item.time).toLocaleDateString("en-KE", { day: "numeric", month: "short" })}
+                  {new Date(item.time).toLocaleDateString('en-KE', {
+                    day: 'numeric',
+                    month: 'short',
+                  })}
                 </span>
               </div>
             );
@@ -619,9 +705,9 @@ function RecentActivity({ data }: { data: DashboardData }) {
 // ---------------------------------------------------------------------------
 
 function greetingForHour(hour: number) {
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 export default function AdminDashboardPage() {
@@ -635,15 +721,15 @@ export default function AdminDashboardPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/admin/dashboard");
+        const res = await fetch('/api/admin/dashboard');
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || "Failed to load dashboard");
+          throw new Error(body.error || 'Failed to load dashboard');
         }
         const json = (await res.json()) as DashboardData;
         if (!cancelled) setData(json);
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load dashboard");
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load dashboard');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -676,18 +762,18 @@ export default function AdminDashboardPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-slate-900">Admin dashboard</h1>
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error || "Something went wrong loading your dashboard."}
+          {error || 'Something went wrong loading your dashboard.'}
         </p>
       </div>
     );
   }
 
   const hour = new Date().getHours();
-  const dateStr = new Date().toLocaleDateString("en-KE", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
+  const dateStr = new Date().toLocaleDateString('en-KE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
   });
 
   return (
@@ -700,7 +786,7 @@ export default function AdminDashboardPage() {
           </h1>
           <p className="mt-0.5 text-sm text-slate-500">
             {data.school.name}
-            {data.school.term ? ` · ${data.school.term}` : ""} — here's what's happening today.
+            {data.school.term ? ` · ${data.school.term}` : ''} — here's what's happening today.
           </p>
         </div>
         <p className="hidden text-xs text-slate-400 sm:block">{dateStr}</p>
@@ -716,14 +802,18 @@ export default function AdminDashboardPage() {
             label="Active Learners"
             value={String(data.pulse.activeStudents)}
             sublabel={`+${data.pulse.newThisTerm} this term`}
-            trend={data.pulse.newThisTerm > 0 ? "up" : "neutral"}
+            trend={data.pulse.newThisTerm > 0 ? 'up' : 'neutral'}
           />
           <PulseCard
             icon={ClipboardCheck}
             accent="bg-teal-600"
             label="Today's Attendance"
-            value={data.pulse.studentAttendanceTodayPct !== null ? `${data.pulse.studentAttendanceTodayPct}%` : "—"}
-            sublabel={data.calendar.isSchoolDayToday ? "students recorded" : "not a school day"}
+            value={
+              data.pulse.studentAttendanceTodayPct !== null
+                ? `${data.pulse.studentAttendanceTodayPct}%`
+                : '—'
+            }
+            sublabel={data.calendar.isSchoolDayToday ? 'students recorded' : 'not a school day'}
             trend="neutral"
           />
           <PulseCard
@@ -731,7 +821,7 @@ export default function AdminDashboardPage() {
             accent="bg-slate-700"
             label="Fees Collected"
             value={formatKes(data.pulse.feesCollectedTerm)}
-            sublabel={data.school.term || "no current term"}
+            sublabel={data.school.term || 'no current term'}
             trend="neutral"
           />
           <PulseCard
@@ -740,7 +830,7 @@ export default function AdminDashboardPage() {
             label="Collection Rate"
             value={`${data.pulse.collectionRatePct}%`}
             sublabel="of this term's fees"
-            trend={data.pulse.collectionRatePct >= 80 ? "up" : "down"}
+            trend={data.pulse.collectionRatePct >= 80 ? 'up' : 'down'}
           />
           <PulseCard
             icon={GraduationCap}
@@ -756,7 +846,9 @@ export default function AdminDashboardPage() {
       {/* Needs Attention */}
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">Needs Attention</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">
+            Needs Attention
+          </h2>
           <span className="font-mono text-xs text-slate-400">{data.alerts.length} items</span>
         </div>
         {data.alerts.length === 0 ? (

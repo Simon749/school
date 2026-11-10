@@ -1,61 +1,62 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/db";
-import { exportQueue } from "@/lib/export/queue"; // Adjust path if needed
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { requireUser } from '@/lib/auth/current-user';
+import { logAudit } from '@/lib/audit';
+import { exportQueue } from '@/lib/export/queue';
+import { EXPORT_ROLES, EXPORT_TYPES, mayRequestExport } from '@/lib/export/access';
+
+const requestSchema = z.object({
+  type: z.enum(EXPORT_TYPES),
+  format: z.enum(['csv', 'pdf']).default('csv'),
+  // Free-form per export type for now (typed per export in R6-06), but bounded.
+  filters: z
+    .record(z.unknown())
+    .default({})
+    .refine((f) => JSON.stringify(f).length <= 4000, 'Filters are too large'),
+});
 
 export async function POST(req: NextRequest) {
+  const guard = await requireUser(EXPORT_ROLES);
+  if (!guard.ok) return guard.response;
+  const { user } = guard;
+
+  let body: unknown;
   try {
-    // FIX 1: Await auth() to properly resolve the session
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
+  }
 
-    // FIX 2: Verify role and schoolId via Prisma (Single Source of Truth)
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-      select: { id: true, role: true, schoolId: true },
-    });
+  const parsed = requestSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid export request' }, { status: 400 });
+  }
+  const { type, format, filters } = parsed.data;
 
-    if (!user || !["it_admin", "admin", "bursar"].includes(user.role)) {
-      return NextResponse.json({ error: "Unauthorized: Insufficient permissions" }, { status: 403 });
-    }
+  if (!mayRequestExport(user.role, type)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
-    const body = await req.json();
-    const { type, filters, format = "csv" } = body;
-
-    // Validate export type
-    const validTypes = [
-      "attendance-class",
-      "attendance-student",
-      "attendance-teacher",
-      "fees-daily",
-      "fees-term",
-      "fees-defaulters",
-      "results-markbook",
-      "results-portfolio",
-      "students", // Added to match your frontend
-    ];
-
-    if (!validTypes.includes(type)) {
-      return NextResponse.json({ error: "Invalid export type" }, { status: 400 });
-    }
-
-    // Enqueue the export job
+  try {
     const job = await exportQueue.add(`export-${type}`, {
       type,
-      schoolId: user.schoolId, // Safely derived from Prisma
-      userId: user.id,         // Use internal DB ID for the worker, not Clerk ID
+      schoolId: user.schoolId, // from the session only, never from the request
+      userId: user.id,
       filters,
       format,
     });
 
-    return NextResponse.json({
-      jobId: job.id,
-      message: "Export job queued successfully.",
+    await logAudit({
+      schoolId: user.schoolId,
+      actorId: user.id,
+      action: 'export.requested',
+      tableName: 'export_jobs',
+      newData: { type, format, jobId: job.id ?? null, filters },
     });
+
+    return NextResponse.json({ jobId: job.id, message: 'Export job queued successfully.' });
   } catch (error) {
-    console.error("[EXPORT_QUEUE_ERROR]:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error('[EXPORT_QUEUE_ERROR]:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

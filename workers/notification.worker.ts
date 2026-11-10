@@ -1,30 +1,36 @@
-// src/workers/notification.worker.ts
-import { Worker, Job } from "bullmq";
-import { prisma } from "@/lib/db";
-import { redis } from "@/lib/redis";
-import { sendPushNotification } from "@/lib/firebase/admin";
+import { Worker, Job } from 'bullmq';
+import { prisma } from '@/lib/db';
+import { redis } from '@/lib/redis';
+import { sendPushNotification } from '@/lib/firebase/admin';
 
 interface NotificationJobData {
+  schoolId: string; // ➕ R5-04: Strict tenancy required in payload
   userId: string;
   type: string;
   title: string;
   body: string;
   data?: Record<string, string>;
-  priority?: "high" | "normal" | "low";
+  priority?: 'high' | 'normal' | 'low';
 }
 
 export const notificationWorker = new Worker<NotificationJobData>(
-  "notification-queue",
+  'notification-queue',
   async (job: Job<NotificationJobData>) => {
-    const { userId, type, title, body, data, priority } = job.data;
+    const { schoolId, userId, type, title, body, data, priority } = job.data;
 
-    console.log(`[Notification Worker] Processing notification for user ${userId}`);
+    console.log(`[Notification Worker] Processing notification for user ${userId} in school ${schoolId}`);
 
-    // Fetch user with device tokens
+    // R2-05 / R5-04: Re-validate that the target user belongs to the school at execution time
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { 
+        id: userId, 
+        schoolId, // ➕ Strict tenancy check
+        isActive: true,
+        deletedAt: null,
+      },
       select: {
         id: true,
+        schoolId: true,
         deviceTokens: true,
         notificationPref: true,
         hasAppInstalled: true,
@@ -32,19 +38,20 @@ export const notificationWorker = new Worker<NotificationJobData>(
     });
 
     if (!user) {
-      console.log(`[Notification Worker] User ${userId} not found`);
+      console.log(`[Notification Worker] User ${userId} not found or does not belong to school ${schoolId}`);
       return;
     }
 
     // Check notification preference
-    if (user.notificationPref === "none") {
+    if (user.notificationPref === 'none') {
       console.log(`[Notification Worker] User ${userId} has opted out of notifications`);
       return;
     }
 
-    // Store notification in database
+    // Store notification in database with strict schoolId scoping
     await prisma.notification.create({
       data: {
+        schoolId, // ➕ R5-04: Strict tenancy
         userId: user.id,
         type,
         title,
@@ -64,6 +71,7 @@ export const notificationWorker = new Worker<NotificationJobData>(
             ...data,
             type,
             userId: user.id,
+            schoolId: user.schoolId, // ➕ Include schoolId in push payload for client-side validation
           },
         });
 
@@ -84,10 +92,10 @@ export const notificationWorker = new Worker<NotificationJobData>(
   }
 );
 
-notificationWorker.on("completed", (job) => {
+notificationWorker.on('completed', (job) => {
   console.log(`[Notification Worker] Job ${job.id} completed`);
 });
 
-notificationWorker.on("failed", (job, err) => {
+notificationWorker.on('failed', (job, err) => {
   console.error(`[Notification Worker] Job ${job?.id} failed:`, err);
 });

@@ -2,6 +2,10 @@
   "name": "edutrack-kenya",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=20 <25"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,7 +15,13 @@
     "format": "prettier --write .",
     "prepare": "node scripts/prepare.mjs",
     "workers": "tsx workers/index.ts",
-    "workers:dev": "tsx watch workers/index.ts"
+    "workers:dev": "tsx watch workers/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "inventory": "tsx scripts/route-inventory.ts",
+    "contract": "tsx scripts/ui-api-contract.ts",
+    "provision-school": "tsx scripts/provision-school.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1114.0",
@@ -48,6 +58,7 @@
     "tailwind-merge": "^2.6.1",
     "tailwindcss-animate": "^1.0.7",
     "tw-animate-css": "^1.4.0",
+    "uuid": "^14.0.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -64,9 +75,20 @@
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
     "tsx": "^4.23.12",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "esbuild",
+      "msgpackr-extract",
+      "unrs-resolver"
+    ]
   }
 }

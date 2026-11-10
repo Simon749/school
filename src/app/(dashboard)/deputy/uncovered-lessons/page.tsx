@@ -1,7 +1,9 @@
-import { prisma } from "@/lib/db";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { prisma } from '@/lib/db';
+import { requirePageUser } from '@/lib/auth/current-user';
+import { assignSubstituteAction } from '@/app/actions/deputy-actions';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   ArrowLeft,
   AlertTriangle,
@@ -10,21 +12,19 @@ import {
   MapPin,
   BookOpen,
   ChevronRight,
-} from "lucide-react";
-import Link from "next/link";
+} from 'lucide-react';
+import Link from 'next/link';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function initials(first: string, last: string) {
-  return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
+  return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase();
 }
 
 function SectionHeader({ title }: { title: string }) {
   return (
     <div className="mb-4 flex items-center justify-between">
-      <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">
-        {title}
-      </h2>
+      <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">{title}</h2>
     </div>
   );
 }
@@ -34,19 +34,23 @@ function EmptyState({ children }: { children: React.ReactNode }) {
 }
 
 export default async function UncoveredLessonsPage() {
+  // SEC-09: deputy/admin only, and everything below is scoped to the caller's own school.
+  const user = await requirePageUser(['deputy', 'admin']);
+  const schoolId = user.schoolId;
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const now = new Date();
   const dayOfWeek = today.getDay() || 1;
 
   const currentTerm = await prisma.term.findFirst({
-    where: { isCurrent: true },
-    orderBy: { startDate: "desc" },
+    where: { schoolId, isCurrent: true },
+    orderBy: { startDate: 'desc' },
   });
 
   // Uncovered lessons
   const slotsToday = await prisma.timetableSlot.findMany({
-    where: { dayOfWeek, termId: currentTerm?.id },
+    where: { schoolId, dayOfWeek, termId: currentTerm?.id ?? { in: [] } },
     include: {
       teacher: { include: { user: true } },
       stream: { include: { grade: true } },
@@ -54,30 +58,27 @@ export default async function UncoveredLessonsPage() {
       period: true,
       teacherAttendances: { where: { date: today } },
     },
-    orderBy: [{ period: { orderIndex: "asc" } }],
+    orderBy: [{ period: { orderIndex: 'asc' } }],
   });
 
   const uncovered = slotsToday.filter((slot) => {
-    const [h, m] = slot.period.startTime
-      .toISOString()
-      .slice(11, 16)
-      .split(":")
-      .map(Number);
+    const [h, m] = slot.period.startTime.toISOString().slice(11, 16).split(':').map(Number);
     const slotStart = new Date(today);
     slotStart.setHours(h, m, 0, 0);
     const windowStart = new Date(slotStart.getTime() - 30 * 60 * 1000);
     const hasAttendance = slot.teacherAttendances.some(
-      (a) => a.status === "present" || a.status === "late" || a.status === "covered"
+      (a) => a.status === 'present' || a.status === 'late' || a.status === 'covered'
     );
     return now >= windowStart && !hasAttendance;
   });
 
   // Substitute candidates
   const allTeachers = await prisma.teacher.findMany({
+    where: { schoolId },
     include: {
       user: true,
       timetableSlots: {
-        where: { dayOfWeek, termId: currentTerm?.id },
+        where: { schoolId, dayOfWeek, termId: currentTerm?.id ?? { in: [] } },
         include: { period: true },
       },
     },
@@ -85,16 +86,14 @@ export default async function UncoveredLessonsPage() {
 
   const uncoveredWithSubs = uncovered.map((slot) => {
     const slotStartMin = slot.period.orderIndex;
-    const slotEndMin =
-      slot.isDoubleLesson && slot.secondPeriodId ? slotStartMin + 1 : slotStartMin;
+    const slotEndMin = slot.isDoubleLesson && slot.secondPeriodId ? slotStartMin + 1 : slotStartMin;
 
     const candidates = allTeachers
       .filter((t) => {
         if (t.id === slot.teacherId) return false;
         const hasConflict = t.timetableSlots.some((ts) => {
           const tsStart = ts.period.orderIndex;
-          const tsEnd =
-            ts.isDoubleLesson && ts.secondPeriodId ? tsStart + 1 : tsStart;
+          const tsEnd = ts.isDoubleLesson && ts.secondPeriodId ? tsStart + 1 : tsStart;
           return tsStart <= slotEndMin && tsEnd >= slotStartMin;
         });
         return !hasConflict;
@@ -125,12 +124,12 @@ export default async function UncoveredLessonsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Uncovered Lessons</h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            {today.toLocaleDateString("en-KE", {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
+            {today.toLocaleDateString('en-KE', {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
             })}
-            {currentTerm ? ` · ${currentTerm.name}` : ""}
+            {currentTerm ? ` · ${currentTerm.name}` : ''}
           </p>
         </div>
       </div>
@@ -141,9 +140,7 @@ export default async function UncoveredLessonsPage() {
           <div className="flex items-center gap-3">
             <UserCheck className="h-5 w-5 text-emerald-600" />
             <div>
-              <p className="text-sm font-semibold text-emerald-800">
-                All Lessons Covered
-              </p>
+              <p className="text-sm font-semibold text-emerald-800">All Lessons Covered</p>
               <p className="text-xs text-emerald-700">
                 Every teacher has checked in for their scheduled periods today.
               </p>
@@ -157,7 +154,7 @@ export default async function UncoveredLessonsPage() {
             <div>
               <p className="text-sm font-semibold text-red-800">
                 {uncoveredWithSubs.length} Uncovered Lesson
-                {uncoveredWithSubs.length > 1 ? "s" : ""}
+                {uncoveredWithSubs.length > 1 ? 's' : ''}
               </p>
               <p className="text-xs text-red-700">
                 Assign a substitute teacher to each period below.
@@ -184,7 +181,7 @@ export default async function UncoveredLessonsPage() {
                       </p>
                       <p className="text-xs text-slate-500">
                         {slot.stream.grade.name}
-                        {slot.stream.name} · Room {slot.room || "TBD"} ·{" "}
+                        {slot.stream.name} · Room {slot.room || 'TBD'} ·{' '}
                         {slot.period.startTime.toISOString().slice(11, 16)} –
                         {slot.period.endTime.toISOString().slice(11, 16)}
                       </p>
@@ -201,17 +198,14 @@ export default async function UncoveredLessonsPage() {
                 <span className="text-xs text-slate-400">Assigned:</span>
                 <Avatar className="h-5 w-5">
                   <AvatarFallback className="text-[9px] bg-slate-200 text-slate-600">
-                    {initials(
-                      slot.teacher.user.firstName,
-                      slot.teacher.user.lastName
-                    )}
+                    {initials(slot.teacher.user.firstName, slot.teacher.user.lastName)}
                   </AvatarFallback>
                 </Avatar>
                 <span className="font-medium text-slate-700">
                   {slot.teacher.user.firstName} {slot.teacher.user.lastName}
                 </span>
                 <span className="text-xs text-slate-400">
-                  ({slot.teacher.user.phone || "no phone"})
+                  ({slot.teacher.user.phone || 'no phone'})
                 </span>
               </div>
             </div>
@@ -219,9 +213,7 @@ export default async function UncoveredLessonsPage() {
             <div className="p-5">
               <SectionHeader title="Substitute Candidates" />
               {slot.candidates.length === 0 ? (
-                <EmptyState>
-                  No available substitute teachers for this period.
-                </EmptyState>
+                <EmptyState>No available substitute teachers for this period.</EmptyState>
               ) : (
                 <div className="space-y-2">
                   {slot.candidates.map((candidate, idx) => (
@@ -235,10 +227,7 @@ export default async function UncoveredLessonsPage() {
                         </span>
                         <Avatar className="h-7 w-7">
                           <AvatarFallback className="text-xs bg-slate-100 text-slate-700">
-                            {initials(
-                              candidate.user.firstName,
-                              candidate.user.lastName
-                            )}
+                            {initials(candidate.user.firstName, candidate.user.lastName)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
@@ -246,7 +235,7 @@ export default async function UncoveredLessonsPage() {
                             {candidate.user.firstName} {candidate.user.lastName}
                           </p>
                           <p className="text-xs text-slate-500">
-                            {candidate.specialisation || "No specialisation"}
+                            {candidate.specialisation || 'No specialisation'}
                           </p>
                         </div>
                       </div>
@@ -261,28 +250,12 @@ export default async function UncoveredLessonsPage() {
                             Available
                           </span>
                         )}
-                        <form
-                          action={async () => {
-                            "use server";
-                            await prisma.teacherAttendance.create({
-                              data: {
-                                schoolId: slot.schoolId,
-                                teacherId: slot.teacherId,
-                                slotId: slot.id,
-                                date: today,
-                                status: "covered",
-                                substituteTeacherId: candidate.id,
-                              },
-                            });
-                          }}
-                        >
+                        <form action={assignSubstituteAction.bind(null, slot.id, candidate.id)}>
                           <Button
                             type="submit"
                             size="sm"
                             className="h-7 gap-1"
-                            variant={
-                              candidate.matchScore >= 2 ? "default" : "outline"
-                            }
+                            variant={candidate.matchScore >= 2 ? 'default' : 'outline'}
                           >
                             <UserCheck className="h-3.5 w-3.5" />
                             Assign

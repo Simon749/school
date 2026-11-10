@@ -1,14 +1,11 @@
 // src/app/api/results/parent/[studentId]/route.ts
-import { auth } from "@clerk/nextjs/server";
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { auth } from '@clerk/nextjs/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { studentId: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { studentId: string } }) {
   const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const studentId = params.studentId;
 
@@ -29,20 +26,20 @@ export async function GET(
 
   if (!guardian) {
     return NextResponse.json(
-      { error: "Access denied. You are not a guardian of this student." },
+      { error: 'Access denied. You are not a guardian of this student.' },
       { status: 403 }
     );
   }
 
   const { searchParams } = new URL(request.url);
-  const termId = searchParams.get("termId");
+  const termId = searchParams.get('termId');
 
   // 2. Fetch only PUBLISHED assessments for this student's stream
   const assessments = await prisma.assessment.findMany({
     where: {
       schoolId: guardian.student.schoolId,
       streamId: guardian.student.streamId,
-      status: "published", // CRITICAL: Only published results visible to parents
+      status: 'published', // CRITICAL: Only published results visible to parents
       ...(termId && { termId }),
     },
     include: {
@@ -68,7 +65,7 @@ export async function GET(
         },
       },
     },
-    orderBy: { assessmentDate: "desc" },
+    orderBy: { assessmentDate: 'desc' },
   });
 
   // 3. Filter to only include assessments where this student has results

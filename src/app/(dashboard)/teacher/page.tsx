@@ -1,16 +1,27 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 import {
-  Clock, MapPin, BookOpen, Loader2, CheckCircle, AlertCircle, X,
-  Users, ClipboardList, MessageSquare, FileText, ArrowRight, QrCode
-} from "lucide-react";
-import { QrScanner } from "@/components/attendance/QrScanner";
-import { isInsideGeofence } from "@/lib/geofence/check";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useRouter } from "next/navigation";
+  Clock,
+  MapPin,
+  BookOpen,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  X,
+  Users,
+  ClipboardList,
+  MessageSquare,
+  FileText,
+  ArrowRight,
+  QrCode,
+} from 'lucide-react';
+import { QrScanner } from '@/components/attendance/QrScanner';
+import { isInsideGeofence } from '@/lib/geofence/check';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 
 interface Slot {
   id: string;
@@ -28,7 +39,7 @@ interface MyClassData {
   studentCount: number;
 }
 
-type Step = "geo" | "qr" | "notes" | "submitting" | "done" | "error";
+type Step = 'geo' | 'qr' | 'notes' | 'submitting' | 'done' | 'error';
 
 export default function TeacherTodayPage() {
   const router = useRouter();
@@ -42,10 +53,10 @@ export default function TeacherTodayPage() {
     // Hardcoded fallback data based on Image 1 if API returns empty/undefined
     school: null,
     slots: [],
-    date: "",
+    date: '',
     myClass: {
-      gradeName: "Grade 5",
-      streamName: "A",
+      gradeName: 'Grade 5',
+      streamName: 'A',
       studentCount: 24,
     },
   });
@@ -53,15 +64,15 @@ export default function TeacherTodayPage() {
 
   // Check-in flow state (EXACT LOGIC PRESERVED)
   const [activeSlot, setActiveSlot] = useState<Slot | null>(null);
-  const [step, setStep] = useState<Step>("geo");
+  const [step, setStep] = useState<Step>('geo');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [qrToken, setQrToken] = useState("");
-  const [lessonNotes, setLessonNotes] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [qrToken, setQrToken] = useState('');
+  const [lessonNotes, setLessonNotes] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
-    fetch("/api/timetable/teacher/today")
+    fetch('/api/timetable/teacher/today')
       .then((r) => r.json())
       .then((d) => {
         setData((prev) => ({
@@ -75,20 +86,20 @@ export default function TeacherTodayPage() {
   }, []);
 
   const formatTime = (t: string) => {
-    if (t.includes("T")) {
-      return new Date(t).toLocaleTimeString("en-KE", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true
+    if (t.includes('T')) {
+      return new Date(t).toLocaleTimeString('en-KE', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
       });
     }
-    const [hours, minutes] = t.split(":");
+    const [hours, minutes] = t.split(':');
     const date = new Date();
     date.setHours(parseInt(hours), parseInt(minutes));
-    return date.toLocaleTimeString("en-KE", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true
+    return date.toLocaleTimeString('en-KE', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
     });
   };
 
@@ -124,26 +135,26 @@ export default function TeacherTodayPage() {
 
   function resetCheckIn() {
     setActiveSlot(null);
-    setStep("geo");
+    setStep('geo');
     setCoords(null);
-    setQrToken("");
-    setLessonNotes("");
-    setErrorMsg("");
-    setSuccessMsg("");
+    setQrToken('');
+    setLessonNotes('');
+    setErrorMsg('');
+    setSuccessMsg('');
   }
 
   function startCheckIn(slot: Slot) {
     setActiveSlot(slot);
-    setStep("geo");
+    setStep('geo');
     setCoords(null);
-    setQrToken("");
-    setLessonNotes("");
-    setErrorMsg("");
-    setSuccessMsg("");
+    setQrToken('');
+    setLessonNotes('');
+    setErrorMsg('');
+    setSuccessMsg('');
 
     if (!navigator.geolocation) {
-      setErrorMsg("Geolocation is not supported by your browser.");
-      setStep("error");
+      setErrorMsg('Geolocation is not supported by your browser.');
+      setStep('error');
       return;
     }
 
@@ -154,16 +165,26 @@ export default function TeacherTodayPage() {
         setCoords({ lat, lng });
 
         try {
-          const res = await fetch("/api/school/settings");
+          const res = await fetch('/api/school/settings');
           if (res.ok) {
             const school = await res.json();
-            if (school.latitude != null && school.longitude != null && school.geofenceRadius != null) {
-              const preview = isInsideGeofence(lat, lng, school.latitude, school.longitude, school.geofenceRadius);
+            if (
+              school.latitude != null &&
+              school.longitude != null &&
+              school.geofenceRadius != null
+            ) {
+              const preview = isInsideGeofence(
+                lat,
+                lng,
+                school.latitude,
+                school.longitude,
+                school.geofenceRadius
+              );
               if (!preview.isInside) {
                 setErrorMsg(
                   `You appear to be ${Math.round(preview.distance)}m from school (must be within ${school.geofenceRadius}m). The school will confirm the exact distance when you submit.`
                 );
-                setStep("error");
+                setStep('error');
                 return;
               }
             }
@@ -172,11 +193,11 @@ export default function TeacherTodayPage() {
           // Preview unavailable — fall through to QR. Server is source of truth.
         }
 
-        setStep("qr");
+        setStep('qr');
       },
       () => {
-        setErrorMsg("Location access denied. Enable GPS and try again.");
-        setStep("error");
+        setErrorMsg('Location access denied. Enable GPS and try again.');
+        setStep('error');
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
@@ -184,21 +205,21 @@ export default function TeacherTodayPage() {
 
   function handleQrScanned(token: string) {
     setQrToken(token);
-    setStep("notes");
+    setStep('notes');
   }
 
   async function handleSubmit() {
     if (!activeSlot || !coords) {
-      setErrorMsg("Missing location data. Please close this and try checking in again.");
-      setStep("error");
+      setErrorMsg('Missing location data. Please close this and try checking in again.');
+      setStep('error');
       return;
     }
-    setStep("submitting");
+    setStep('submitting');
 
     try {
-      const res = await fetch("/api/attendance/teacher", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/attendance/teacher', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           slotId: activeSlot.id,
           latitude: coords.lat,
@@ -208,29 +229,29 @@ export default function TeacherTodayPage() {
         }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Check-in failed");
+      if (!res.ok) throw new Error(json.error || 'Check-in failed');
 
       setSuccessMsg(json.message);
-      setStep("done");
+      setStep('done');
     } catch (error: any) {
-      setErrorMsg((error as Error).message || "Check-in failed. Please try again.");
-      setStep("error");
+      setErrorMsg((error as Error).message || 'Check-in failed. Please try again.');
+      setStep('error');
     }
   }
 
   const getTimeGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "morning";
-    if (hour < 18) return "afternoon";
-    return "evening";
+    if (hour < 12) return 'morning';
+    if (hour < 18) return 'afternoon';
+    return 'evening';
   };
 
   const getFullDate = () => {
-    return new Date().toLocaleDateString("en-KE", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+    return new Date().toLocaleDateString('en-KE', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
   };
 
@@ -252,14 +273,14 @@ export default function TeacherTodayPage() {
     );
   }
 
-  const myClassData = data?.myClass || { gradeName: "Grade 5", streamName: "A", studentCount: 24 };
+  const myClassData = data?.myClass || { gradeName: 'Grade 5', streamName: 'A', studentCount: 24 };
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto bg-slate-50/50 min-h-screen">
       {/* Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
-          Good {getTimeGreeting()}, {data?.school?.name || "Teacher"}!
+          Good {getTimeGreeting()}, {data?.school?.name || 'Teacher'}!
         </h1>
         <p className="text-slate-600 text-sm mt-1">{getFullDate()}</p>
       </div>
@@ -274,17 +295,17 @@ export default function TeacherTodayPage() {
               LIVE NOW
             </span>
             <h2 className="text-3xl font-bold text-slate-900 tracking-tight">
-              {heroSlot?.learningArea?.name || "Literacy"}
+              {heroSlot?.learningArea?.name || 'Literacy'}
             </h2>
             <p className="text-base font-semibold text-slate-700">
-              {heroSlot ? `${heroSlot.stream.grade.name} ${heroSlot.stream.name}` : "PP2 B"}
+              {heroSlot ? `${heroSlot.stream.grade.name} ${heroSlot.stream.name}` : 'PP2 B'}
             </p>
             <div className="flex items-center gap-1.5 text-sm text-slate-500 pt-1">
               <Clock className="h-4 w-4 text-slate-400" />
               <span>
                 {heroSlot
                   ? `${formatTime(heroSlot.period.startTime)} – ${formatTime(heroSlot.period.endTime)}`
-                  : "11:45 am – 00:30 pm"}
+                  : '11:45 am – 00:30 pm'}
               </span>
             </div>
           </div>
@@ -313,8 +334,9 @@ export default function TeacherTodayPage() {
                 return (
                   <div
                     key={slot.id}
-                    className={`rounded-lg border border-slate-300 p-4 flex items-center justify-between relative overflow-hidden bg-white transition-all ${isCurrent ? "ring-1 ring-emerald-500/50" : ""
-                      }`}
+                    className={`rounded-lg border border-slate-300 p-4 flex items-center justify-between relative overflow-hidden bg-white transition-all ${
+                      isCurrent ? 'ring-1 ring-emerald-500/50' : ''
+                    }`}
                   >
                     <div className="absolute top-0 left-0 bottom-0 w-1 bg-emerald-500 rounded-l-lg" />
                     <div className="flex items-center gap-3.5 pl-2">
@@ -385,7 +407,7 @@ export default function TeacherTodayPage() {
             <Button
               variant="outline"
               className="w-full border-blue-300 text-blue-700 hover:bg-blue-100/50 bg-white font-medium text-xs py-2.5 h-auto rounded-lg flex items-center justify-center gap-2"
-              onClick={() => router.push("/teacher/classroom")}
+              onClick={() => router.push('/teacher/classroom')}
             >
               Open Class
               <ArrowRight className="h-3.5 w-3.5" />
@@ -399,7 +421,7 @@ export default function TeacherTodayPage() {
             <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="ghost"
-                onClick={() => router.push("/teacher/attendance/history")}
+                onClick={() => router.push('/teacher/attendance/history')}
                 className="h-20 bg-emerald-100/70 hover:bg-emerald-200/80 text-emerald-800 rounded-lg flex flex-col items-center justify-center gap-1.5 p-2 transition-colors"
               >
                 <ClipboardList className="h-5 w-5 text-emerald-700" />
@@ -408,7 +430,7 @@ export default function TeacherTodayPage() {
 
               <Button
                 variant="ghost"
-                onClick={() => router.push("/teacher/markbook")}
+                onClick={() => router.push('/teacher/markbook')}
                 className="h-20 bg-blue-100/70 hover:bg-blue-200/80 text-blue-800 rounded-lg flex flex-col items-center justify-center gap-1.5 p-2 transition-colors"
               >
                 <BookOpen className="h-5 w-5 text-blue-700" />
@@ -417,7 +439,7 @@ export default function TeacherTodayPage() {
 
               <Button
                 variant="ghost"
-                onClick={() => router.push("/teacher/messages")}
+                onClick={() => router.push('/teacher/messages')}
                 className="h-20 bg-purple-100/70 hover:bg-purple-200/80 text-purple-800 rounded-lg flex flex-col items-center justify-center gap-1.5 p-2 transition-colors"
               >
                 <MessageSquare className="h-5 w-5 text-purple-700" />
@@ -426,7 +448,7 @@ export default function TeacherTodayPage() {
 
               <Button
                 variant="ghost"
-                onClick={() => router.push("/teacher/lesson-plans")}
+                onClick={() => router.push('/teacher/lesson-plans')}
                 className="h-20 bg-amber-100/70 hover:bg-amber-200/80 text-amber-800 rounded-lg flex flex-col items-center justify-center gap-1.5 p-2 transition-colors"
               >
                 <FileText className="h-5 w-5 text-amber-700" />
@@ -450,14 +472,14 @@ export default function TeacherTodayPage() {
             </div>
 
             <div className="p-4">
-              {step === "geo" && (
+              {step === 'geo' && (
                 <div className="py-8 text-center">
                   <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-emerald-600" />
                   <p className="text-sm text-slate-600">Getting your location...</p>
                 </div>
               )}
 
-              {step === "qr" && (
+              {step === 'qr' && (
                 <div className="space-y-4">
                   <p className="text-center text-sm text-slate-600">
                     Scan the classroom QR code to verify your presence.
@@ -466,20 +488,24 @@ export default function TeacherTodayPage() {
                     onScan={handleQrScanned}
                     onError={(err) => {
                       setErrorMsg(err);
-                      setStep("error");
+                      setStep('error');
                     }}
                   />
                 </div>
               )}
 
-              {step === "notes" && (
+              {step === 'notes' && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-emerald-700">
                     <CheckCircle className="h-4 w-4" />
-                    <span className="text-sm font-medium">QR scanned. Submitting for verification.</span>
+                    <span className="text-sm font-medium">
+                      QR scanned. Submitting for verification.
+                    </span>
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">Lesson Notes</label>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Lesson Notes
+                    </label>
                     <textarea
                       value={lessonNotes}
                       onChange={(e) => setLessonNotes(e.target.value)}
@@ -497,14 +523,14 @@ export default function TeacherTodayPage() {
                 </div>
               )}
 
-              {step === "submitting" && (
+              {step === 'submitting' && (
                 <div className="py-8 text-center">
                   <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-emerald-600" />
                   <p className="text-sm text-slate-600">Submitting attendance...</p>
                 </div>
               )}
 
-              {step === "done" && (
+              {step === 'done' && (
                 <div className="py-8 text-center">
                   <CheckCircle className="mx-auto mb-3 h-12 w-12 text-emerald-600" />
                   <p className="mb-1 text-lg font-bold text-slate-900">Checked In</p>
@@ -518,7 +544,7 @@ export default function TeacherTodayPage() {
                 </div>
               )}
 
-              {step === "error" && (
+              {step === 'error' && (
                 <div className="py-6 text-center">
                   <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-600" />
                   <p className="mb-1 text-sm font-medium text-red-700">Check-in failed</p>

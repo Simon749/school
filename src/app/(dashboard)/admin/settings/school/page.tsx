@@ -1,14 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { 
-  MapPin, RefreshCw, School, Settings2, Save, Loader2, Navigation 
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
+import { useEffect, useState } from 'react';
+import { MapPin, RefreshCw, School, Settings2, Save, Loader2, Navigation } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
 
 interface SchoolSettings {
   id: string;
@@ -29,11 +27,11 @@ export default function SchoolSettingsPage() {
   async function loadSettings() {
     setLoading(true);
     try {
-      const response = await fetch("/api/school/settings");
-      if (!response.ok) throw new Error("Unable to load school settings.");
+      const response = await fetch('/api/school/settings');
+      if (!response.ok) throw new Error('Unable to load school settings.');
       setSettings(await response.json());
     } catch (error) {
-      toast.error("Failed to load settings");
+      toast.error('Failed to load settings');
     } finally {
       setLoading(false);
     }
@@ -49,15 +47,15 @@ export default function SchoolSettingsPage() {
     setSaving(true);
     try {
       // NOTE: Ensure your /api/school/settings route supports PUT/PATCH
-      const res = await fetch("/api/school/settings", {
-        method: "PUT", 
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/school/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });
-      if (!res.ok) throw new Error("Failed to save");
-      toast.success("School settings updated successfully");
+      if (!res.ok) throw new Error('Failed to save');
+      toast.success('School settings updated successfully');
     } catch (error) {
-      toast.error("Failed to save settings");
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -65,30 +63,36 @@ export default function SchoolSettingsPage() {
 
   async function handleCaptureLocation() {
     if (!navigator.geolocation) {
-      toast.error("Geolocation is not supported by your browser");
+      toast.error('Geolocation is not supported by your browser');
       return;
     }
     setCapturing(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setSettings((prev) => prev ? {
-          ...prev,
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-        } : null);
+        setSettings((prev) =>
+          prev
+            ? {
+                ...prev,
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+              }
+            : null
+        );
         setCapturing(false);
-        toast.success("Location captured successfully");
+        toast.success('Location captured successfully');
       },
       () => {
         setCapturing(false);
-        toast.error("Location access denied. Please enable GPS.");
+        toast.error('Location access denied. Please enable GPS.');
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   }
 
-  if (loading) return <div className="p-8 text-center text-sm text-slate-500">Loading school settings...</div>;
-  if (!settings) return <div className="p-8 text-center text-sm text-rose-500">No settings found.</div>;
+  if (loading)
+    return <div className="p-8 text-center text-sm text-slate-500">Loading school settings...</div>;
+  if (!settings)
+    return <div className="p-8 text-center text-sm text-rose-500">No settings found.</div>;
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 p-6">
@@ -124,7 +128,7 @@ export default function SchoolSettingsPage() {
                 <Label htmlFor="phone">Phone Number</Label>
                 <Input
                   id="phone"
-                  value={settings.phone || ""}
+                  value={settings.phone || ''}
                   onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
                   placeholder="2547XXXXXXXX"
                 />
@@ -134,7 +138,7 @@ export default function SchoolSettingsPage() {
                 <Input
                   id="email"
                   type="email"
-                  value={settings.email || ""}
+                  value={settings.email || ''}
                   onChange={(e) => setSettings({ ...settings, email: e.target.value })}
                 />
               </div>
@@ -160,8 +164,12 @@ export default function SchoolSettingsPage() {
                 disabled={capturing}
                 className="flex items-center gap-2"
               >
-                {capturing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Navigation className="h-4 w-4" />}
-                {capturing ? "Capturing..." : "Capture My Location"}
+                {capturing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Navigation className="h-4 w-4" />
+                )}
+                {capturing ? 'Capturing...' : 'Capture My Location'}
               </Button>
               <p className="text-sm text-slate-500">
                 Stand at the school gate and click to auto-fill coordinates.
@@ -176,8 +184,10 @@ export default function SchoolSettingsPage() {
                   id="latitude"
                   type="number"
                   step="any"
-                  value={settings.latitude ?? ""}
-                  onChange={(e) => setSettings({ ...settings, latitude: parseFloat(e.target.value) || null })}
+                  value={settings.latitude ?? ''}
+                  onChange={(e) =>
+                    setSettings({ ...settings, latitude: parseFloat(e.target.value) || null })
+                  }
                   placeholder="e.g. -1.2921"
                 />
               </div>
@@ -187,8 +197,10 @@ export default function SchoolSettingsPage() {
                   id="longitude"
                   type="number"
                   step="any"
-                  value={settings.longitude ?? ""}
-                  onChange={(e) => setSettings({ ...settings, longitude: parseFloat(e.target.value) || null })}
+                  value={settings.longitude ?? ''}
+                  onChange={(e) =>
+                    setSettings({ ...settings, longitude: parseFloat(e.target.value) || null })
+                  }
                   placeholder="e.g. 36.8219"
                 />
               </div>
@@ -198,7 +210,9 @@ export default function SchoolSettingsPage() {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label htmlFor="radius">Geofence Radius</Label>
-                <span className="text-sm font-medium text-slate-700">{settings.geofenceRadius} metres</span>
+                <span className="text-sm font-medium text-slate-700">
+                  {settings.geofenceRadius} metres
+                </span>
               </div>
               <input
                 id="radius"
@@ -207,7 +221,9 @@ export default function SchoolSettingsPage() {
                 max="500"
                 step="10"
                 value={settings.geofenceRadius}
-                onChange={(e) => setSettings({ ...settings, geofenceRadius: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setSettings({ ...settings, geofenceRadius: parseInt(e.target.value) })
+                }
                 className="w-full accent-emerald-600"
               />
               <p className="text-xs text-slate-500">
@@ -218,7 +234,8 @@ export default function SchoolSettingsPage() {
             {/* Map Preview Placeholder (Per Design Docs) */}
             <div className="mt-4 h-64 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center">
               <p className="text-sm text-slate-500">
-                [Leaflet.js Map Preview will render here showing pin at {settings.latitude}, {settings.longitude}]
+                [Leaflet.js Map Preview will render here showing pin at {settings.latitude},{' '}
+                {settings.longitude}]
               </p>
             </div>
           </CardContent>
@@ -227,7 +244,11 @@ export default function SchoolSettingsPage() {
         {/* Save Button */}
         <div className="flex justify-end">
           <Button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {saving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
             Save Settings
           </Button>
         </div>

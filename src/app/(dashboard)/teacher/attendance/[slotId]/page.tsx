@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 type RegisterEntry = {
   studentId: string;
   firstName: string;
   lastName: string;
-  status: "present" | "absent" | "late" | "excused" | null;
+  status: 'present' | 'absent' | 'late' | 'excused' | null;
   absenceReason: string | null;
   marked: boolean;
 };
@@ -20,14 +20,14 @@ export default function AttendanceRegisterPage() {
   const router = useRouter();
   const [register, setRegister] = useState<RegisterEntry[]>([]);
   const [slot, setSlot] = useState<any>(null);
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = new Date().toISOString().split('T')[0];
     setDate(today);
     fetch(`/api/attendance/student?slotId=${slotId}&date=${today}`)
       .then((r) => r.json())
@@ -39,10 +39,8 @@ export default function AttendanceRegisterPage() {
       });
   }, [slotId]);
 
-  function setStatus(studentId: string, status: RegisterEntry["status"]) {
-    setRegister((prev) =>
-      prev.map((e) => (e.studentId === studentId ? { ...e, status } : e))
-    );
+  function setStatus(studentId: string, status: RegisterEntry['status']) {
+    setRegister((prev) => prev.map((e) => (e.studentId === studentId ? { ...e, status } : e)));
   }
 
   function setReason(studentId: string, reason: string) {
@@ -53,7 +51,7 @@ export default function AttendanceRegisterPage() {
 
   async function handleSubmit(confirmed = false) {
     if (isLocked) {
-      alert("This register is locked. Contact admin to unlock.");
+      alert('This register is locked. Contact admin to unlock.');
       return;
     }
     setSubmitting(true);
@@ -65,9 +63,9 @@ export default function AttendanceRegisterPage() {
         absenceReason: e.absenceReason,
       }));
 
-    const res = await fetch("/api/attendance/student", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch('/api/attendance/student', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slotId, date, entries, confirmed }),
     });
     const json = await res.json();
@@ -79,18 +77,18 @@ export default function AttendanceRegisterPage() {
     }
 
     if (!res.ok) {
-      alert(json.error || "Failed to save");
+      alert(json.error || 'Failed to save');
       setSubmitting(false);
       return;
     }
 
-    router.push("/teacher");
+    router.push('/teacher');
   }
 
   if (loading) return <div className="p-6">Loading register...</div>;
 
-  const presentCount = register.filter((e) => e.status === "present").length;
-  const absentCount = register.filter((e) => e.status === "absent").length;
+  const presentCount = register.filter((e) => e.status === 'present').length;
+  const absentCount = register.filter((e) => e.status === 'absent').length;
 
   return (
     <div className="p-4 max-w-3xl mx-auto space-y-4">
@@ -109,13 +107,17 @@ export default function AttendanceRegisterPage() {
         </div>
       </div>
 
-      <Button size="sm" variant="outline" onClick={() => setRegister((p) => p.map((e) => ({ ...e, status: "present" })))}>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => setRegister((p) => p.map((e) => ({ ...e, status: 'present' })))}
+      >
         Mark All Present
       </Button>
 
       <div className="space-y-2">
         {register.map((entry) => (
-          <Card key={entry.studentId} className={entry.status === "absent" ? "border-red-200" : ""}>
+          <Card key={entry.studentId} className={entry.status === 'absent' ? 'border-red-200' : ''}>
             <CardContent className="p-3 flex items-center justify-between gap-3">
               <div className="flex-1">
                 <p className="font-medium">
@@ -123,22 +125,30 @@ export default function AttendanceRegisterPage() {
                 </p>
               </div>
               <div className="flex gap-1">
-                {(["present", "absent", "late", "excused"] as const).map((s) => (
+                {(['present', 'absent', 'late', 'excused'] as const).map((s) => (
                   <Button
                     key={s}
                     size="sm"
-                    variant={entry.status === s ? "default" : "outline"}
-                    className={entry.status === s ? (s === "absent" ? "bg-red-600" : s === "present" ? "bg-green-600" : "") : ""}
+                    variant={entry.status === s ? 'default' : 'outline'}
+                    className={
+                      entry.status === s
+                        ? s === 'absent'
+                          ? 'bg-red-600'
+                          : s === 'present'
+                            ? 'bg-green-600'
+                            : ''
+                        : ''
+                    }
                     onClick={() => setStatus(entry.studentId, s)}
                   >
                     {s[0].toUpperCase() + s.slice(1)}
                   </Button>
                 ))}
               </div>
-              {entry.status === "absent" && (
+              {entry.status === 'absent' && (
                 <select
                   className="text-sm border rounded px-2 py-1"
-                  value={entry.absenceReason || ""}
+                  value={entry.absenceReason || ''}
                   onChange={(e) => setReason(entry.studentId, e.target.value)}
                 >
                   <option value="">Reason...</option>
@@ -159,17 +169,23 @@ export default function AttendanceRegisterPage() {
             <CardTitle className="text-sm">High Absence Rate</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p className="text-sm">You are marking most students absent. Is today a school event?</p>
+            <p className="text-sm">
+              You are marking most students absent. Is today a school event?
+            </p>
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => handleSubmit(true)}>Yes, Confirm</Button>
-              <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)}>Cancel</Button>
+              <Button size="sm" onClick={() => handleSubmit(true)}>
+                Yes, Confirm
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)}>
+                Cancel
+              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
       <Button className="w-full" disabled={submitting} onClick={() => handleSubmit()}>
-        {submitting ? "Saving..." : "Submit Register"}
+        {submitting ? 'Saving...' : 'Submit Register'}
       </Button>
     </div>
   );

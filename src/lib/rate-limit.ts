@@ -1,8 +1,8 @@
-import { redis } from "@/lib/redis";
+import { redis } from '@/lib/redis';
 
 export interface RateLimitConfig {
   uniqueKey: string; // e.g., "import:validate:userId" or "stk-push:ipAddress"
-  limit: number;     // Max requests allowed
+  limit: number; // Max requests allowed
   windowInSeconds: number; // Time window
 }
 
@@ -19,10 +19,10 @@ export async function checkRateLimit({
   windowInSeconds,
 }: RateLimitConfig): Promise<RateLimitResult> {
   const key = `ratelimit:${uniqueKey}`;
-  
+
   // Atomically increment the counter
   const current = await redis.incr(key);
-  
+
   // If this is the first request, set the expiry time
   if (current === 1) {
     await redis.expire(key, windowInSeconds);

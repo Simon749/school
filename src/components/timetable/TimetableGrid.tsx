@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useMemo } from "react";
+import { useMemo } from 'react';
 
 interface Period {
   id: string;
@@ -25,11 +25,11 @@ interface Slot {
 }
 
 const DAYS = [
-  { num: 1, label: "Mon" },
-  { num: 2, label: "Tue" },
-  { num: 3, label: "Wed" },
-  { num: 4, label: "Thu" },
-  { num: 5, label: "Fri" },
+  { num: 1, label: 'Mon' },
+  { num: 2, label: 'Tue' },
+  { num: 3, label: 'Wed' },
+  { num: 4, label: 'Thu' },
+  { num: 5, label: 'Fri' },
 ];
 
 export function TimetableGrid({
@@ -55,9 +55,9 @@ export function TimetableGrid({
 
   const formatTime = (t: string) => {
     // t is like "08:00:00" or "1970-01-01T08:00:00Z"
-    if (t.includes("T")) {
+    if (t.includes('T')) {
       const d = new Date(t);
-      return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
     }
     return t.slice(0, 5);
   };
@@ -85,7 +85,7 @@ export function TimetableGrid({
             <tr key={period.id}>
               <td
                 className={`border border-gray-200 p-3 ${
-                  period.isBreak ? "bg-amber-50/50" : "bg-white"
+                  period.isBreak ? 'bg-amber-50/50' : 'bg-white'
                 }`}
               >
                 <div className="font-medium text-gray-900">{period.name}</div>
@@ -106,8 +106,8 @@ export function TimetableGrid({
                   <td
                     key={day.num}
                     className={`border border-gray-200 p-2 align-top ${
-                      period.isBreak ? "bg-amber-50/30" : "bg-white"
-                    } ${!readOnly && !period.isBreak && !slot ? "cursor-pointer hover:bg-blue-50/50" : ""}`}
+                      period.isBreak ? 'bg-amber-50/30' : 'bg-white'
+                    } ${!readOnly && !period.isBreak && !slot ? 'cursor-pointer hover:bg-blue-50/50' : ''}`}
                     onClick={() => {
                       if (!readOnly && !period.isBreak && onCellClick) {
                         onCellClick(period.id, day.num, slot);
@@ -125,10 +125,10 @@ export function TimetableGrid({
                           style={{
                             backgroundColor: slot.learningArea.color
                               ? `${slot.learningArea.color}15`
-                              : "#f1f5f9",
+                              : '#f1f5f9',
                             borderColor: slot.learningArea.color
                               ? `${slot.learningArea.color}40`
-                              : "#e2e8f0",
+                              : '#e2e8f0',
                           }}
                         >
                           <div className="font-semibold text-gray-900 text-xs leading-tight">
@@ -138,9 +138,7 @@ export function TimetableGrid({
                             {slot.teacher.user.firstName} {slot.teacher.user.lastName.charAt(0)}.
                           </div>
                           {slot.room && (
-                            <div className="text-[10px] text-gray-500 mt-0.5">
-                              Room {slot.room}
-                            </div>
+                            <div className="text-[10px] text-gray-500 mt-0.5">Room {slot.room}</div>
                           )}
                           {showStreamInfo && slot.stream && (
                             <div className="text-[10px] text-gray-500 mt-0.5">
@@ -148,7 +146,10 @@ export function TimetableGrid({
                             </div>
                           )}
                           {!slot.isPublished && (
-                            <span className="absolute top-1 right-1 w-2 h-2 bg-amber-400 rounded-full" title="Draft" />
+                            <span
+                              className="absolute top-1 right-1 w-2 h-2 bg-amber-400 rounded-full"
+                              title="Draft"
+                            />
                           )}
                           {slot.isDoubleLesson && (
                             <span className="absolute bottom-1 right-1 text-[9px] text-gray-400 font-medium">

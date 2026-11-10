@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/db";
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { prisma } from '@/lib/db';
 
 // GET /api/attendance/teacher/history?days=14
 // Scoped strictly to the logged-in teacher's own records — this is the
@@ -12,21 +12,21 @@ import { prisma } from "@/lib/db";
 // admin-scoped query accidentally become reachable by a non-admin).
 export async function GET(req: NextRequest) {
   const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const user = await prisma.user.findUnique({
     where: { clerkId },
     select: { schoolId: true, id: true },
   });
-  if (!user?.schoolId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!user?.schoolId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const teacher = await prisma.teacher.findFirst({
     where: { userId: user.id, schoolId: user.schoolId },
   });
-  if (!teacher) return NextResponse.json({ error: "Teacher record not found" }, { status: 404 });
+  if (!teacher) return NextResponse.json({ error: 'Teacher record not found' }, { status: 404 });
 
   const { searchParams } = new URL(req.url);
-  const days = Math.min(Math.max(Number(searchParams.get("days")) || 14, 1), 60);
+  const days = Math.min(Math.max(Number(searchParams.get('days')) || 14, 1), 60);
 
   const windowStart = new Date();
   windowStart.setDate(windowStart.getDate() - days);
@@ -47,13 +47,13 @@ export async function GET(req: NextRequest) {
         },
       },
     },
-    orderBy: [{ date: "desc" }],
+    orderBy: [{ date: 'desc' }],
   });
 
   const summary = {
-    present: records.filter((r) => r.status === "present").length,
-    late: records.filter((r) => r.status === "late").length,
-    covered: records.filter((r) => r.status === "covered").length,
+    present: records.filter((r) => r.status === 'present').length,
+    late: records.filter((r) => r.status === 'late').length,
+    covered: records.filter((r) => r.status === 'covered').length,
   };
 
   return NextResponse.json({
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     // Flagging so nothing here looks more complete than it is (AGENTS.md §4).
     records: records.map((r) => ({
       id: r.id,
-      date: r.date.toISOString().split("T")[0],
+      date: r.date.toISOString().split('T')[0],
       status: r.status,
       minutesLate: r.minutesLate,
       checkedInAt: r.checkedInAt,

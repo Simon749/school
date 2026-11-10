@@ -1,40 +1,46 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/db";
-import { attendanceQueue } from "@/lib/queue";
-import { isInsideGeofence } from "@/lib/geofence/check";
-import { verifyQrToken } from "@/lib/qr/token";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { requireUser, requireTeacher } from '@/lib/auth/current-user';
+import { logAudit, getRequestMetadata } from '@/lib/audit';
+import { getCalendarDay } from '@/lib/calendar';
+import { getNairobiDateString, getNairobiNow } from '@/lib/time';
+import { attendanceQueue } from '@/lib/queue';
+import { isInsideGeofence } from '@/lib/geofence/check';
+import { verifyQrToken } from '@/lib/qr/token';
 
-// ── GET: Admin dashboard ────────────────────────────────────
+// ── GET: Admin/Deputy dashboard ─────────────────────────────
 export async function GET(req: NextRequest) {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // 1. Central guard: allow admin OR deputy (R4-06 / ATT-06)
+  const guard = await requireUser(['admin', 'deputy']);
+  if (!guard.ok) return guard.response;
+  const user = guard.user;
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { schoolId: true, role: true },
-  });
-
-  if (!user?.schoolId || user.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // 2. Safe date parsing (R4-01 / ATT-04: prevent UTC skew)
+  const { searchParams } = new URL(req.url);
+  const dateParam = searchParams.get('date');
+  const targetDateStr = dateParam || getNairobiDateString();
+  
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(targetDateStr)) {
+    return NextResponse.json({ error: 'Invalid date format. Use YYYY-MM-DD' }, { status: 400 });
   }
 
-  const { searchParams } = new URL(req.url);
-  const dateParam = searchParams.get("date") || new Date().toISOString().split("T")[0];
-  const date = new Date(dateParam);
+  const targetDate = new Date(`${targetDateStr}T00:00:00.000Z`);
+  const dayOfWeek = targetDate.getUTCDay();
 
   const currentTerm = await prisma.term.findFirst({
     where: { schoolId: user.schoolId, isCurrent: true },
+    select: { id: true }
   });
-  if (!currentTerm) return NextResponse.json({ error: "No current term" }, { status: 400 });
+  if (!currentTerm) {
+    return NextResponse.json({ error: 'No current term configured for this school' }, { status: 400 });
+  }
 
-  const dayOfWeek = date.getDay(); // 0=Sun...6=Sat
-  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-
+  // 3. Fetch data strictly scoped to schoolId (SEC-11)
   const [periods, slots, attendances] = await Promise.all([
     prisma.timetablePeriod.findMany({
       where: { schoolId: user.schoolId },
-      orderBy: { orderIndex: "asc" },
+      orderBy: { orderIndex: 'asc' },
     }),
     prisma.timetableSlot.findMany({
       where: {
@@ -45,60 +51,54 @@ export async function GET(req: NextRequest) {
       },
       include: {
         learningArea: { select: { name: true, color: true } },
-        teacher: {
-          include: { user: { select: { firstName: true, lastName: true } } },
-        },
+        teacher: { include: { user: { select: { firstName: true, lastName: true } } } },
         stream: { include: { grade: { select: { name: true } } } },
         period: true,
       },
-      orderBy: { period: { orderIndex: "asc" } },
+      orderBy: { period: { orderIndex: 'asc' } },
     }),
     prisma.teacherAttendance.findMany({
-      where: { schoolId: user.schoolId, date },
-      include: {
-        teacher: {
-          include: { user: { select: { firstName: true, lastName: true } } },
-        },
-        slot: { include: { period: true, learningArea: true } },
-      },
+      where: { schoolId: user.schoolId, date: targetDate },
+      select: {
+        slotId: true,
+        teacherId: true,
+        status: true,
+        checkedInAt: true,
+        minutesLate: true,
+      }
     }),
   ]);
 
-  const now = new Date();
-  const alertThreshold = 5 * 60 * 1000; // 5 minutes
-
+  // 4. Compute status based on PERSISTED state, not on-the-fly time math (ATT-06)
+  const now = getNairobiNow();
   const enriched = slots.map((slot) => {
-    const att = attendances.find(
-      (a) => a.slotId === slot.id && a.teacherId === slot.teacherId
-    );
+    const att = attendances.find((a) => a.slotId === slot.id && a.teacherId === slot.teacherId);
 
-    const periodStart = new Date(`${dateParam}T${slot.period.startTime}`);
-    const periodEnd = new Date(`${dateParam}T${slot.period.endTime}`);
+    // Alert logic: period starts within 15 mins and no check-in record exists
+    const periodStart = new Date(`${targetDateStr}T${slot.period.startTime}:00+03:00`);
     const timeUntilStart = periodStart.getTime() - now.getTime();
-
-    let status: "pending" | "present" | "late" | "absent" = "pending";
-    if (att) {
-      status = att.status as any;
-    } else if (now > periodEnd) {
-      status = "absent";
-    } else if (now > periodStart && !att) {
-      status = "absent";
-    }
-
-    const needsAlert = !att && timeUntilStart > 0 && timeUntilStart <= alertThreshold;
+    const needsAlert = timeUntilStart > 0 && timeUntilStart <= 15 * 60 * 1000 && !att;
 
     return {
-      ...slot,
-      attendance: att || null,
-      status,
+      id: slot.id,
+      period: slot.period,
+      learningArea: slot.learningArea,
+      teacher: slot.teacher,
+      stream: slot.stream,
+      room: slot.room,
+      // Rely on persisted state. If no record, it's 'pending', not 'absent'.
+      status: att ? att.status : 'pending',
       needsAlert,
-      timeUntilStart,
+      attendance: att ? {
+        checkedInAt: att.checkedInAt,
+        status: att.status,
+        minutesLate: att.minutesLate,
+      } : null,
     };
   });
 
   return NextResponse.json({
-    date: dateParam,
-    isWeekend,
+    date: targetDateStr,
     periods,
     slots: enriched,
   });
@@ -106,149 +106,141 @@ export async function GET(req: NextRequest) {
 
 // ── POST: Teacher check-in ──────────────────────────────────
 export async function POST(req: NextRequest) {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // 1. Central guard for teachers
+  const guard = await requireTeacher();
+  if (!guard.ok) return guard.response;
+  const { user, teacher } = guard;
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { id: true, schoolId: true, role: true },
-  });
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+  }
 
-  if (!user?.schoolId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  const teacher = await prisma.teacher.findFirst({
-    where: { userId: user.id, schoolId: user.schoolId },
-    include: { user: true },
-  });
-  if (!teacher) return NextResponse.json({ error: "Teacher record not found" }, { status: 404 });
-
-  const body = await req.json();
   const { slotId, latitude, longitude, qrToken, lessonNotes } = body;
-
   if (!slotId || latitude == null || longitude == null || !qrToken) {
-    return NextResponse.json(
-      { error: "slotId, latitude, longitude, and qrToken are required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'slotId, latitude, longitude, and qrToken are required' }, { status: 400 });
   }
 
   const slot = await prisma.timetableSlot.findFirst({
-    where: { id: slotId, schoolId: user.schoolId },
+    where: { id: slotId, schoolId: user.schoolId, isPublished: true },
     include: { period: true, school: true },
   });
-  if (!slot) return NextResponse.json({ error: "Invalid slot" }, { status: 400 });
+  if (!slot) return NextResponse.json({ error: 'Invalid or unpublished slot' }, { status: 404 });
 
-  // ── 1. Geofence validation ──
-  if (
-    slot.school.latitude == null ||
-    slot.school.longitude == null ||
-    slot.school.geofenceRadius == null
-  ) {
-    return NextResponse.json(
-      { error: "School geofence not configured. Contact admin." },
-      { status: 400 }
-    );
+  if (slot.teacherId !== teacher.id) {
+    const nairobiTodayStr = getNairobiDateString();
+    const isSubstitute = await prisma.teacherAttendance.findFirst({
+      where: {
+        slotId: slot.id,
+        date: new Date(`${nairobiTodayStr}T00:00:00.000Z`),
+        substituteTeacherId: teacher.id,
+        status: 'covered',
+      },
+    });
+    if (!isSubstitute) {
+      return NextResponse.json({ error: 'You are not assigned to this lesson' }, { status: 403 });
+    }
+  }
+
+  // 2. Geofence validation
+  if (slot.school.latitude == null || slot.school.longitude == null || slot.school.geofenceRadius == null) {
+    return NextResponse.json({ error: 'School geofence not configured.' }, { status: 400 });
   }
 
   const geo = isInsideGeofence(
-    latitude,
-    longitude,
-    Number(slot.school.latitude),
-    Number(slot.school.longitude),
+    Number(latitude), Number(longitude),
+    Number(slot.school.latitude), Number(slot.school.longitude),
     slot.school.geofenceRadius
   );
-
   if (!geo.isInside) {
-    return NextResponse.json(
-      {
-        error: "Outside school geofence",
-        distance: Math.round(geo.distance),
-        radius: slot.school.geofenceRadius,
-      },
-      { status: 403 }
-    );
+    return NextResponse.json({ error: 'Outside school geofence', distance: Math.round(geo.distance) }, { status: 403 });
   }
 
-  // ── 2. QR token validation ──
+  // 3. QR token validation
   const qrCheck = verifyQrToken(qrToken);
   if (!qrCheck.valid || qrCheck.slotId !== slotId) {
-    return NextResponse.json({ error: "Invalid or expired QR token" }, { status: 410 });
+    return NextResponse.json({ error: 'Invalid or expired QR token' }, { status: 410 });
   }
+
+  const now = getNairobiNow();
+  const nairobiTodayStr = getNairobiDateString(now);
 
   const tokenRecord = await prisma.classroomQrToken.findFirst({
-    where: { token: qrToken, slotId, usedAt: null },
+    where: { token: qrToken, slotId, usedAt: null, validFrom: { lte: now }, validUntil: { gte: now } },
   });
   if (!tokenRecord) {
-    return NextResponse.json({ error: "QR token already used or not found" }, { status: 410 });
+    return NextResponse.json({ error: 'QR token already used, expired, or not yet valid' }, { status: 410 });
   }
 
-  // ── 3. Time window validation ──
-  const today = new Date().toISOString().split("T")[0];
-  const periodStart = new Date(`${today}T${slot.period.startTime}`);
-  const periodEnd = new Date(`${today}T${slot.period.endTime}`);
-  const now = new Date();
-
-  // Allow check-in from 10 min before start until period end
-  const windowStart = new Date(periodStart.getTime() - 10 * 60 * 1000);
-  if (now < windowStart) {
-    return NextResponse.json(
-      { error: "Too early. Check-in opens 10 minutes before period start." },
-      { status: 425 }
-    );
-  }
-  if (now > periodEnd) {
-    return NextResponse.json(
-      { error: "Period has ended. Cannot check in." },
-      { status: 410 }
-    );
+  // 4. Calendar validation (ATT-10)
+  const calendarDay = await getCalendarDay(user.schoolId, new Date(`${nairobiTodayStr}T00:00:00.000Z`));
+  if (!calendarDay || calendarDay.dayType !== 'school_day') {
+    return NextResponse.json({ error: `Check-in not allowed on a ${calendarDay?.dayType || 'non-school'} day.` }, { status: 400 });
   }
 
-  // ── 4. Mark token used ──
-  await prisma.classroomQrToken.update({
-    where: { id: tokenRecord.id },
-    data: { usedAt: now },
+  // 5. Time window validation
+  const getTimeStr = (t: any) => (typeof t === 'string' ? t.substring(0, 5) : t.toISOString().substring(11, 16));
+  const periodStartSafe = new Date(`${nairobiTodayStr}T${getTimeStr(slot.period.startTime)}+03:00`);
+  const periodEndSafe = new Date(`${nairobiTodayStr}T${getTimeStr(slot.period.endTime)}+03:00`);
+
+  if (now < new Date(periodStartSafe.getTime() - 10 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Too early. Check-in opens 10 minutes before period start.' }, { status: 425 });
+  }
+  if (now > periodEndSafe) {
+    return NextResponse.json({ error: 'Period has ended. Cannot check in.' }, { status: 410 });
+  }
+
+  const diffMs = now.getTime() - periodStartSafe.getTime();
+  const minutesLate = diffMs > 0 ? Math.floor(diffMs / 60000) : 0;
+  const status = minutesLate > 10 ? 'late' : 'present';
+
+  const auditMeta = getRequestMetadata(req);
+
+  // 6. Atomic update of QR token + Audit Log (AUD-02)
+  await prisma.$transaction(async (tx) => {
+    await tx.classroomQrToken.update({
+      where: { id: tokenRecord.id },
+      data: { usedAt: now },
+    });
+
+    await logAudit({
+      schoolId: user.schoolId,
+      actorId: user.id,
+      action: 'TEACHER_CHECK_IN_INITIATED',
+      tableName: 'TeacherAttendance',
+      recordId: slot.id,
+      newData: { slotId, status, minutesLate, geofencePassed: true },
+      ipAddress: auditMeta.ipAddress,
+      userAgent: auditMeta.userAgent,
+    }, tx);
   });
 
-  // ── 5. Calculate lateness ──
-  const diffMs = now.getTime() - periodStart.getTime();
-  const minutesLate = diffMs > 0 ? Math.floor(diffMs / 60000) : 0;
-  const status = minutesLate > 10 ? "late" : "present";
-
-  // ── 6. Enqueue write ──
-  const job = await attendanceQueue.add(
-    "teacher-check-in",
-    {
-      type: "teacher-check-in",
-      payload: {
-        teacherId: teacher.id,
-        schoolId: user.schoolId,
-        slotId,
-        date: today,
-        checkedInAt: now.toISOString(),
-        checkInLat: latitude,
-        checkInLng: longitude,
-        geofencePassed: true,
-        qrScanned: true,
-        status,
-        minutesLate: minutesLate > 0 ? minutesLate : null,
-        lessonNotes: lessonNotes || null,
-      },
+  // 7. Enqueue write (Queue-first for 8AM spike resilience)
+  const job = await attendanceQueue.add('teacher-check-in', {
+    type: 'teacher-check-in',
+    payload: { 
+      teacherId: teacher.id, 
+      schoolId: user.schoolId, 
+      slotId, 
+      date: nairobiTodayStr, 
+      checkedInAt: now.toISOString(), 
+      checkInLat: Number(latitude), 
+      checkInLng: Number(longitude), 
+      geofencePassed: true, 
+      qrScanned: true,  
+      status, 
+      minutesLate: minutesLate > 0 ? minutesLate : null, 
+      lessonNotes: lessonNotes || null 
     },
-    { attempts: 3, backoff: { type: "exponential", delay: 2000 } }
-  );
+  }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
 
-  return NextResponse.json(
-    {
-      success: true,
-      message: `✓ Checked in at ${now.toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })} — ${slot.room || "Room TBD"}`,
-      status,
-      minutesLate: minutesLate > 0 ? minutesLate : null,
-      distance: Math.round(geo.distance),
-      jobId: job.id,
-    },
-    { status: 202 }
-  );
+  return NextResponse.json({ 
+    success: true, 
+    message: `Checked in at ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`, 
+    status, 
+    minutesLate: minutesLate > 0 ? minutesLate : null, 
+    jobId: job.id 
+  }, { status: 202 });
 }

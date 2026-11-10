@@ -1,82 +1,109 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { requireUser } from '@/lib/auth/current-user';
+import { logAudit, getRequestMetadata } from '@/lib/audit';
+import { schoolSettingsSchema } from '@/lib/validations/school.schema';
 
-// GET: Read settings
-export async function GET() {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+// ── GET: Fetch school settings ──────────────────────────────
+export async function GET(req: NextRequest) {
+  // 1. Allow all authenticated roles within the school
+  const guard = await requireUser(['admin', 'deputy', 'teacher', 'bursar', 'parent', 'it_admin']);
+  if (!guard.ok) return guard.response;
+  const user = guard.user;
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { schoolId: true },
-  });
+  // 2. Conditionally select geofence fields ONLY for admin/it_admin (SEC-13)
+  const isPrivileged = user.role === 'admin' || user.role === 'it_admin';
 
-  if (!user?.schoolId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  // Added phone and email to the select so the UI can display them
   const school = await prisma.school.findUnique({
     where: { id: user.schoolId },
-    select: { 
+    select: {
       id: true,
-      name: true, 
-      phone: true, 
+      name: true,
+      knecCode: true,
+      address: true,
+      county: true,
+      subCounty: true,
+      phone: true,
       email: true,
-      latitude: true, 
-      longitude: true, 
-      geofenceRadius: true 
+      logoUrl: true,
+      ...(isPrivileged ? {
+        latitude: true,
+        longitude: true,
+        geofenceRadius: true,
+      } : {}),
     },
   });
 
-  if (!school) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!school) {
+    return NextResponse.json({ error: 'School not found' }, { status: 404 });
+  }
 
-  return NextResponse.json(school);
+  return NextResponse.json({ school }, { status: 200 });
 }
 
-// PUT: Update settings (This was missing!)
-export async function PUT(request: NextRequest) {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+// ── PUT: Update school settings ─────────────────────────────
+export async function PUT(req: NextRequest) {
+  // 1. Strict role gating: Only admin or it_admin can update settings (R1-18)
+  const guard = await requireUser(['admin', 'it_admin']);
+  if (!guard.ok) return guard.response;
+  const user = guard.user;
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { schoolId: true, role: true },
+  // 2. Parse and validate payload
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+  }
+
+  const parsed = schoolSettingsSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid payload', details: parsed.error.errors }, { status: 400 });
+  }
+
+  const dataToUpdate = parsed.data;
+
+  // 3. Fetch old data for the audit log
+  const oldSchool = await prisma.school.findUnique({
+    where: { id: user.schoolId },
+    select: {
+      name: true,
+      phone: true,
+      email: true,
+      logoUrl: true,
+      latitude: true,
+      longitude: true,
+      geofenceRadius: true,
+    },
   });
 
-  if (!user?.schoolId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  
-  // Only allow admins and IT admins to change school settings
-  if (user.role !== "admin" && user.role !== "it_admin") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  if (!oldSchool) {
+    return NextResponse.json({ error: 'School not found' }, { status: 404 });
   }
 
-  try {
-    const body = await request.json();
-    const { name, phone, email, latitude, longitude, geofenceRadius } = body;
+  const { ipAddress, userAgent } = getRequestMetadata(req);
 
-    // 1. Update the database
-    const updatedSchool = await prisma.school.update({
+  // 4. Atomic update + Audit Log (R5-01)
+  const updatedSchool = await prisma.$transaction(async (tx) => {
+    const updated = await tx.school.update({
       where: { id: user.schoolId },
-      data: {
-        name: name || undefined,
-        phone: phone || undefined,
-        email: email || undefined,
-        // Only update coordinates if they are valid numbers
-        latitude: latitude !== null && latitude !== undefined ? latitude : undefined,
-        longitude: longitude !== null && longitude !== undefined ? longitude : undefined,
-        geofenceRadius: geofenceRadius !== undefined ? geofenceRadius : undefined,
-      },
+      data: dataToUpdate,
     });
 
-    // 2. THE MAGIC BULLET: Bust the cache!
-    // This forces Next.js to discard the cached HTML for the layout (Sidebar/Header)
-    // and fetch the new school name/data on the very next render.
-    revalidatePath("/", "layout"); 
+    await logAudit({
+      schoolId: user.schoolId,
+      actorId: user.id,
+      action: 'SCHOOL_SETTINGS_UPDATED', // As requested
+      tableName: 'schools',
+      recordId: user.schoolId,
+      oldData: oldSchool,
+      newData: dataToUpdate,
+      ipAddress,
+      userAgent,
+    }, tx);
 
-    return NextResponse.json(updatedSchool);
-  } catch (error) {
-    console.error("Error updating school settings:", error);
-    return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
-  }
+    return updated;
+  });
+
+  return NextResponse.json({ success: true, school: updatedSchool }, { status: 200 });
 }

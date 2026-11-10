@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { WizardShell } from "@/components/onboarding/WizardShell";
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { WizardShell } from '@/components/onboarding/WizardShell';
 
 export default function Step6DonePage() {
   const searchParams = useSearchParams();
-  const schoolId = searchParams.get("schoolId");
+  const schoolId = searchParams.get('schoolId');
 
   return (
     <WizardShell currentStep={6}>

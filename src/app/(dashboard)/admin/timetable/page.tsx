@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { TimetableGrid } from "@/components/timetable/TimetableGrid";
-import { SlotModal } from "@/components/timetable/SlotModal";
-import { Eye, EyeOff, GraduationCap, Users, Send, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { TimetableGrid } from '@/components/timetable/TimetableGrid';
+import { SlotModal } from '@/components/timetable/SlotModal';
+import { Eye, EyeOff, GraduationCap, Users, Send, Loader2 } from 'lucide-react';
 
 interface Period {
   id: string;
@@ -37,9 +37,9 @@ export default function TimetableBuilderPage() {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [learningAreas, setLearningAreas] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
-  const [currentTermId, setCurrentTermId] = useState<string>("");
-  const [selectedStreamId, setSelectedStreamId] = useState<string>("");
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
+  const [currentTermId, setCurrentTermId] = useState<string>('');
+  const [selectedStreamId, setSelectedStreamId] = useState<string>('');
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -49,7 +49,7 @@ export default function TimetableBuilderPage() {
     setLoading(true);
     try {
       // Get current term first
-      const termRes = await fetch("/api/grades"); // reusing to get school context, but we need terms
+      const termRes = await fetch('/api/grades'); // reusing to get school context, but we need terms
       // Actually, let's fetch terms separately
     } catch (error) {
       console.error(error);
@@ -59,10 +59,10 @@ export default function TimetableBuilderPage() {
   useEffect(() => {
     async function init() {
       const [termsRes, gradesRes, areasRes, teachersRes] = await Promise.all([
-        fetch("/api/terms"), // we'll need this endpoint or use grades
-        fetch("/api/grades"),
-        fetch("/api/learning-areas"),
-        fetch("/api/teachers"),
+        fetch('/api/terms'), // we'll need this endpoint or use grades
+        fetch('/api/grades'),
+        fetch('/api/learning-areas'),
+        fetch('/api/teachers'),
       ]);
 
       if (gradesRes.ok) {
@@ -80,7 +80,7 @@ export default function TimetableBuilderPage() {
         const data = await teachersRes.json();
         setTeachers(data.teachers || []);
       }
-      // For terms, we don't have a dedicated endpoint yet. Let's fetch from grades and infer, 
+      // For terms, we don't have a dedicated endpoint yet. Let's fetch from grades and infer,
       // or better, create a quick terms fetch. Since we don't have /api/terms, I'll use the current term logic.
       // For now, let's fetch timetable data with a dummy termId and let the API tell us.
       // Actually, let's just fetch the first term from the school via a direct call.
@@ -92,9 +92,9 @@ export default function TimetableBuilderPage() {
   useEffect(() => {
     if (!currentTermId) return;
     const params = new URLSearchParams();
-    params.set("termId", currentTermId);
-    if (selectedStreamId) params.set("streamId", selectedStreamId);
-    if (selectedTeacherId) params.set("teacherId", selectedTeacherId);
+    params.set('termId', currentTermId);
+    if (selectedStreamId) params.set('streamId', selectedStreamId);
+    if (selectedTeacherId) params.set('teacherId', selectedTeacherId);
 
     fetch(`/api/timetable?${params}`)
       .then((r) => r.json())
@@ -114,7 +114,7 @@ export default function TimetableBuilderPage() {
   // Auto-select current term on first load
   useEffect(() => {
     if (!currentTermId) {
-      fetch("/api/terms")
+      fetch('/api/terms')
         .then((r) => (r.ok ? r.json() : { terms: [] }))
         .then((data) => {
           const current = (data.terms || []).find((t: any) => t.isCurrent);
@@ -125,14 +125,14 @@ export default function TimetableBuilderPage() {
   }, [currentTermId]);
 
   async function handleSaveSlot(data: any) {
-    const res = await fetch("/api/timetable/slot", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch('/api/timetable/slot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...data, termId: currentTermId }),
     });
     const json = await res.json();
     if (!res.ok) {
-      throw new Error(json.conflict?.message || json.error || "Save failed");
+      throw new Error(json.conflict?.message || json.error || 'Save failed');
     }
     // Refresh
     setSlots((prev) => {
@@ -142,21 +142,21 @@ export default function TimetableBuilderPage() {
   }
 
   async function handleDeleteSlot(id: string) {
-    const res = await fetch(`/api/timetable/slot/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Delete failed");
+    const res = await fetch(`/api/timetable/slot/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
     setSlots((prev) => prev.filter((s) => s.id !== id));
   }
 
   async function handlePublish() {
-    if (!confirm("Publish this timetable? Teachers will be able to see their schedules.")) return;
+    if (!confirm('Publish this timetable? Teachers will be able to see their schedules.')) return;
     setPublishing(true);
     try {
-      const res = await fetch("/api/timetable/publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/timetable/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ termId: currentTermId }),
       });
-      if (!res.ok) throw new Error("Publish failed");
+      if (!res.ok) throw new Error('Publish failed');
       const json = await res.json();
       alert(`Published ${json.publishedCount} slots.`);
       setSlots((prev) => prev.map((s) => ({ ...s, isPublished: true })));
@@ -176,7 +176,9 @@ export default function TimetableBuilderPage() {
           <h1 className="text-2xl font-bold text-gray-900">Timetable Builder</h1>
           <p className="text-sm text-gray-500 mt-1">
             {unpublishedCount > 0 ? (
-              <span className="text-amber-600 font-medium">{unpublishedCount} unpublished slots</span>
+              <span className="text-amber-600 font-medium">
+                {unpublishedCount} unpublished slots
+              </span>
             ) : (
               <span className="text-green-600 font-medium">All slots published</span>
             )}
@@ -188,7 +190,7 @@ export default function TimetableBuilderPage() {
             value={selectedStreamId}
             onChange={(e) => {
               setSelectedStreamId(e.target.value);
-              setSelectedTeacherId("");
+              setSelectedTeacherId('');
             }}
             className="px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -204,7 +206,7 @@ export default function TimetableBuilderPage() {
             value={selectedTeacherId}
             onChange={(e) => {
               setSelectedTeacherId(e.target.value);
-              setSelectedStreamId("");
+              setSelectedStreamId('');
             }}
             className="px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >

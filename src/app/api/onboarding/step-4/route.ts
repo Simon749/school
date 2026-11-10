@@ -1,57 +1,63 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/db";
-import { gradeStreamSchema } from "@/lib/validations/onboarding";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { requireUser } from '@/lib/auth/current-user';
+import { logAudit } from '@/lib/audit';
+import { gradeStreamSchema } from '@/lib/validations/onboarding';
 
+/**
+ * Wizard step 4: the admin's grades and streams (SEC-23).
+ * Admin only, always the caller's own school, and SAFE TO REPEAT: an existing grade is reused
+ * and streams are upserted, so re-running the wizard never creates duplicates.
+ * (A database unique key on grade name per school is planned in R5-04.)
+ */
 export async function POST(req: NextRequest) {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { schoolId: true },
-  });
-
-  if (!user?.schoolId) {
-    return NextResponse.json({ error: "School not found for user" }, { status: 404 });
-  }
-
+  const guard = await requireUser(['admin']);
+  if (!guard.ok) return guard.response;
+  const { user } = guard;
   const schoolId = user.schoolId;
 
-  const body = await req.json();
-  const parsed = gradeStreamSchema.safeParse(body);
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
+  }
 
+  const parsed = gradeStreamSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Validation failed", issues: parsed.error.issues },
+      { error: 'Validation failed', issues: parsed.error.issues },
       { status: 400 }
     );
   }
-
   const { grades } = parsed.data;
 
   try {
     await prisma.$transaction(async (tx) => {
       for (const grade of grades) {
-        const createdGrade = await tx.grade.create({
-          data: {
-            schoolId,
-            name: grade.name,
-            level: grade.level,
-            cbcStage: grade.cbcStage,
-          },
+        const existing = await tx.grade.findFirst({
+          where: { schoolId, name: grade.name },
+          select: { id: true },
         });
+        const gradeId =
+          existing?.id ??
+          (
+            await tx.grade.create({
+              data: {
+                schoolId,
+                name: grade.name,
+                level: grade.level,
+                cbcStage: grade.cbcStage,
+              },
+              select: { id: true },
+            })
+          ).id;
 
         for (const stream of grade.streams) {
-          await tx.stream.create({
-            data: {
-              schoolId,
-              gradeId: createdGrade.id,
-              name: stream.name,
-              capacity: stream.capacity,
-            },
+          await tx.stream.upsert({
+            where: { gradeId_name: { gradeId, name: stream.name } },
+            update: { capacity: stream.capacity },
+            create: { schoolId, gradeId, name: stream.name, capacity: stream.capacity },
           });
         }
       }
@@ -62,12 +68,20 @@ export async function POST(req: NextRequest) {
       });
     });
 
+    await logAudit({
+      schoolId,
+      actorId: user.id,
+      action: 'school.grades_configured',
+      tableName: 'grades',
+      newData: {
+        gradeCount: grades.length,
+        streamCount: grades.reduce((n, g) => n + g.streams.length, 0),
+      },
+    });
+
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("Onboarding step 4 error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to save grades and streams" },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error('Onboarding step 4 error:', error);
+    return NextResponse.json({ error: 'Failed to save grades and streams' }, { status: 500 });
   }
 }

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Search, Plus, GraduationCap, Users, ShieldCheck } from "lucide-react";
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Search, Plus, GraduationCap, Users, ShieldCheck } from 'lucide-react';
 
 interface Teacher {
   id: string;
@@ -26,15 +26,15 @@ export default function TeachersPage() {
   const router = useRouter();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
 
   const fetchTeachers = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (search) params.set("search", search);
+      if (search) params.set('search', search);
       const res = await fetch(`/api/teachers?${params}`);
-      if (!res.ok) throw new Error("Failed to load");
+      if (!res.ok) throw new Error('Failed to load');
       const data = await res.json();
       setTeachers(data.teachers);
     } catch (err) {
@@ -54,7 +54,7 @@ export default function TeachersPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Teachers</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {teachers.length} teacher{teachers.length !== 1 ? "s" : ""} on staff
+            {teachers.length} teacher{teachers.length !== 1 ? 's' : ''} on staff
           </p>
         </div>
         <Link
@@ -102,7 +102,7 @@ export default function TeachersPage() {
               ) : teachers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                    No teachers found.{" "}
+                    No teachers found.{' '}
                     <Link href="/admin/teachers/new" className="text-blue-600 hover:underline">
                       Add your first teacher
                     </Link>
@@ -119,15 +119,19 @@ export default function TeachersPage() {
                       <div className="font-medium text-gray-900">
                         {t.user.firstName} {t.user.lastName}
                       </div>
-                      <div className="text-xs text-gray-500">{t.user.email || t.user.phone || "No contact"}</div>
+                      <div className="text-xs text-gray-500">
+                        {t.user.email || t.user.phone || 'No contact'}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-gray-900">{t.tscNumber || "—"}</div>
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                        t.employmentType === "tsc"
-                          ? "bg-blue-50 text-blue-700 border-blue-100"
-                          : "bg-gray-50 text-gray-600 border-gray-100"
-                      }`}>
+                      <div className="text-gray-900">{t.tscNumber || '—'}</div>
+                      <span
+                        className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                          t.employmentType === 'tsc'
+                            ? 'bg-blue-50 text-blue-700 border-blue-100'
+                            : 'bg-gray-50 text-gray-600 border-gray-100'
+                        }`}
+                      >
                         {t.employmentType.toUpperCase()}
                       </span>
                     </td>
@@ -144,7 +148,7 @@ export default function TeachersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-gray-600 max-w-xs truncate">
-                      {t.specialisation || "—"}
+                      {t.specialisation || '—'}
                     </td>
                     <td className="px-6 py-4">
                       {t.user.isActive ? (

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { MessageItem } from "./MessageItem";
-import { Button } from "@/components/ui/button";
-import { Loader2, MessageSquare } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { MessageItem } from './MessageItem';
+import { Button } from '@/components/ui/button';
+import { Loader2, MessageSquare } from 'lucide-react';
 
 interface MessageListProps {
   teacherId: string;
@@ -44,13 +44,13 @@ export function MessageList({ teacherId, userId }: MessageListProps) {
       });
 
       const res = await fetch(`/api/messages?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch messages");
+      if (!res.ok) throw new Error('Failed to fetch messages');
 
       const data = await res.json();
       setMessages(data.messages);
       setTotal(data.total);
     } catch (error) {
-      console.error("Error fetching messages:", error);
+      console.error('Error fetching messages:', error);
     } finally {
       setLoading(false);
     }
@@ -80,7 +80,7 @@ export function MessageList({ teacherId, userId }: MessageListProps) {
             Show unread only
           </label>
           <span className="text-sm text-muted-foreground">
-            {total} {total === 1 ? "message" : "messages"}
+            {total} {total === 1 ? 'message' : 'messages'}
           </span>
         </div>
       </div>
@@ -94,7 +94,7 @@ export function MessageList({ teacherId, userId }: MessageListProps) {
         <div className="text-center py-12">
           <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
           <p className="text-muted-foreground">
-            {unreadOnly ? "No unread messages" : "No messages yet"}
+            {unreadOnly ? 'No unread messages' : 'No messages yet'}
           </p>
         </div>
       ) : (

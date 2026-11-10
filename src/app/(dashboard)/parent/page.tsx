@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
-import Link from "next/link";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useEffect, useState } from 'react';
+import { useUser } from '@clerk/nextjs';
+import Link from 'next/link';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Users,
   CheckCircle2,
@@ -19,7 +19,7 @@ import {
   AlertTriangle,
   Calendar,
   ArrowRight,
-} from "lucide-react";
+} from 'lucide-react';
 
 type Child = {
   student: {
@@ -29,19 +29,21 @@ type Child = {
     stream: { grade: { name: string }; name: string };
   };
   daily: { status: string; arrivedAt: string } | null;
-  lessons: { status: string; absenceReason: string | null; slot: { learningArea: { name: string } } }[];
+  lessons: {
+    status: string;
+    absenceReason: string | null;
+    slot: { learningArea: { name: string } };
+  }[];
 };
 
 function initials(first: string, last: string) {
-  return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
+  return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase();
 }
 
 function SectionHeader({ title, action }: { title: string; action?: string }) {
   return (
     <div className="mb-4 flex items-center justify-between">
-      <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">
-        {title}
-      </h2>
+      <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">{title}</h2>
       {action && <span className="text-xs font-medium text-emerald-700">{action}</span>}
     </div>
   );
@@ -57,7 +59,7 @@ export default function ParentDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/parent/children")
+    fetch('/api/parent/children')
       .then((r) => r.json())
       .then((d) => {
         setChildren(d.children || []);
@@ -66,15 +68,15 @@ export default function ParentDashboard() {
       .catch(() => setLoading(false));
   }, []);
 
-  const dateStr = new Date().toLocaleDateString("en-KE", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
+  const dateStr = new Date().toLocaleDateString('en-KE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
   });
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   if (loading) {
     return (
@@ -89,12 +91,13 @@ export default function ParentDashboard() {
   }
 
   const totalPresentToday = children.reduce(
-    (sum, c) => sum + c.lessons.filter((l) => l.status === "present").length,
+    (sum, c) => sum + c.lessons.filter((l) => l.status === 'present').length,
     0
   );
   const totalLessonsToday = children.reduce((sum, c) => sum + c.lessons.length, 0);
-  const attendanceRate = totalLessonsToday > 0 ? Math.round((totalPresentToday / totalLessonsToday) * 100) : 0;
-  const absentChildren = children.filter((c) => c.lessons.some((l) => l.status === "absent"));
+  const attendanceRate =
+    totalLessonsToday > 0 ? Math.round((totalPresentToday / totalLessonsToday) * 100) : 0;
+  const absentChildren = children.filter((c) => c.lessons.some((l) => l.status === 'absent'));
 
   return (
     <div className="space-y-8">
@@ -102,7 +105,7 @@ export default function ParentDashboard() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            {greeting}, {user?.firstName || "Parent"}
+            {greeting}, {user?.firstName || 'Parent'}
           </h1>
           <p className="mt-0.5 text-sm text-slate-500">{dateStr}</p>
         </div>
@@ -119,9 +122,7 @@ export default function ParentDashboard() {
             <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
               Children
             </p>
-            <p className="text-2xl font-bold leading-none text-slate-900">
-              {children.length}
-            </p>
+            <p className="text-2xl font-bold leading-none text-slate-900">{children.length}</p>
             <span className="mt-1 flex items-center gap-1 font-mono text-xs text-slate-500">
               Enrolled
             </span>
@@ -150,7 +151,7 @@ export default function ParentDashboard() {
               Arrived
             </p>
             <p className="text-2xl font-bold leading-none text-slate-900">
-              {children.filter((c) => c.daily?.status === "present").length}
+              {children.filter((c) => c.daily?.status === 'present').length}
             </p>
             <span className="mt-1 flex items-center gap-1 font-mono text-xs text-slate-500">
               At school gate
@@ -180,12 +181,12 @@ export default function ParentDashboard() {
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-4 w-4 flex-shrink-0 text-amber-500" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-slate-800">
-                Absence Alert
-              </p>
+              <p className="text-sm font-medium text-slate-800">Absence Alert</p>
               <p className="mt-0.5 text-xs text-slate-500">
-                {absentChildren.map((c) => `${c.student.firstName} ${c.student.lastName}`).join(", ")} {" "}
-                {absentChildren.length === 1 ? "has" : "have"} missed lessons today.
+                {absentChildren
+                  .map((c) => `${c.student.firstName} ${c.student.lastName}`)
+                  .join(', ')}{' '}
+                {absentChildren.length === 1 ? 'has' : 'have'} missed lessons today.
               </p>
             </div>
           </div>
@@ -202,12 +203,18 @@ export default function ParentDashboard() {
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {children.map((child) => {
-              const presentLessons = child.lessons.filter((l) => l.status === "present").length;
-              const absentLessons = child.lessons.filter((l) => l.status === "absent");
-              const lessonRate = child.lessons.length > 0 ? Math.round((presentLessons / child.lessons.length) * 100) : 0;
+              const presentLessons = child.lessons.filter((l) => l.status === 'present').length;
+              const absentLessons = child.lessons.filter((l) => l.status === 'absent');
+              const lessonRate =
+                child.lessons.length > 0
+                  ? Math.round((presentLessons / child.lessons.length) * 100)
+                  : 0;
 
               return (
-                <Card key={child.student.id} className="overflow-hidden transition-shadow hover:shadow-md">
+                <Card
+                  key={child.student.id}
+                  className="overflow-hidden transition-shadow hover:shadow-md"
+                >
                   <div className="p-5">
                     <div className="mb-4 flex items-start justify-between">
                       <div className="flex items-center gap-3">
@@ -228,12 +235,12 @@ export default function ParentDashboard() {
                       <Badge
                         variant="outline"
                         className={
-                          child.daily?.status === "present"
-                            ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                            : "bg-slate-100 text-slate-600 border-slate-200"
+                          child.daily?.status === 'present'
+                            ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                            : 'bg-slate-100 text-slate-600 border-slate-200'
                         }
                       >
-                        {child.daily?.status === "present" ? "At School" : "Not Arrived"}
+                        {child.daily?.status === 'present' ? 'At School' : 'Not Arrived'}
                       </Badge>
                     </div>
 
@@ -243,11 +250,11 @@ export default function ParentDashboard() {
                         <p className="text-xs text-slate-500">Gate Arrival</p>
                         <p className="mt-1 text-sm font-semibold text-slate-800">
                           {child.daily?.arrivedAt
-                            ? new Date(child.daily.arrivedAt).toLocaleTimeString("en-GB", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                            : "—"}
+                            ? new Date(child.daily.arrivedAt).toLocaleTimeString('en-GB', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : '—'}
                         </p>
                       </div>
                       <div className="rounded-lg bg-slate-50 p-3">
@@ -262,15 +269,18 @@ export default function ParentDashboard() {
                     {absentLessons.length > 0 && (
                       <div className="mb-4 rounded-lg bg-red-50 p-3">
                         <p className="text-xs font-medium text-red-700">
-                          Absent from: {" "}
-                          {absentLessons.map((l) => l.slot.learningArea.name).join(", ")}
+                          Absent from:{' '}
+                          {absentLessons.map((l) => l.slot.learningArea.name).join(', ')}
                         </p>
                       </div>
                     )}
 
                     {/* Quick Actions */}
                     <div className="flex gap-2">
-                      <Link href={`/parent/attendance?studentId=${child.student.id}`} className="flex-1">
+                      <Link
+                        href={`/parent/attendance?studentId=${child.student.id}`}
+                        className="flex-1"
+                      >
                         <Button variant="outline" size="sm" className="w-full gap-1.5">
                           <Calendar className="h-3.5 w-3.5" />
                           Attendance

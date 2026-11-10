@@ -1,17 +1,17 @@
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/db";
+import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { prisma } from '@/lib/db';
 
 export async function GET() {
   const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const user = await prisma.user.findUnique({
     where: { clerkId },
     select: { schoolId: true, role: true },
   });
-  if (!user?.schoolId || !["admin", "bursar"].includes(user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!user?.schoolId || !['admin', 'bursar'].includes(user.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const currentTerm = await prisma.term.findFirst({
@@ -20,7 +20,7 @@ export async function GET() {
   if (!currentTerm) return NextResponse.json({ defaulters: [] });
 
   const students = await prisma.student.findMany({
-    where: { schoolId: user.schoolId, deletedAt: null, status: "active" },
+    where: { schoolId: user.schoolId, deletedAt: null, status: 'active' },
     include: {
       stream: { include: { grade: true } },
       studentFees: { where: { termId: currentTerm.id }, include: { feeItem: true } },
@@ -31,7 +31,8 @@ export async function GET() {
   const defaulters = students
     .map((s) => {
       const totalDue = s.studentFees.reduce(
-        (sum, fee) => sum + (Number(fee.amountDue) - Number(fee.discount) + Number(fee.carryForwardAmount)),
+        (sum, fee) =>
+          sum + (Number(fee.amountDue) - Number(fee.discount) + Number(fee.carryForwardAmount)),
         0
       );
       const totalPaid = s.feePayments.reduce((sum, p) => sum + Number(p.amount), 0);

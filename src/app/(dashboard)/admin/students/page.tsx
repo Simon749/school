@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Plus, ChevronLeft, ChevronRight, Filter, Users } from "lucide-react";
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Search, Plus, ChevronLeft, ChevronRight, Filter, Users } from 'lucide-react';
 
 interface Student {
   id: string;
@@ -30,16 +30,23 @@ export default function StudentsPage() {
   const urlParams = useSearchParams();
 
   const [students, setStudents] = useState<Student[]>([]);
-  const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 50, total: 0, totalPages: 0 });
-  const [grades, setGrades] = useState<{ id: string; name: string; streams: { id: string; name: string }[] }[]>([]);
+  const [pagination, setPagination] = useState<Pagination>({
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 0,
+  });
+  const [grades, setGrades] = useState<
+    { id: string; name: string; streams: { id: string; name: string }[] }[]
+  >([]);
   const [loading, setLoading] = useState(true);
 
-  const [search, setSearch] = useState(urlParams.get("search") || "");
-  const [gradeId, setGradeId] = useState(urlParams.get("gradeId") || "");
-  const [streamId, setStreamId] = useState(urlParams.get("streamId") || "");
+  const [search, setSearch] = useState(urlParams.get('search') || '');
+  const [gradeId, setGradeId] = useState(urlParams.get('gradeId') || '');
+  const [streamId, setStreamId] = useState(urlParams.get('streamId') || '');
 
   const fetchGrades = useCallback(async () => {
-    const res = await fetch("/api/grades");
+    const res = await fetch('/api/grades');
     if (res.ok) {
       const data = await res.json();
       setGrades(data.grades || []);
@@ -49,15 +56,15 @@ export default function StudentsPage() {
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
-    params.set("page", String(pagination.page));
-    params.set("limit", String(pagination.limit));
-    if (search) params.set("search", search);
-    if (gradeId) params.set("gradeId", gradeId);
-    if (streamId) params.set("streamId", streamId);
+    params.set('page', String(pagination.page));
+    params.set('limit', String(pagination.limit));
+    if (search) params.set('search', search);
+    if (gradeId) params.set('gradeId', gradeId);
+    if (streamId) params.set('streamId', streamId);
 
     try {
       const res = await fetch(`/api/students?${params}`);
-      if (!res.ok) throw new Error("Failed to load");
+      if (!res.ok) throw new Error('Failed to load');
       const data = await res.json();
       setStudents(data.students);
       setPagination(data.pagination);
@@ -84,7 +91,7 @@ export default function StudentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Students</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {pagination.total} total enrolment{pagination.total !== 1 ? "s" : ""}
+            {pagination.total} total enrolment{pagination.total !== 1 ? 's' : ''}
           </p>
         </div>
         <Link
@@ -117,7 +124,7 @@ export default function StudentsPage() {
             value={gradeId}
             onChange={(e) => {
               setGradeId(e.target.value);
-              setStreamId("");
+              setStreamId('');
               setPagination((p) => ({ ...p, page: 1 }));
             }}
             className="px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -174,7 +181,7 @@ export default function StudentsPage() {
               ) : students.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
-                    No students found.{" "}
+                    No students found.{' '}
                     <Link href="/admin/students/new" className="text-blue-600 hover:underline">
                       Enrol your first student
                     </Link>
@@ -191,9 +198,9 @@ export default function StudentsPage() {
                       <div className="font-medium text-gray-900">
                         {s.firstName} {s.lastName}
                       </div>
-                      {s.status !== "active" && (
+                      {s.status !== 'active' && (
                         <span className="text-[10px] font-medium px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full capitalize">
-                          {s.status.replace("_", " ")}
+                          {s.status.replace('_', ' ')}
                         </span>
                       )}
                     </td>
@@ -208,7 +215,7 @@ export default function StudentsPage() {
                         {s.stream.grade.name} {s.stream.name}
                       </span>
                     </td>
-                    <td className="px-6 py-4 capitalize text-gray-600">{s.gender || "—"}</td>
+                    <td className="px-6 py-4 capitalize text-gray-600">{s.gender || '—'}</td>
                     <td className="px-6 py-4">
                       {s.isBoarding ? (
                         <span className="text-[10px] font-medium px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full border border-amber-100">

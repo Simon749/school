@@ -1,13 +1,18 @@
-import { redis } from "@/lib/redis";
+import { redis } from '@/lib/redis';
+import { envOr } from '@/lib/env';
 
-type Env = "sandbox" | "production";
+type Env = 'sandbox' | 'production';
 
 const BASE_URLS: Record<Env, string> = {
-  sandbox: "https://sandbox.safaricom.co.ke",
-  production: "https://api.safaricom.co.ke",
+  sandbox: 'https://sandbox.safaricom.co.ke',
+  production: 'https://api.safaricom.co.ke',
 };
 
-const env: Env = (process.env.MPESA_ENV as Env) || "sandbox";
+const rawEnv = envOr('MPESA_ENV', 'sandbox');
+if (rawEnv !== 'sandbox' && rawEnv !== 'production') {
+  throw new Error(`MPESA_ENV must be "sandbox" or "production", got "${rawEnv}"`);
+}
+const env: Env = rawEnv;
 const BASE = BASE_URLS[env];
 
 /**
@@ -15,17 +20,17 @@ const BASE = BASE_URLS[env];
  * (tokens expire at 3600s, we refresh early).
  */
 export async function getDarajaToken(): Promise<string> {
-  const cacheKey = "daraja:access_token";
+  const cacheKey = 'daraja:access_token';
   const cached = await redis.get(cacheKey);
   if (cached) return cached;
 
   const consumerKey = process.env.MPESA_CONSUMER_KEY;
   const consumerSecret = process.env.MPESA_CONSUMER_SECRET;
   if (!consumerKey || !consumerSecret) {
-    throw new Error("MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET required");
+    throw new Error('MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET required');
   }
 
-  const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString("base64");
+  const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
   const res = await fetch(`${BASE}/oauth/v1/generate?grant_type=client_credentials`, {
     headers: { Authorization: `Basic ${auth}` },
   });
@@ -49,37 +54,37 @@ export async function getDarajaToken(): Promise<string> {
  * Initiate STK Push (Lipa Na M-Pesa Online).
  */
 export async function stkPush(args: {
-  phone: string;           // 2547XXXXXXXX
+  phone: string; // 2547XXXXXXXX
   amount: number;
   accountReference: string; // max 12 chars on prod
-  transactionDesc: string;  // max 13 chars on prod
+  transactionDesc: string; // max 13 chars on prod
   callbackUrl: string;
 }) {
   const token = await getDarajaToken();
   const shortcode = process.env.MPESA_SHORTCODE;
   const passkey = process.env.MPESA_PASSKEY;
-  if (!shortcode || !passkey) throw new Error("MPESA_SHORTCODE and MPESA_PASSKEY required");
+  if (!shortcode || !passkey) throw new Error('MPESA_SHORTCODE and MPESA_PASSKEY required');
 
   const timestamp = new Date()
     .toISOString()
-    .replace(/[^0-9]/g, "")
+    .replace(/[^0-9]/g, '')
     .slice(0, 14);
-  const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
+  const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
 
   // Normalize phone to 254XXXXXXXXX
-  let normalizedPhone = args.phone.replace(/\D/g, "");
-  if (normalizedPhone.startsWith("0")) {
-    normalizedPhone = "254" + normalizedPhone.slice(1);
+  let normalizedPhone = args.phone.replace(/\D/g, '');
+  if (normalizedPhone.startsWith('0')) {
+    normalizedPhone = '254' + normalizedPhone.slice(1);
   }
-  if (!normalizedPhone.startsWith("254")) {
-    normalizedPhone = "254" + normalizedPhone;
+  if (!normalizedPhone.startsWith('254')) {
+    normalizedPhone = '254' + normalizedPhone;
   }
 
   const body = {
     BusinessShortCode: shortcode,
     Password: password,
     Timestamp: timestamp,
-    TransactionType: "CustomerPayBillOnline",
+    TransactionType: 'CustomerPayBillOnline',
     Amount: Math.round(args.amount), // Daraja requires integers
     PartyA: normalizedPhone,
     PartyB: shortcode,
@@ -90,10 +95,10 @@ export async function stkPush(args: {
   };
 
   const res = await fetch(`${BASE}/mpesa/stkpush/v1/processrequest`, {
-    method: "POST",
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
   });
@@ -122,15 +127,15 @@ export async function queryStkStatus(checkoutRequestId: string) {
   const passkey = process.env.MPESA_PASSKEY!;
   const timestamp = new Date()
     .toISOString()
-    .replace(/[^0-9]/g, "")
+    .replace(/[^0-9]/g, '')
     .slice(0, 14);
-  const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
+  const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
 
   const res = await fetch(`${BASE}/mpesa/stkpushquery/v1/query`, {
-    method: "POST",
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       BusinessShortCode: shortcode,
@@ -151,14 +156,14 @@ export async function registerC2BUrls(validationUrl: string, confirmationUrl: st
   const shortcode = process.env.MPESA_SHORTCODE;
 
   const res = await fetch(`${BASE}/mpesa/c2b/v1/registerurl`, {
-    method: "POST",
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       ShortCode: shortcode,
-      ResponseType: "Completed",
+      ResponseType: 'Completed',
       ConfirmationURL: confirmationUrl,
       ValidationURL: validationUrl,
     }),

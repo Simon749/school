@@ -1,39 +1,45 @@
-import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { requireUser } from '@/lib/auth/current-user';
 
 export async function GET() {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guard = await requireUser(['parent']);
+  if (!guard.ok) return guard.response;
+  const { user } = guard;
 
-  const parent = await prisma.user.findUnique({
-    where: { clerkId },
-    include: {
-      guardians: {
-        include: {
-          student: {
-            include: {
-              stream: {
-                include: {
-                  grade: { select: { name: true } },
-                },
-              },
-            },
-          },
+  // Only this parent's ACTIVE guardian links to students in their school, with an explicit
+  // field whitelist (never whole student rows).
+  const guardians = await prisma.guardian.findMany({
+    where: {
+      userId: user.id,
+      isActive: true,
+      student: { schoolId: user.schoolId, deletedAt: null },
+    },
+    select: {
+      hasRestrictedAccess: true,
+      student: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          stream: { select: { name: true, grade: { select: { name: true } } } },
         },
       },
     },
   });
 
-  if (!parent) return NextResponse.json({ error: "Parent not found" }, { status: 404 });
-
   const children = await Promise.all(
-    parent.guardians.map(async (guardian) => {
+    guardians.map(async (guardian) => {
       const student = guardian.student;
 
       // Get all assessments for this student
       const assessments = await prisma.assessmentResult.findMany({
-        where: { studentId: student.id },
+        where: {
+          schoolId: user.schoolId, // ➕ R5-04: Strict tenancy scoping
+          studentId: student.id,
+          // Parents only ever see PUBLISHED (or locked-after-publish) results, never drafts.
+          assessment: { schoolId: user.schoolId, status: { in: ['published', 'locked'] } },
+        },
         include: {
           assessment: {
             include: {
@@ -44,15 +50,19 @@ export async function GET() {
         },
         orderBy: {
           assessment: {
-            assessmentDate: "desc",
+            assessmentDate: 'desc',
           },
         },
       });
 
       // Get term reports
       const termReports = await prisma.termReport.findMany({
-        where: { studentId: student.id },
-        orderBy: { term: { startDate: "desc" } },
+        where: {
+          studentId: student.id,
+          schoolId: user.schoolId,
+          publishedAt: { not: null }, // unpublished report cards are never visible to parents
+        },
+        orderBy: { term: { startDate: 'desc' } },
         include: {
           term: { select: { name: true, startDate: true } },
         },
@@ -60,12 +70,15 @@ export async function GET() {
 
       // Calculate subject performance across terms
       const subjectMap = new Map<string, { term1: number[]; term2: number[]; term3: number[] }>();
-      
+
       assessments.forEach((result) => {
         const subject = result.assessment.learningArea.name;
-        const percentage = result.marksObtained && result.assessment.maxMarks ? (Number(result.marksObtained) / Number(result.assessment.maxMarks)) * 100 : 0;
-        const termName = result.assessment.term.name || "";
-        const termNum = termName.includes("1") ? 1 : termName.includes("2") ? 2 : 3;
+        const percentage =
+          result.marksObtained && result.assessment.maxMarks
+            ? (Number(result.marksObtained) / Number(result.assessment.maxMarks)) * 100
+            : 0;
+        const termName = result.assessment.term.name || '';
+        const termNum = termName.includes('1') ? 1 : termName.includes('2') ? 2 : 3;
 
         if (!subjectMap.has(subject)) {
           subjectMap.set(subject, { term1: [], term2: [], term3: [] });
@@ -77,16 +90,20 @@ export async function GET() {
       });
 
       const subjectPerformance = Array.from(subjectMap.entries()).map(([subject, data]) => {
-        const term1Avg = data.term1.length > 0 ? data.term1.reduce((a, b) => a + b, 0) / data.term1.length : 0;
-        const term2Avg = data.term2.length > 0 ? data.term2.reduce((a, b) => a + b, 0) / data.term2.length : 0;
-        const term3Avg = data.term3.length > 0 ? data.term3.reduce((a, b) => a + b, 0) / data.term3.length : 0;
-        const overallAvg = [term1Avg, term2Avg, term3Avg].filter((v) => v > 0).reduce((a, b) => a + b, 0) / 
-                          [term1Avg, term2Avg, term3Avg].filter((v) => v > 0).length || 0;
+        const term1Avg =
+          data.term1.length > 0 ? data.term1.reduce((a, b) => a + b, 0) / data.term1.length : 0;
+        const term2Avg =
+          data.term2.length > 0 ? data.term2.reduce((a, b) => a + b, 0) / data.term2.length : 0;
+        const term3Avg =
+          data.term3.length > 0 ? data.term3.reduce((a, b) => a + b, 0) / data.term3.length : 0;
+        const overallAvg =
+          [term1Avg, term2Avg, term3Avg].filter((v) => v > 0).reduce((a, b) => a + b, 0) /
+            [term1Avg, term2Avg, term3Avg].filter((v) => v > 0).length || 0;
 
         // Determine trend
-        let trend: "improving" | "declining" | "stable" = "stable";
-        if (term3Avg > term1Avg + 5) trend = "improving";
-        else if (term3Avg < term1Avg - 5) trend = "declining";
+        let trend: 'improving' | 'declining' | 'stable' = 'stable';
+        if (term3Avg > term1Avg + 5) trend = 'improving';
+        else if (term3Avg < term1Avg - 5) trend = 'declining';
 
         return {
           subject,
@@ -95,25 +112,24 @@ export async function GET() {
           term3: Math.round(term3Avg * 10) / 10,
           average: Math.round(overallAvg * 10) / 10,
           trend,
-          needsAttention: overallAvg < 50 || trend === "declining",
+          needsAttention: overallAvg < 50 || trend === 'declining',
         };
       });
 
       // Calculate overall average
-      const allPercentages = assessments.map((a) => 
+      const allPercentages = assessments.map((a) =>
         a.marksObtained ? (Number(a.marksObtained) / Number(a.assessment.maxMarks)) * 100 : 0
       );
-      const overallAverage = allPercentages.length > 0 
-        ? allPercentages.reduce((a, b) => a + b, 0) / allPercentages.length 
-        : 0;
+      const overallAverage =
+        allPercentages.length > 0
+          ? allPercentages.reduce((a, b) => a + b, 0) / allPercentages.length
+          : 0;
 
       // Identify strengths and weaknesses
-      const strengths = subjectPerformance
-        .filter((s) => s.average >= 70)
-        .map((s) => s.subject);
-      
+      const strengths = subjectPerformance.filter((s) => s.average >= 70).map((s) => s.subject);
+
       const needsImprovement = subjectPerformance
-        .filter((s) => s.average < 50 || s.trend === "declining")
+        .filter((s) => s.average < 50 || s.trend === 'declining')
         .map((s) => s.subject);
 
       return {
@@ -128,20 +144,27 @@ export async function GET() {
         assessments: assessments.map((a) => ({
           id: a.id,
           title: a.assessment.title,
-          type: a.assessment.type as "cat" | "exam" | "assignment" | "project",
+          type: a.assessment.type as 'cat' | 'exam' | 'assignment' | 'project',
           learningArea: { name: a.assessment.learningArea.name },
           term: { name: a.assessment.term.name },
-          assessmentDate: a.assessment.assessmentDate ? a.assessment.assessmentDate.toISOString() : null,
+          assessmentDate: a.assessment.assessmentDate
+            ? a.assessment.assessmentDate.toISOString()
+            : null,
           maxMarks: a.assessment.maxMarks,
           weightPercent: a.assessment.weightPercent,
           marksObtained: a.marksObtained,
-          percentage: a.marksObtained && a.assessment.maxMarks ? Math.round((Number(a.marksObtained) / Number(a.assessment.maxMarks)) * 100 * 10) / 10 : 0,
-          grade: "",
+          percentage:
+            a.marksObtained && a.assessment.maxMarks
+              ? Math.round((Number(a.marksObtained) / Number(a.assessment.maxMarks)) * 100 * 10) /
+                10
+              : 0,
+          grade: '',
           teacherComment: a.teacherComment || undefined,
         })),
         termSummaries: termReports.map((r) => ({
           term: r.term.name,
-          totalAssessments: assessments.filter((a) => a.assessment.term.name === r.term.name).length,
+          totalAssessments: assessments.filter((a) => a.assessment.term.name === r.term.name)
+            .length,
           averageScore: Math.round((Number(r.overallScore) || 0) * 10) / 10,
           position: r.position || undefined,
           outOf: r.outOf || undefined,

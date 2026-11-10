@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { useEffect, useState } from 'react';
+import { useUser } from '@clerk/nextjs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import {
   Wallet,
   TrendingUp,
@@ -19,7 +19,7 @@ import {
   Loader2,
   ArrowUpRight,
   ArrowDownRight,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -33,7 +33,7 @@ import {
   Cell,
   BarChart,
   Bar,
-} from "recharts";
+} from 'recharts';
 
 type FeeItem = {
   id: string;
@@ -70,12 +70,12 @@ type ChildFees = {
   paymentHistory: { month: string; amount: number }[];
 };
 
-const COLORS = ["#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6"];
+const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6'];
 
 export default function ParentFeesPage() {
   const { user } = useUser();
   const [children, setChildren] = useState<ChildFees[]>([]);
-  const [selectedChildId, setSelectedChildId] = useState<string>("");
+  const [selectedChildId, setSelectedChildId] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -83,32 +83,62 @@ export default function ParentFeesPage() {
     setTimeout(() => {
       const mockData: ChildFees[] = [
         {
-          studentId: "1",
-          firstName: "Njeri",
-          lastName: "Ochieng",
-          grade: "Grade 3",
-          stream: "B",
+          studentId: '1',
+          firstName: 'Njeri',
+          lastName: 'Ochieng',
+          grade: 'Grade 3',
+          stream: 'B',
           totalDue: 45000,
           totalPaid: 30000,
           balance: 15000,
           progress: 67,
           feeItems: [
-            { id: "f1", name: "Tuition Fee", amountDue: 30000, amountPaid: 30000, balance: 0, isMandatory: true },
-            { id: "f2", name: "Lunch Fee", amountDue: 10000, amountPaid: 0, balance: 10000, isMandatory: true, dueDate: "2026-09-15" },
-            { id: "f3", name: "Swimming Club", amountDue: 5000, amountPaid: 0, balance: 5000, isMandatory: false },
+            {
+              id: 'f1',
+              name: 'Tuition Fee',
+              amountDue: 30000,
+              amountPaid: 30000,
+              balance: 0,
+              isMandatory: true,
+            },
+            {
+              id: 'f2',
+              name: 'Lunch Fee',
+              amountDue: 10000,
+              amountPaid: 0,
+              balance: 10000,
+              isMandatory: true,
+              dueDate: '2026-09-15',
+            },
+            {
+              id: 'f3',
+              name: 'Swimming Club',
+              amountDue: 5000,
+              amountPaid: 0,
+              balance: 5000,
+              isMandatory: false,
+            },
           ],
           payments: [
-            { id: "p1", amount: 30000, paymentMethod: "mpesa", mpesaCode: "RKT84H29L1", paidAt: "2026-08-15T10:30:00Z", receiptNumber: "REC-001", feeItemId: "f1" },
+            {
+              id: 'p1',
+              amount: 30000,
+              paymentMethod: 'mpesa',
+              mpesaCode: 'RKT84H29L1',
+              paidAt: '2026-08-15T10:30:00Z',
+              receiptNumber: 'REC-001',
+              feeItemId: 'f1',
+            },
           ],
           paymentHistory: [
-            { month: "Jan", amount: 15000 },
-            { month: "Feb", amount: 0 },
-            { month: "Mar", amount: 10000 },
-            { month: "Apr", amount: 0 },
-            { month: "May", amount: 5000 },
-            { month: "Jun", amount: 0 },
-            { month: "Jul", amount: 0 },
-            { month: "Aug", amount: 30000 },
+            { month: 'Jan', amount: 15000 },
+            { month: 'Feb', amount: 0 },
+            { month: 'Mar', amount: 10000 },
+            { month: 'Apr', amount: 0 },
+            { month: 'May', amount: 5000 },
+            { month: 'Jun', amount: 0 },
+            { month: 'Jul', amount: 0 },
+            { month: 'Aug', amount: 30000 },
           ],
         },
       ];
@@ -121,7 +151,11 @@ export default function ParentFeesPage() {
   const selectedChild = children.find((c) => c.studentId === selectedChildId) || children[0];
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency',
+      currency: 'KES',
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   if (loading) {
@@ -150,7 +184,9 @@ export default function ParentFeesPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Fee Management</h1>
-          <p className="text-sm text-slate-500 mt-1">Track payments, balances, and payment history</p>
+          <p className="text-sm text-slate-500 mt-1">
+            Track payments, balances, and payment history
+          </p>
         </div>
         {children.length > 1 && (
           <select
@@ -221,12 +257,14 @@ export default function ParentFeesPage() {
               <div className="flex-1">
                 <h3 className="font-semibold text-amber-900 mb-1">Overdue Payments</h3>
                 <p className="text-sm text-amber-800 mb-2">
-                  {overduePayments.length} payment{overduePayments.length > 1 ? "s are" : " is"} past due date
+                  {overduePayments.length} payment{overduePayments.length > 1 ? 's are' : ' is'}{' '}
+                  past due date
                 </p>
                 <ul className="space-y-1">
                   {overduePayments.map((item) => (
                     <li key={item.id} className="text-sm text-amber-700">
-                      • {item.name}: {formatCurrency(item.balance)} (was due {new Date(item.dueDate!).toLocaleDateString("en-KE")})
+                      • {item.name}: {formatCurrency(item.balance)} (was due{' '}
+                      {new Date(item.dueDate!).toLocaleDateString('en-KE')})
                     </li>
                   ))}
                 </ul>
@@ -249,8 +287,8 @@ export default function ParentFeesPage() {
                 <PieChart>
                   <Pie
                     data={[
-                      { name: "Paid", value: selectedChild.totalPaid },
-                      { name: "Balance", value: selectedChild.balance },
+                      { name: 'Paid', value: selectedChild.totalPaid },
+                      { name: 'Balance', value: selectedChild.balance },
                     ]}
                     cx="50%"
                     cy="50%"
@@ -262,18 +300,26 @@ export default function ParentFeesPage() {
                     <Cell fill="#10b981" />
                     <Cell fill="#f1f5f9" />
                   </Pie>
-                  <Tooltip formatter={(value) => value !== undefined ? formatCurrency(value as number) : ''} />
+                  <Tooltip
+                    formatter={(value) =>
+                      value !== undefined ? formatCurrency(value as number) : ''
+                    }
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <div className="flex justify-center gap-6 mt-4">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                <span className="text-sm text-slate-600">Paid: {formatCurrency(selectedChild.totalPaid)}</span>
+                <span className="text-sm text-slate-600">
+                  Paid: {formatCurrency(selectedChild.totalPaid)}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-slate-200" />
-                <span className="text-sm text-slate-600">Balance: {formatCurrency(selectedChild.balance)}</span>
+                <span className="text-sm text-slate-600">
+                  Balance: {formatCurrency(selectedChild.balance)}
+                </span>
               </div>
             </div>
           </CardContent>
@@ -290,8 +336,16 @@ export default function ParentFeesPage() {
                 <BarChart data={selectedChild.paymentHistory}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="month" stroke="#64748b" fontSize={12} />
-                  <YAxis stroke="#64748b" fontSize={12} tickFormatter={(value) => `${value / 1000}k`} />
-                  <Tooltip formatter={(value) => value !== undefined ? formatCurrency(value as number) : ''} />
+                  <YAxis
+                    stroke="#64748b"
+                    fontSize={12}
+                    tickFormatter={(value) => `${value / 1000}k`}
+                  />
+                  <Tooltip
+                    formatter={(value) =>
+                      value !== undefined ? formatCurrency(value as number) : ''
+                    }
+                  />
                   <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -308,8 +362,9 @@ export default function ParentFeesPage() {
         <CardContent className="space-y-4">
           {selectedChild.feeItems.map((item) => {
             const itemProgress = item.amountDue > 0 ? (item.amountPaid / item.amountDue) * 100 : 0;
-            const isOverdue = item.balance > 0 && item.dueDate && new Date(item.dueDate) < new Date();
-            
+            const isOverdue =
+              item.balance > 0 && item.dueDate && new Date(item.dueDate) < new Date();
+
             return (
               <div key={item.id} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0">
                 <div className="flex items-center justify-between mb-2">
@@ -317,17 +372,28 @@ export default function ParentFeesPage() {
                     <div className="flex items-center gap-2">
                       <h4 className="font-medium text-slate-900">{item.name}</h4>
                       {item.isMandatory ? (
-                        <Badge variant="outline" className="text-xs">Mandatory</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          Mandatory
+                        </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-xs bg-slate-100">Optional</Badge>
+                        <Badge variant="outline" className="text-xs bg-slate-100">
+                          Optional
+                        </Badge>
                       )}
                       {isOverdue && (
-                        <Badge variant="destructive" className="text-xs">Overdue</Badge>
+                        <Badge variant="destructive" className="text-xs">
+                          Overdue
+                        </Badge>
                       )}
                     </div>
                     {item.dueDate && (
                       <p className="text-xs text-slate-500 mt-1">
-                        Due: {new Date(item.dueDate).toLocaleDateString("en-KE", { day: 'numeric', month: 'short', year: 'numeric' })}
+                        Due:{' '}
+                        {new Date(item.dueDate).toLocaleDateString('en-KE', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
                       </p>
                     )}
                   </div>
@@ -361,16 +427,25 @@ export default function ParentFeesPage() {
           ) : (
             <div className="space-y-3">
               {selectedChild.payments.map((payment) => (
-                <div key={payment.id} className="flex items-start justify-between rounded-lg border border-slate-200 p-4 hover:bg-slate-50 transition-colors">
+                <div
+                  key={payment.id}
+                  className="flex items-start justify-between rounded-lg border border-slate-200 p-4 hover:bg-slate-50 transition-colors"
+                >
                   <div className="flex items-start gap-3">
                     <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
                       <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-900">{formatCurrency(payment.amount)}</p>
+                      <p className="font-semibold text-slate-900">
+                        {formatCurrency(payment.amount)}
+                      </p>
                       <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
                         <Calendar className="h-3 w-3" />
-                        {new Date(payment.paidAt).toLocaleDateString("en-KE", { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {new Date(payment.paidAt).toLocaleDateString('en-KE', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
                       </div>
                       {payment.mpesaCode && (
                         <div className="mt-2">
@@ -386,7 +461,9 @@ export default function ParentFeesPage() {
                     <Badge variant="outline" className="bg-white text-slate-600">
                       {payment.receiptNumber}
                     </Badge>
-                    <p className="text-xs text-slate-500 mt-2 capitalize">{payment.paymentMethod}</p>
+                    <p className="text-xs text-slate-500 mt-2 capitalize">
+                      {payment.paymentMethod}
+                    </p>
                   </div>
                 </div>
               ))}

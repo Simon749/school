@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, Search, Loader2, UserPlus } from "lucide-react";
-import error from "next/error";
+import { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft, Search, Loader2, UserPlus } from 'lucide-react';
+import error from 'next/error';
 
 interface UserResult {
   id: string;
@@ -19,36 +19,36 @@ export default function LinkGuardianPage() {
   const router = useRouter();
   const studentId = params.id as string;
 
-  const [mode, setMode] = useState<"search" | "create">("search");
-  const [searchPhone, setSearchPhone] = useState("");
+  const [mode, setMode] = useState<'search' | 'create'>('search');
+  const [searchPhone, setSearchPhone] = useState('');
   const [searchResults, setSearchResults] = useState<UserResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserResult | null>(null);
 
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    phone: "",
-    email: "",
-    relationship: "mother",
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
+    relationship: 'mother',
     isPrimary: false,
     canPickup: true,
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!searchPhone.trim()) return;
     setSearching(true);
-    setError("");
+    setError('');
     try {
       const res = await fetch(`/api/users/search?phone=${encodeURIComponent(searchPhone)}`);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Search failed");
+      if (!res.ok) throw new Error(data.error || 'Search failed');
       setSearchResults(data.users || []);
-      if (data.users.length === 0) setError("No existing guardian found with this phone.");
+      if (data.users.length === 0) setError('No existing guardian found with this phone.');
     } catch (error: any) {
       setError((error as Error).message);
     } finally {
@@ -59,10 +59,10 @@ export default function LinkGuardianPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    setError('');
 
     const payload =
-      mode === "search" && selectedUser
+      mode === 'search' && selectedUser
         ? {
             userId: selectedUser.id,
             relationship: form.relationship,
@@ -81,12 +81,12 @@ export default function LinkGuardianPage() {
 
     try {
       const res = await fetch(`/api/students/${studentId}/guardians`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to link guardian");
+      if (!res.ok) throw new Error(json.error || 'Failed to link guardian');
       router.push(`/admin/students/${studentId}`);
     } catch (error: any) {
       setError((error as Error).message);
@@ -118,21 +118,21 @@ export default function LinkGuardianPage() {
         {/* Mode toggle */}
         <div className="flex gap-2 mb-6">
           <button
-            onClick={() => setMode("search")}
+            onClick={() => setMode('search')}
             className={`flex-1 py-2 text-sm font-medium rounded-lg border ${
-              mode === "search"
-                ? "bg-blue-50 border-blue-200 text-blue-700"
-                : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+              mode === 'search'
+                ? 'bg-blue-50 border-blue-200 text-blue-700'
+                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >
             Search Existing
           </button>
           <button
-            onClick={() => setMode("create")}
+            onClick={() => setMode('create')}
             className={`flex-1 py-2 text-sm font-medium rounded-lg border ${
-              mode === "create"
-                ? "bg-blue-50 border-blue-200 text-blue-700"
-                : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+              mode === 'create'
+                ? 'bg-blue-50 border-blue-200 text-blue-700'
+                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >
             Create New
@@ -140,7 +140,7 @@ export default function LinkGuardianPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {mode === "search" ? (
+          {mode === 'search' ? (
             <div className="space-y-4">
               {!selectedUser ? (
                 <>
@@ -162,7 +162,11 @@ export default function LinkGuardianPage() {
                         disabled={searching || !searchPhone.trim()}
                         className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
                       >
-                        {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                        {searching ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Search className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -192,7 +196,9 @@ export default function LinkGuardianPage() {
                     <p className="font-medium text-sm text-gray-900">
                       {selectedUser.firstName} {selectedUser.lastName}
                     </p>
-                    <p className="text-xs text-gray-500">{selectedUser.phone || selectedUser.email}</p>
+                    <p className="text-xs text-gray-500">
+                      {selectedUser.phone || selectedUser.email}
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -299,14 +305,14 @@ export default function LinkGuardianPage() {
               type="submit"
               disabled={
                 loading ||
-                (mode === "search" && !selectedUser) ||
-                (mode === "create" && (!form.firstName || !form.lastName || !form.phone))
+                (mode === 'search' && !selectedUser) ||
+                (mode === 'create' && (!form.firstName || !form.lastName || !form.phone))
               }
               className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               <UserPlus className="w-4 h-4" />
-              {loading ? "Linking..." : "Link Guardian"}
+              {loading ? 'Linking...' : 'Link Guardian'}
             </button>
           </div>
         </form>

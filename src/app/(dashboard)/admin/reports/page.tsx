@@ -1,24 +1,29 @@
 // src/app/(dashboard)/admin/reports/page.tsx
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/db';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import Link from "next/link";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import Link from 'next/link';
 
 export default async function AdminReportsPage() {
   const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  if (!userId) redirect('/sign-in');
 
   const user = await prisma.user.findUnique({
     where: { clerkId: userId },
   });
 
-  if (!user || (user.role !== "admin" && user.role !== "deputy")) {
+  if (!user || (user.role !== 'admin' && user.role !== 'deputy')) {
     return <div className="p-8 text-red-500">Access denied.</div>;
   }
 
@@ -40,7 +45,7 @@ export default async function AdminReportsPage() {
         },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: 'desc' },
   });
 
   return (

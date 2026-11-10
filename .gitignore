@@ -23,3 +23,12 @@ prisma/migrations/dev.db*
 *.pem
 .vercel
 coverage/
+# next-pwa build output (regenerated on every build)
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+public/swe-worker-*.js
+
+# local-only data (real user IDs / emails for dev seeding)
+scripts/*.local.json

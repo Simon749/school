@@ -1,36 +1,47 @@
-import withPWA from "next-pwa";
+import withPWA from 'next-pwa';
+
+// Server Actions only accept same-origin requests; list the deployed host plus localhost for dev.
+const allowedOrigins = ['localhost:3000'];
+if (process.env.NEXT_PUBLIC_APP_URL) {
+  try {
+    allowedOrigins.push(new URL(process.env.NEXT_PUBLIC_APP_URL).host);
+  } catch {
+    /* invalid URL: ignore here, env validation reports it where it is used */
+  }
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "img.clerk.com" },
-      { protocol: "https", hostname: "images.clerk.dev" },
+      { protocol: 'https', hostname: 'img.clerk.com' },
+      { protocol: 'https', hostname: 'images.clerk.dev' },
     ],
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ["localhost:3000"],
+      allowedOrigins: allowedOrigins,
     },
+    // Next 14 key (serverExternalPackages is Next 15+): keep server-only packages out of the bundle
+    serverComponentsExternalPackages: ['bullmq', 'ioredis'],
   },
-  // 1. Allow build to pass despite ESLint warnings
+  // Lint errors fail the build (warnings do not). CI also runs `pnpm run lint`.
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
-  // 2. Tell Next.js NOT to bundle these server-only packages
-  serverExternalPackages: ["bullmq", "ioredis", "@valkey/valkey-glide"],
-  
-  // 3. The "Bulletproof" Fix: Force Webpack to ignore the missing package
+
+  // @valkey/valkey-glide is an optional peer of BullMQ that we do not use. Alias it away so the
+  // build trace does not fail on it (kept deliberately; revisit when BullMQ is upgraded).
   webpack: (config, { isServer }) => {
     if (isServer) {
       // Mark as external (don't bundle)
-      config.externals = [...(config.externals || []), "@valkey/valkey-glide"];
-      
+      config.externals = [...(config.externals || []), '@valkey/valkey-glide'];
+
       // CRITICAL: Tell Webpack to resolve this package to 'false' (empty module)
       // This prevents the "Module not found" error during the build trace
       config.resolve.alias = {
         ...(config.resolve.alias || {}),
-        "@valkey/valkey-glide": false,
+        '@valkey/valkey-glide': false,
       };
     }
     return config;
@@ -38,8 +49,8 @@ const nextConfig = {
 };
 
 export default withPWA({
-  dest: "public",
+  dest: 'public',
   register: true,
   skipWaiting: true,
-  disable: process.env.NODE_ENV === "development",
+  disable: process.env.NODE_ENV === 'development',
 })(nextConfig);

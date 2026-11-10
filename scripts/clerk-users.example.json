@@ -1,0 +1,37 @@
+[
+  {
+    "email": "you+admin@example.com",
+    "clerkId": "user_REPLACE_ME",
+    "role": "admin",
+    "firstName": "Admin",
+    "lastName": "User"
+  },
+  {
+    "email": "you+deputy@example.com",
+    "clerkId": "user_REPLACE_ME",
+    "role": "deputy",
+    "firstName": "Deputy",
+    "lastName": "User"
+  },
+  {
+    "email": "you+teacher@example.com",
+    "clerkId": "user_REPLACE_ME",
+    "role": "teacher",
+    "firstName": "Teacher",
+    "lastName": "User"
+  },
+  {
+    "email": "you+parent@example.com",
+    "clerkId": "user_REPLACE_ME",
+    "role": "parent",
+    "firstName": "Parent",
+    "lastName": "User"
+  },
+  {
+    "email": "you+bursar@example.com",
+    "clerkId": "user_REPLACE_ME",
+    "role": "bursar",
+    "firstName": "Bursar",
+    "lastName": "User"
+  }
+]

@@ -1,35 +1,29 @@
 // src/app/(dashboard)/teacher/reports/[studentId]/page.tsx
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { TermReportForm } from "@/components/reports/TermReportForm";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { prisma } from '@/lib/db';
+import { requirePageTeacher } from '@/lib/auth/current-user';
+import { TermReportForm } from '@/components/reports/TermReportForm';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default async function TeacherReportPage({
-  params,
-}: {
-  params: { studentId: string };
-}) {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+export default async function TeacherReportPage({ params }: { params: { studentId: string } }) {
+  // FEAT-01: the teacher record is keyed by the internal user id, not the Clerk id.
+  const { teacher } = await requirePageTeacher();
 
-  const teacher = await prisma.teacher.findUnique({
-    where: { userId },
-    include: {
-      school: {
-        include: {
-          terms: { where: { isCurrent: true }, select: { id: true, name: true } },
-        },
-      },
-    },
-  });
-
-  if (!teacher || !teacher.isClassTeacher) {
-    return <div className="p-8 text-red-500">Access denied. Only class teachers can generate reports.</div>;
+  if (!teacher.isClassTeacher || !teacher.classTeacherStreamId) {
+    return (
+      <div className="p-8 text-red-500">
+        Access denied. Only class teachers can generate reports.
+      </div>
+    );
   }
 
-  const student = await prisma.student.findUnique({
-    where: { id: params.studentId, schoolId: teacher.schoolId },
+  // Only students of THIS teacher's own class (the API enforces the same rule).
+  const student = await prisma.student.findFirst({
+    where: {
+      id: params.studentId,
+      schoolId: teacher.schoolId,
+      streamId: teacher.classTeacherStreamId,
+      deletedAt: null,
+    },
     include: {
       stream: { include: { grade: true } },
     },
@@ -39,14 +33,25 @@ export default async function TeacherReportPage({
     return <div className="p-8 text-red-500">Student not found.</div>;
   }
 
-  const currentTerm = teacher.school.terms[0];
+  const currentTerm = await prisma.term.findFirst({
+    where: { schoolId: teacher.schoolId, isCurrent: true },
+    select: { id: true, name: true },
+  });
+
+  if (!currentTerm) {
+    return (
+      <div className="p-8 text-red-500">
+        No current term is set for this school. Ask the school admin to mark the current term.
+      </div>
+    );
+  }
 
   // Check if report already exists
   const existingReport = await prisma.termReport.findUnique({
     where: {
       studentId_termId: {
         studentId: params.studentId,
-        termId: currentTerm?.id,
+        termId: currentTerm.id,
       },
     },
   });
@@ -56,7 +61,8 @@ export default async function TeacherReportPage({
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Term Report</h1>
         <p className="text-muted-foreground">
-          {student.firstName} {student.lastName} • {student.stream.grade.name} {student.stream.name} • {currentTerm?.name}
+          {student.firstName} {student.lastName} • {student.stream.grade.name} {student.stream.name}{' '}
+          • {currentTerm.name}
         </p>
       </div>
 
@@ -67,7 +73,7 @@ export default async function TeacherReportPage({
         <CardContent>
           <TermReportForm
             studentId={params.studentId}
-            termId={currentTerm?.id}
+            termId={currentTerm.id}
             existingReport={existingReport}
           />
         </CardContent>
