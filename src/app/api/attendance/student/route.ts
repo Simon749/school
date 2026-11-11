@@ -186,22 +186,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'You are not assigned to this lesson' }, { status: 403 });
   }
 
-  const idemKey = req.headers.get('Idempotency-Key');
+  // ATT-11: Idempotency and lock-state checks.
+  const idempotencyKey = req.headers.get('Idempotency-Key');
 
   const existingRegister = await prisma.lessonRegister.findUnique({
     where: { slotId_date: { slotId, date: attendanceDate } },
   });
 
-  if (existingRegister?.isLocked && user.role !== 'admin') {
-    return NextResponse.json({ error: 'Register is locked. Contact admin to unlock.' }, { status: 423 });
+  // Check idempotency before lock state: a retry of an already successful
+  // submission must receive 200, even if the register was locked afterward.
+  const existingRegisterWithIdempotency = existingRegister as {
+    idempotencyKey?: string | null;
+  } | null;
+
+  if (
+    idempotencyKey &&
+    existingRegisterWithIdempotency?.idempotencyKey === idempotencyKey
+  ) {
+    return NextResponse.json(
+      { success: true, idempotent: true },
+      { status: 200 }
+    );
   }
 
-  // ➕ R4-10: Server-side idempotency check. 
-  // If we already processed this exact operationId, return success immediately 
-  // without re-triggering notifications or audit logs.
-  const existingRegisterWithIdempotency = existingRegister as { idempotencyKey?: string | null } | null;
-  if (idemKey && existingRegisterWithIdempotency?.idempotencyKey === idemKey) {
-    return NextResponse.json({ success: true, idempotent: true }, { status: 200 });
+  // A locked register cannot be changed by another submission.
+  if (existingRegister?.isLocked) {
+    return NextResponse.json(
+      { error: 'This register is already locked. Please contact an admin.' },
+      { status: 423 }
+    );
   }
 
   const validStudentIds = new Set(slot.stream.students.map((student) => student.id));
@@ -314,7 +327,7 @@ export async function POST(req: NextRequest) {
         slotId,
         date: attendanceDate,
         isLocked: false,
-        idempotencyKey: idemKey ?? undefined,
+        idempotencyKey: idempotencyKey ?? undefined,
       },
     });
 

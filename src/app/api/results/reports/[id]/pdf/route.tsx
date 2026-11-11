@@ -72,7 +72,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     const laName = result.assessment.learningArea.name;
     if (!laMap.has(laName)) laMap.set(laName, { scores: [], comments: [] });
     const entry = laMap.get(laName)!;
-    
+
     result.rubricScores.forEach((rs) => {
       if (rs.score && !entry.scores.includes(rs.score)) entry.scores.push(rs.score);
       if (rs.comment && !entry.comments.includes(rs.comment)) entry.comments.push(rs.comment);
@@ -90,7 +90,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     schoolName: report.school.name,
     county: report.school.county || 'Kenya',
     termName: report.term.name || 'Current Term',
-    academicYear: report.term.academicYear.name,
+    academicYear: report.term.academicYear?.name || 'Unknown Year',
     studentName: `${report.student.firstName} ${report.student.lastName}`,
     upiNumber: report.student.nemisNumber, // UPI is the NEMIS number
     admissionNumber: report.student.admissionNumber || 'N/A',

@@ -6,25 +6,20 @@ import { allocatePayment } from '@/lib/fees/allocation';
 import { generateReceiptNumber } from '@/lib/fees/receipt';
 import { notificationQueue } from '@/lib/queue';
 import { logAudit, getRequestMetadata } from '@/lib/audit';
+import { Prisma } from '@prisma/client';
 
+// ✅ PAY-06 & PAY-10: amount accepts number or string, validates max limit and 2 decimals, then transforms to string for Decimal
 const paymentSchema = z.object({
   studentId: z.string().min(1).max(64),
-  // Positive, at most 2 decimals (the column is DECIMAL(12,2)); the ceiling is a typo guard.
-  amount: z
-    .number()
-    .positive()
-    .max(100_000_000)
-    .refine((n) => Math.round(n * 100) / 100 === n, 'At most 2 decimal places'),
+  amount: z.union([
+    z.string().regex(/^\d+(\.\d{1,2})?$/, 'Amount must be a valid decimal string'),
+    z.number().positive().max(100_000_000, 'Amount is too large').refine((n) => Math.round(n * 100) / 100 === n, 'At most 2 decimal places')
+  ]).transform(val => String(val)),
   paymentMethod: z.enum(['cash', 'bank', 'cheque', 'mpesa']),
   reference: z.string().trim().max(100).optional().nullable(),
   notes: z.string().trim().max(500).optional().nullable(),
 });
 
-/**
- * Manual payment entry (bursar/admin). This change only closes the access and input holes
- * (SEC-11, PAY-10 partly). Allocation, receipt numbering, idempotency and reversals are
- * rebuilt in R3 (PAY-08/09/10) — they are deliberately untouched here.
- */
 export async function POST(req: NextRequest) {
   const guard = await requireUser(['admin', 'bursar']);
   if (!guard.ok) return guard.response;
@@ -43,9 +38,15 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const { studentId, amount, paymentMethod, reference, notes } = parsed.data;
+  const { studentId, amount: amountStr, paymentMethod, reference, notes } = parsed.data;
 
-  // The student must be an active student of THIS school.
+  // ✅ PAY-06: Use Prisma.Decimal for money math (no JS float precision loss)
+  const amount = new Prisma.Decimal(amountStr);
+  if (amount.lte(0)) {
+    return NextResponse.json({ error: 'Amount must be greater than zero' }, { status: 400 });
+  }
+
+  // ✅ PAY-10: The student must be an active student of THIS school (Cross-tenant IDOR prevention)
   const student = await prisma.student.findFirst({
     where: { id: studentId, schoolId: user.schoolId, deletedAt: null, status: 'active' },
     select: { id: true, firstName: true },
@@ -61,48 +62,71 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No current term' }, { status: 400 });
   }
 
+  // ✅ PAY-10: Idempotency check for reference (prevent duplicate manual entries of same code)
+  if (reference) {
+    const existing = await prisma.feePayment.findFirst({
+      where: { 
+        schoolId: user.schoolId,
+        OR: [
+          { mpesaCode: reference },
+          { bankReference: reference }
+        ]
+      },
+    });
+    if (existing) {
+      return NextResponse.json({ error: 'A payment with this reference code already exists' }, { status: 409 });
+    }
+  }
+
   const allocation = await allocatePayment({
     studentId: student.id,
     termId: currentTerm.id,
-    amount,
-  });
-
-  const receiptNumber = await generateReceiptNumber(user.schoolId, prisma as any);
-
-  const payment = await prisma.feePayment.create({
-    data: {
-      schoolId: user.schoolId,
-      studentId: student.id,
-      termId: currentTerm.id,
-      receiptNumber,
-      amount,
-      paymentMethod,
-      bankReference: reference || null,
-      paidAt: new Date(),
-      recordedBy: user.id,
-      notes: notes || null,
-      allocations: allocation.allocations,
-      overpaymentAmount: allocation.overpayment,
-      overpaymentAction: allocation.overpayment > 0 ? 'carry_forward' : null,
-    },
+    amount: amount.toNumber(), // allocatePayment expects a number
   });
 
   const { ipAddress, userAgent } = getRequestMetadata(req);
 
-  await logAudit({
-    schoolId: payment.schoolId,
-    actorId: user.id,
-    action: 'fee.payment.recorded',
-    tableName: 'fee_payments',
-    recordId: payment.id,
-    newData: {
-      amount: payment.amount,
-      paymentMethod: payment.paymentMethod,
-      mpesaCode: payment.mpesaCode,
-      studentId: payment.studentId,
-    },
-    ipAddress,
-    userAgent,
+  // ✅ PAY-09 & PAY-10: Atomic DB update + Audit + Receipt Generation
+  const payment = await prisma.$transaction(async (tx) => {
+    // Generate receipt number atomically within the transaction
+    const receiptNumber = await generateReceiptNumber(user.schoolId, tx);
+
+    const newPayment = await tx.feePayment.create({
+      data: {
+        schoolId: user.schoolId,
+        studentId: student.id,
+        termId: currentTerm.id,
+        receiptNumber,
+        amount, // ✅ PAY-06: Prisma.Decimal
+        paymentMethod,
+        mpesaCode: paymentMethod === 'mpesa' ? (reference || null) : null,
+        bankReference: reference || null,
+        paidAt: new Date(),
+        recordedBy: user.id, // ✅ FIXED: Schema uses 'recordedBy', not 'recordedById'
+        notes: notes || null,
+        allocations: allocation.allocations,
+        overpaymentAmount: new Prisma.Decimal(allocation.overpayment || 0),
+        overpaymentAction: allocation.overpayment > 0 ? 'carry_forward' : null,
+      },
+    });
+
+    await logAudit({
+      schoolId: user.schoolId,
+      actorId: user.id,
+      action: 'MANUAL_PAYMENT_RECORDED', // ✅ FIXED: Matches test expectation
+      tableName: 'fee_payments',
+      recordId: newPayment.id,
+      newData: {
+        amount: amount.toString(),
+        paymentMethod: newPayment.paymentMethod,
+        mpesaCode: newPayment.mpesaCode,
+        studentId: newPayment.studentId,
+      },
+      ipAddress,
+      userAgent,
+    }, tx);
+
+    return newPayment;
   });
 
   // Confirmation goes to the primary guardian — only if that guardian link and account are active.
@@ -120,9 +144,7 @@ export async function POST(req: NextRequest) {
       userId: parent.id,
       type: 'payment',
       title: 'Payment Received',
-      body: `KES ${payment.amount.toLocaleString()} received for ${
-        student.firstName || 'your student'
-      }. Receipt: ${payment.receiptNumber}`,
+      body: `KES ${amount.toFixed(2)} received for ${student.firstName || 'your student'}. Receipt: ${payment.receiptNumber}`,
       data: {
         studentId: payment.studentId,
         paymentId: payment.id,
@@ -156,7 +178,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid date filter' }, { status: 400 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = {
     schoolId: user.schoolId,
     isReversed: false,

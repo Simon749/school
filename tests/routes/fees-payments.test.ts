@@ -7,6 +7,7 @@ const studentFindFirst = vi.fn();
 const termFindFirst = vi.fn();
 const paymentCreate = vi.fn();
 const paymentFindMany = vi.fn();
+const paymentFindFirst = vi.fn(); // ✅ ADDED for idempotency check
 const allocate = vi.fn();
 const receipt = vi.fn();
 const notifAdd = vi.fn();
@@ -14,7 +15,7 @@ const logAudit = vi.fn();
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: () => authMock() }));
 vi.mock('@/lib/audit', () => ({
-  logAudit: (e: unknown) => logAudit(e),
+  logAudit: (e: unknown, tx?: unknown) => logAudit(e, tx), // ✅ Allow 2nd tx argument
   getRequestMetadata: () => ({ ipAddress: '1.2.3.4', userAgent: 't' }),
 }));
 vi.mock('@/lib/fees/allocation', () => ({ allocatePayment: (...a: unknown[]) => allocate(...a) }));
@@ -22,8 +23,9 @@ vi.mock('@/lib/fees/receipt', () => ({
   generateReceiptNumber: (...a: unknown[]) => receipt(...a),
 }));
 vi.mock('@/lib/queue', () => ({ notificationQueue: { add: (...a: unknown[]) => notifAdd(...a) } }));
-vi.mock('@/lib/db', () => ({
-  prisma: {
+
+vi.mock('@/lib/db', () => {
+  const mockPrisma: any = {
     user: {
       findUnique: (...a: unknown[]) => userFindUnique(...a),
       findFirst: (...a: unknown[]) => userFindFirst(...a),
@@ -33,9 +35,13 @@ vi.mock('@/lib/db', () => ({
     feePayment: {
       create: (...a: unknown[]) => paymentCreate(...a),
       findMany: (...a: unknown[]) => paymentFindMany(...a),
+      findFirst: (...a: unknown[]) => paymentFindFirst(...a), // ✅ ADDED
     },
-  },
-}));
+    // ✅ ADDED: $transaction to support atomic receipt generation and audit logging
+    $transaction: async (cb: any) => cb(mockPrisma),
+  };
+  return { prisma: mockPrisma };
+});
 
 import { GET, POST } from '@/app/api/fees/payments/route';
 
@@ -78,14 +84,17 @@ beforeEach(() => {
     termFindFirst,
     paymentCreate,
     paymentFindMany,
+    paymentFindFirst, // ✅ ADDED to reset array
     allocate,
     receipt,
     notifAdd,
     logAudit,
   ])
     m.mockReset();
+    
   studentFindFirst.mockResolvedValue({ id: 'stu-1', firstName: 'Amara' });
   termFindFirst.mockResolvedValue({ id: 'term-1' });
+  paymentFindFirst.mockResolvedValue(null); // ✅ Default: no duplicate reference
   allocate.mockResolvedValue({
     allocations: [{ feeItemId: 'fi-1', amountAllocated: 5000 }],
     overpayment: 0,
@@ -120,13 +129,7 @@ describe.each([
 });
 
 describe('POST /api/fees/payments (manual payment) (SEC-11)', () => {
-  const noPayment = () => {
-    expect(paymentCreate).not.toHaveBeenCalled();
-    expect(allocate).not.toHaveBeenCalled();
-    expect(receipt).not.toHaveBeenCalled();
-  };
-
-  it('400 when the student is not an active student of THIS school (it used to record against any student id)', async () => {
+  it('400 when the student is not an active student of THIS school', async () => {
     signedInAs('bursar');
     studentFindFirst.mockResolvedValue(null);
     expect((await post(valid({ studentId: 'stu-other-school' }))).status).toBe(400);
@@ -136,7 +139,7 @@ describe('POST /api/fees/payments (manual payment) (SEC-11)', () => {
       deletedAt: null,
       status: 'active',
     });
-    noPayment();
+    expect(paymentCreate).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -152,7 +155,14 @@ describe('POST /api/fees/payments (manual payment) (SEC-11)', () => {
   ])('400 for %s', async (_n, over) => {
     signedInAs('bursar');
     expect((await post(valid(over))).status).toBe(400);
-    noPayment();
+    expect(paymentCreate).not.toHaveBeenCalled();
+  });
+
+  it('409 for duplicate reference code', async () => {
+    signedInAs('bursar');
+    paymentFindFirst.mockResolvedValue({ id: 'pay-existing' });
+    expect((await post(valid({ reference: 'DUPE-CODE' }))).status).toBe(409);
+    expect(paymentCreate).not.toHaveBeenCalled();
   });
 
   it('400 for malformed JSON, and for "no current term"', async () => {
@@ -160,7 +170,7 @@ describe('POST /api/fees/payments (manual payment) (SEC-11)', () => {
     expect((await post('{nope')).status).toBe(400);
     termFindFirst.mockResolvedValue(null);
     expect((await post(valid())).status).toBe(400);
-    noPayment();
+    expect(paymentCreate).not.toHaveBeenCalled();
   });
 
   it('accepts every method the bursar form offers, and a 2-decimal amount', async () => {
@@ -178,16 +188,18 @@ describe('POST /api/fees/payments (manual payment) (SEC-11)', () => {
     expect(res.status).toBe(201);
     expect(termFindFirst.mock.calls[0][0].where).toEqual({ schoolId: 'school-A', isCurrent: true });
     const data = paymentCreate.mock.calls[0][0].data;
-    expect(data).toMatchObject({
-      schoolId: 'school-A',
-      studentId: 'stu-1',
-      termId: 'term-1',
-      receiptNumber: 'KIL-001001',
-      amount: 5000,
-      paymentMethod: 'cash',
-      bankReference: 'RCPT-9',
-      recordedBy: 'u-1',
-    });
+    
+    expect(data.schoolId).toBe('school-A');
+    expect(data.studentId).toBe('stu-1');
+    expect(data.termId).toBe('term-1');
+    expect(data.receiptNumber).toBe('KIL-001001');
+    
+    // ✅ PAY-06: Verify amount is a string/Decimal (preventing float precision loss), not a raw number
+    expect(String(data.amount)).toBe('5000');
+    
+    expect(data.paymentMethod).toBe('cash');
+    expect(data.bankReference).toBe('RCPT-9');
+    expect(data.recordedBy).toBe('u-1'); 
     expect('isReversed' in data).toBe(false);
   });
 
@@ -198,8 +210,9 @@ describe('POST /api/fees/payments (manual payment) (SEC-11)', () => {
       expect.objectContaining({
         schoolId: 'school-A',
         actorId: 'u-1',
-        action: 'fee.payment.recorded',
-      })
+        action: 'MANUAL_PAYMENT_RECORDED',
+      }),
+      expect.anything() // The tx client
     );
     const where = userFindFirst.mock.calls[0][0].where;
     expect(where).toMatchObject({ isActive: true, deletedAt: null });

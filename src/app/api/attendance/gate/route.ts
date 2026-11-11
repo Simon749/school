@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
   }
 
-  // IGNORE client-supplied arrivedAt to prevent backdating attacks
+  // ✅ ATT-07: IGNORE client-supplied arrivedAt to prevent backdating attacks
   const { studentId } = body; 
 
   if (!studentId || typeof studentId !== 'string') {
@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // ✅ ATT-07: Pass tx to logAudit to ensure it runs in the same transaction
     await logAudit({
       schoolId: user.schoolId,
       actorId: user.id,
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
       newData: { studentId, arrivedAt: now.toISOString(), status: 'present' },
       ipAddress: auditMeta.ipAddress,
       userAgent: auditMeta.userAgent,
-    });
+    }, tx);
 
     return attendance;
   });

@@ -8,7 +8,7 @@ export const attendanceWorker = new Worker(
   async (job) => {
     const { type, payload } = job.data;
 
-    if (type === 'teacher-check-in') {
+        if (type === 'teacher-check-in') {
       const {
         teacherId,
         schoolId,
@@ -24,6 +24,28 @@ export const attendanceWorker = new Worker(
         lessonNotes,
       } = payload;
 
+      // 1. ATT-12: Check for existing record to prevent silent overwrites
+      const existingRecord = await prisma.teacherAttendance.findUnique({
+        where: {
+          teacherId_slotId_date: {
+            teacherId,
+            slotId,
+            date: new Date(date),
+          },
+        },
+      });
+
+      if (existingRecord?.checkedInAt) {
+        throw new Error('TEACHER_ALREADY_CHECKED_IN');
+      }
+
+      // 2. Fetch slot to check for double-lesson auto-cover
+      const slot = await prisma.timetableSlot.findUnique({
+        where: { id: slotId },
+        select: { secondPeriodId: true, learningArea: { select: { name: true } } },
+      });
+
+      // 3. Perform the upsert (safe create/update)
       const record = await prisma.teacherAttendance.upsert({
         where: {
           teacherId_slotId_date: {
@@ -33,7 +55,8 @@ export const attendanceWorker = new Worker(
           },
         },
         update: {
-          checkedInAt: new Date(checkedInAt),
+          // Preserve original check-in time if it somehow existed without being marked 'checkedInAt'
+          checkedInAt: existingRecord?.checkedInAt || new Date(checkedInAt),
           checkInLat,
           checkInLng,
           geofencePassed,
@@ -57,6 +80,31 @@ export const attendanceWorker = new Worker(
           lessonNotes,
         },
       });
+
+      // 4. ATT-12: Double-lesson auto-cover
+      if (slot?.secondPeriodId) {
+        await prisma.teacherAttendance.upsert({
+          where: {
+            teacherId_slotId_date: {
+              teacherId,
+              slotId: slot.secondPeriodId,
+              date: new Date(date),
+            },
+          },
+          update: {
+            status: 'covered',
+            lessonNotes: `Auto-covered via double lesson from slot ${slotId}`,
+          },
+          create: {
+            schoolId,
+            teacherId,
+            slotId: slot.secondPeriodId,
+            date: new Date(date),
+            status: 'covered',
+            lessonNotes: `Auto-covered via double lesson from slot ${slotId}`,
+          },
+        });
+      }
 
       console.log(`[AttendanceWorker] Teacher ${teacherId} checked in → ${record.id}`);
       return record;

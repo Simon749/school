@@ -188,4 +188,38 @@ describe('POST /api/attendance/teacher (R4-11 / ATT-01,02,03)', () => {
     }), expect.any(Object));
     expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: 'TEACHER_CHECK_IN_INITIATED' }), expect.anything());
   });
+
+  // ✅ ATT-05 NEW TESTS
+  it('400 if location data is too old (>5 mins) (ATT-05)', async () => {
+    signedInAs('teacher');
+    const sixMinutesAgo = Date.now() - 6 * 60 * 1000;
+    const res = await post({
+      slotId: SLOT,
+      latitude: -1.2921,
+      longitude: 36.8219,
+      qrToken: 'valid-token',
+      locationTimestamp: sixMinutesAgo,
+      locationAccuracy: 10,
+    });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain('too old');
+    expect(attendanceAdd).not.toHaveBeenCalled();
+  });
+
+  it('400 if GPS accuracy is too low (>50m) (ATT-05)', async () => {
+    signedInAs('teacher');
+    const res = await post({
+      slotId: SLOT,
+      latitude: -1.2921,
+      longitude: 36.8219,
+      qrToken: 'valid-token',
+      locationTimestamp: Date.now(),
+      locationAccuracy: 75,
+    });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain('accuracy is too low');
+    expect(attendanceAdd).not.toHaveBeenCalled();
+  });
 });

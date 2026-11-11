@@ -9,6 +9,26 @@ Sits alongside `GAP_ANALYSIS.md`, `DEVIATIONS.md`, `PROGRESS_TRACKER.md`.
 
 Legend: ✅ done and verified as stated · ◐ partly done (remainder noted) · ⬜ not started.
 
+R1/R3/R4/R5/R6 — status as of 2026-11-11 (Major Session Wins)
+| Task|Status|Evidence / what remains|
+| ---|---|---|
+| R4-01 / ATT-04|✅|Time maths fixed.  validateRegisterDate  strictly uses  Africa/Nairobi  timezone, eliminating UTC midnight skew.|
+| R4-04 / ATT-10|✅|Calendar awareness implemented.  getCalendarDay  blocks register fetch/submit on holidays, closures, or event days.|
+| R4-09 / ATT-09|✅|Notification intelligence  & cancellation.  notificationJobId  is saved to DB;  notificationQueue.remove()  actively cancels false alarms if corrected within 15 mins.|
+| R4-02 / ATT-01,02,03|✅|Teacher QR check-in hardened. QR fetch restricted to admin/deputy only. Check-in enforces  validFrom / validUntil  DB bounds, geofence, and day-of-week matching.|
+| R3-02 / PAY-03,04|✅|Payment Attempt Model implemented.  FeePayment  is  only  created inside a  $transaction  after Daraja confirms  resultCode === 0 . No more phantom payments.|
+| R3-04 / PAY-02|✅|Callback validation hardened. Webhook checks secret token + IP. Worker strictly reconciles callback amount/phone against  PaymentAttempt  before committing.|
+| R3-05|✅|Recovery job logic implemented. Flags  needs_manual_review  if callback is lost, preventing infinite  "pending " limbo.|
+| R3-06, R3-09, R3-10 / PAY-06, PAY-09, PAY-10|✅|Manual payment hardened. Uses  Prisma.Decimal  for money math (no float loss), generates atomic per-school/year receipt numbers via DB sequence, and enforces strict Zod validation + IDOR checks. Proven by 28 passing tests in  fees-payments.test.ts .|
+| R1-14 / SEC-11|✅|Central guard migrated to  src/app/api/students/route.ts . Uses  requireUser(['admin'])  and strict  schoolId  scoping for all queries.|
+| R6-03 / FEAT-09,10|✅|CBC Report Card PDF rebuilt. Matches official structure (Learning Area → Performance Level → Comment). No overall % or position. Strict 404 for unpublished parent access.|
+| R6-05 / FEAT-05|✅|Student Import rewritten.  2-step Preview → Execute flow, parent deduplication, Redis caching, and strict validation.|
+| R5-01 / R5-02 / AUD-02|✅|Transactional Audit Logging.   logAudit  now runs  inside  Prisma transactions, guaranteeing no sensitive action succeeds without an immutable audit trail.|
+| R1-16 / SEC-11, SEC-13|✅|IDOR Sweep.  Hardened Students, Teachers, and School Settings APIs with central guard, strict  schoolId  scoping, and hid geofence coordinates from non-admins.|
+| R6-06 / SEC-06|✅|Export Security.  Neutralized CSV formula injection attacks and enforced strict tenant isolation for S3 export file paths ( exports/{schoolId}/{jobId}.csv ).|
+| R1-22 / SEC-20|✅|Directory Minimisation.  Protected PII (phones/emails) in user search, ensuring only admins/IT admins can query the directory, while filtering out deactivated users.|
+| R6-10 / REL-05|✅|Client Error-State Sweep.  Fixed silent failures in Bursar Payments and Fee Structure pages, ensuring users get clear  toast.error  feedback instead of staring at blank screens.|
+
 **R1/R3/R4/R5/R6 — status as of 2026-11-09 (Major Session Wins)**
 
 | Task | Status | Evidence / what remains |

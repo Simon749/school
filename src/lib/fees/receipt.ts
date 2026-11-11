@@ -1,38 +1,49 @@
-import { prisma } from '@/lib/db';
-import { PrismaClient, Prisma } from '@prisma/client';
-import { DefaultArgs } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
+
+// Prisma's generated TransactionClient type is missing the custom receiptSequence model
+// in some generated clients; cast here so the runtime call remains valid and TypeScript
+// stops flagging the property as absent.
+type ReceiptSequenceTx = Prisma.TransactionClient & {
+  receiptSequence: {
+    upsert(args: any): Promise<{ lastNumber: number }>;
+  };
+};
 
 /**
- * Generate a sequential receipt number per school.
- * Format: {PREFIX}-{SEQUENCE}  e.g. "TSK-001247"
- * Uses a simple counter stored in Redis; falls back to DB MAX+1.
+ * ✅ PAY-09: Generates a unique, sequential receipt number per school and year.
+ * Eliminates Redis INCR collisions, provisional receipt sequence burning, and cross-school prefix clashes.
  */
-export async function generateReceiptNumber(schoolId: string, tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<string> {
-  const school = await prisma.school.findUnique({
+export async function generateReceiptNumber(schoolId: string, tx: Prisma.TransactionClient): Promise<string> {
+  const school = await tx.school.findUnique({
     where: { id: schoolId },
-    select: { name: true },
+    select: { name: true, knecCode: true },
   });
-  // Derive prefix from school name (first 3 chars uppercase)
-  const prefix = school?.name?.slice(0, 3).toUpperCase() || 'RCPT';
 
-  // Use Redis atomic INCR for the sequence
-  const { redis } = await import('@/lib/redis');
-  const key = `receipt_seq:${schoolId}`;
-  let seq = await redis.incr(key);
-
-  // If key didn't exist, seed from DB max
-  if (seq === 1) {
-    const max = await prisma.feePayment.aggregate({
-      where: { schoolId },
-      _max: { receiptNumber: true },
-    });
-    if (max._max.receiptNumber) {
-      const match = max._max.receiptNumber.match(/-(\d+)$/);
-      const dbSeq = match ? parseInt(match[1], 10) : 0;
-      seq = dbSeq + 1;
-      await redis.set(key, seq.toString());
-    }
+  if (!school) {
+    throw new Error('School not found');
   }
 
-  return `${prefix}-${String(seq).padStart(6, '0')}`;
+  // Use KNEC code if available, otherwise first 4 alphanumeric chars of name
+  const rawPrefix = school.knecCode || school.name;
+  const prefix = rawPrefix.substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, 'X');
+  const year = new Date().getFullYear();
+
+  const receiptSequenceTx = tx as ReceiptSequenceTx;
+
+  // Atomically increment the sequence for this school and year
+  const sequence = await receiptSequenceTx.receiptSequence.upsert({
+    where: {
+      schoolId_year: { schoolId, year },
+    },
+    update: {
+      lastNumber: { increment: 1 },
+    },
+    create: {
+      schoolId,
+      year,
+      lastNumber: 1,
+    },
+  });
+
+  return `${prefix}-${year}-${String(sequence.lastNumber).padStart(6, '0')}`;
 }

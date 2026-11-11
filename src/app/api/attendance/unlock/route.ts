@@ -2,74 +2,79 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireUser } from '@/lib/auth/current-user';
 import { logAudit, getRequestMetadata } from '@/lib/audit';
-import { validateRegisterDate } from '@/lib/attendance/register-date';
 import { getCalendarDay } from '@/lib/calendar';
 
-/** Admin unlocks a submitted lesson register so a teacher can correct it. Always audited. */
 export async function POST(req: NextRequest) {
-  const guard = await requireUser(['admin']);
+  // 1. Role gating: Only admin or deputy can unlock a register (ATT-08)
+  const guard = await requireUser(['admin', 'deputy']);
   if (!guard.ok) return guard.response;
-  const { user } = guard;
+  const user = guard.user;
 
-  let body: { slotId?: unknown; date?: unknown };
+  let body;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
   }
+
   const { slotId, date } = body;
-  if (typeof slotId !== 'string' || typeof date !== 'string' || !slotId || !date) {
-    return NextResponse.json({ error: 'slotId and date required' }, { status: 400 });
+
+  if (!slotId || typeof slotId !== 'string' || !date || typeof date !== 'string') {
+    return NextResponse.json({ error: 'slotId and date (YYYY-MM-DD) are required' }, { status: 400 });
   }
 
-  // 1. School check on slotId (SEC-11)
-  const slot = await prisma.timetableSlot.findFirst({
-    where: { id: slotId, schoolId: user.schoolId },
-    select: { id: true, dayOfWeek: true },
+  // 2. IDOR prevention: Verify slot belongs to caller's school and is published
+  const slot = await prisma.timetableSlot.findUnique({
+    where: { id: slotId, schoolId: user.schoolId, isPublished: true },
+    select: { id: true },
   });
-  if (!slot) return NextResponse.json({ error: 'Slot not found' }, { status: 404 });
 
-  const checked = validateRegisterDate(date, slot.dayOfWeek);
-  if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });
-
-  // 2. Calendar Awareness Check (R4-08)
-  const calendarDay = await getCalendarDay(user.schoolId, checked.date);
-  if (!calendarDay) {
-    return NextResponse.json({ error: 'No calendar record found for this date.' }, { status: 400 });
-  }
-  if (calendarDay.dayType !== 'school_day') {
-    return NextResponse.json({ error: `Cannot unlock register: this date is marked as '${calendarDay.dayType.replace(/_/g, ' ')}'.` }, { status: 400 });
+  if (!slot) {
+    return NextResponse.json({ error: 'Invalid, unpublished, or cross-tenant slot' }, { status: 404 });
   }
 
-  const unlockedAt = new Date();
-  const { ipAddress, userAgent } = getRequestMetadata(req);
+  // 3. Calendar validation (ATT-10)
+  const calendarDay = await getCalendarDay(user.schoolId, new Date(`${date}T00:00:00.000Z`));
+  if (!calendarDay || calendarDay.dayType !== 'school_day') {
+    return NextResponse.json({ error: `Cannot unlock register on a ${calendarDay?.dayType || 'non-school'} day.` }, { status: 400 });
+  }
 
-  // 3. Atomic DB update + Audit (R5-01)
+  const auditMeta = getRequestMetadata(req);
+
+  // 4. Transactional unlock + Immutable Audit (R5-01, AUD-02)
   await prisma.$transaction(async (tx) => {
-    const register = await tx.lessonRegister.upsert({
-      where: { slotId_date: { slotId: slot.id, date: checked.date } },
-      update: { isLocked: false, unlockedAt, unlockedBy: user.id },
+    await tx.lessonRegister.upsert({
+      where: {
+        slotId_date: {
+          slotId,
+          date: new Date(`${date}T00:00:00.000Z`),
+        },
+      },
+      update: {
+        isLocked: false,
+      },
       create: {
         schoolId: user.schoolId,
-        slotId: slot.id,
-        date: checked.date,
+        slotId,
+        date: new Date(`${date}T00:00:00.000Z`),
         isLocked: false,
-        unlockedAt,
-        unlockedBy: user.id,
       },
     });
 
     await logAudit({
       schoolId: user.schoolId,
       actorId: user.id,
-      action: 'ATTENDANCE_REGISTER_UNLOCKED',
-      tableName: 'lesson_registers',
-      recordId: register.id,
-      newData: { slotId: slot.id, date: checked.date.toISOString() },
-      ipAddress,
-      userAgent,
+      action: 'LESSON_REGISTER_UNLOCKED',
+      tableName: 'LessonRegister',
+      recordId: slotId,
+      newData: { slotId, date, unlockedBy: user.id },
+      ipAddress: auditMeta.ipAddress,
+      userAgent: auditMeta.userAgent,
     }, tx);
   });
 
-  return NextResponse.json({ success: true }, { status: 200 });
+  return NextResponse.json({ 
+    success: true, 
+    message: 'Register unlocked successfully. Teacher can now edit marks.' 
+  }, { status: 200 });
 }

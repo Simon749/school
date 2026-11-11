@@ -118,9 +118,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
   }
 
-  const { slotId, latitude, longitude, qrToken, lessonNotes } = body;
+  // ✅ ATT-05: Extract accuracy and timestamp
+  const { slotId, latitude, longitude, qrToken, lessonNotes, locationAccuracy, locationTimestamp } = body;
   if (!slotId || latitude == null || longitude == null || !qrToken) {
     return NextResponse.json({ error: 'slotId, latitude, longitude, and qrToken are required' }, { status: 400 });
+  }
+
+  // ✅ ATT-05: Geofence Integrity - Reject stale or inaccurate GPS data early
+  if (locationTimestamp) {
+    const ts = typeof locationTimestamp === 'number' ? locationTimestamp : new Date(locationTimestamp).getTime();
+    const ageMs = Date.now() - ts;
+    if (ageMs > 5 * 60 * 1000) { // 5 minutes
+      return NextResponse.json(
+        { error: 'Location data is too old. Please refresh your GPS and try again.' },
+        { status: 400 }
+      );
+    }
+  }
+
+  if (locationAccuracy !== undefined && Number(locationAccuracy) > 50) {
+    return NextResponse.json(
+      { error: 'GPS accuracy is too low (>50m). Please ensure you have a clear view of the sky and try again.' },
+      { status: 400 }
+    );
   }
 
   const slot = await prisma.timetableSlot.findFirst({
@@ -232,7 +252,10 @@ export async function POST(req: NextRequest) {
       qrScanned: true,  
       status, 
       minutesLate: minutesLate > 0 ? minutesLate : null, 
-      lessonNotes: lessonNotes || null 
+      lessonNotes: lessonNotes || null,
+      // ✅ ATT-05: Pass accuracy and timestamp to the worker
+      locationAccuracy: locationAccuracy ? Number(locationAccuracy) : undefined,
+      locationTimestamp: locationTimestamp ? (typeof locationTimestamp === 'number' ? locationTimestamp : new Date(locationTimestamp).getTime()) : undefined,
     },
   }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
 

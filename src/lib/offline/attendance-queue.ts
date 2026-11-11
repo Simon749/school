@@ -7,9 +7,11 @@ export type OfflineAttendanceStatus = 'pending' | 'syncing' | 'synced' | 'confli
 export interface OfflineAttendanceRecord {
   id?: number;
   operationId: string;
+  schoolId: string; // ✅ Added for worker re-validation
   slotId: string;
   date: string;
-  entries: unknown[];
+  entries: { studentId: string; status: string; absenceReason?: string }[]; // ✅ Typed for safety
+  markedBy: string; // ✅ Added: Worker strictly requires this
   queuedAt: string;
   status: OfflineAttendanceStatus;
   conflictReason?: string;
@@ -32,9 +34,11 @@ function openDb(): Promise<IDBDatabase> {
 }
 
 export async function queueOfflineAttendance(payload: {
+  schoolId: string;
   slotId: string;
   date: string;
-  entries: unknown[];
+  entries: { studentId: string; status: string; absenceReason?: string }[];
+  markedBy: string;
 }): Promise<string> {
   const db = await openDb();
   const operationId = crypto.randomUUID();
@@ -109,13 +113,13 @@ export async function flushOfflineAttendance(): Promise<{ synced: number; confli
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Idempotency-Key': item.operationId // ➕ Send Operation ID
+          'Idempotency-Key': item.operationId // ✅ ATT-11: Send Operation ID
         },
         body: JSON.stringify({
           slotId: item.slotId,
           date: item.date,
           entries: item.entries,
-          confirmed: true,
+          markedBy: item.markedBy, // ✅ ATT-11: Include markedBy for the worker
         }),
       });
 
