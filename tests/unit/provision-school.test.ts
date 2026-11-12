@@ -35,12 +35,12 @@ describe('provisionSchool (D15/D16: only a platform super admin creates schools)
   it('creates the school and its first admin together, in the new school', async () => {
     const out = await provisionSchool(db, valid);
     expect(out).toEqual({ schoolId: 'school-new', adminUserId: 'user-new' });
-    expect(schoolCreate.mock.calls[0][0].data).toMatchObject({
+    expect(schoolCreate.mock.calls[0]![0]!.data).toMatchObject({
       name: 'Kilimani Academy',
       onboardingCompleted: false,
       onboardingStep: 0,
     });
-    expect(userCreate.mock.calls[0][0].data).toMatchObject({
+    expect(userCreate.mock.calls[0]![0]!.data).toMatchObject({
       clerkId: 'user_2abcDEF',
       schoolId: 'school-new',
       role: 'admin',
@@ -57,8 +57,8 @@ describe('provisionSchool (D15/D16: only a platform super admin creates schools)
     expect(schoolCreate).not.toHaveBeenCalled();
     expect(userCreate).not.toHaveBeenCalled();
     // it looks for the Clerk id OR the e-mail (both are unique)
-    expect(JSON.stringify(userFindFirst.mock.calls[0][0].where)).toContain('user_2abcDEF');
-    expect(JSON.stringify(userFindFirst.mock.calls[0][0].where)).toContain('director@kilimani.ke');
+    expect(JSON.stringify(userFindFirst.mock.calls[0]![0]!.where)).toContain('user_2abcDEF');
+    expect(JSON.stringify(userFindFirst.mock.calls[0]![0]!.where)).toContain('director@kilimani.ke');
   });
 
   it.each([
@@ -76,12 +76,12 @@ describe('provisionSchool (D15/D16: only a platform super admin creates schools)
 
   it('records the provisioning in the audit log (no human actor: it is a platform operation)', async () => {
     await provisionSchool(db, valid);
-    expect(auditCreate.mock.calls[0][0].data).toMatchObject({
+    expect(auditCreate.mock.calls[0]![0]!.data).toMatchObject({
       schoolId: 'school-new',
       action: 'school.provisioned',
       tableName: 'schools',
       recordId: 'school-new',
     });
-    expect(auditCreate.mock.calls[0][0].data.actorId).toBeUndefined();
+    expect(auditCreate.mock.calls[0]![0]!.data.actorId).toBeUndefined();
   });
 });

@@ -124,7 +124,7 @@ describe('POST /api/timetable/slot (SEC-11)', () => {
     signedInAs('admin');
     const res = await post(valid({ schoolId: 'school-EVIL' }));
     expect(res.status).toBe(201);
-    expect(slotCreate.mock.calls[0][0].data).toMatchObject({
+    expect(slotCreate.mock.calls[0]![0]!.data).toMatchObject({
       schoolId: 'school-A',
       teacherId: 't-1',
       dayOfWeek: 1,
@@ -145,7 +145,7 @@ describe('POST /api/timetable/slot (SEC-11)', () => {
       breakIt();
       expect((await post(valid())).status).toBe(400);
       expect(slotCreate).not.toHaveBeenCalled();
-      expect(termFindFirst.mock.calls[0][0].where).toMatchObject({
+      expect(termFindFirst.mock.calls[0]![0]!.where).toMatchObject({
         id: 'term-1',
         schoolId: 'school-A',
       });
@@ -181,7 +181,7 @@ describe('POST /api/timetable/slot (SEC-11)', () => {
       slotFindFirst.mockResolvedValue(null);
       expect((await post(valid({ id: 'slot-of-school-B' }))).status).toBe(404);
       expect(slotUpdate).not.toHaveBeenCalled();
-      expect(slotFindFirst.mock.calls[0][0].where).toEqual({
+      expect(slotFindFirst.mock.calls[0]![0]!.where).toEqual({
         id: 'slot-of-school-B',
         schoolId: 'school-A',
       });
@@ -199,7 +199,7 @@ describe('POST /api/timetable/slot (SEC-11)', () => {
       );
       const res = await post(valid({ id: 'slot-1' }));
       expect(res.status).toBe(200);
-      expect(slotUpdate.mock.calls[0][0].where).toEqual({ id: 'slot-1' });
+      expect(slotUpdate.mock.calls[0]![0]!.where).toEqual({ id: 'slot-1' });
     });
   });
 
@@ -212,7 +212,7 @@ describe('POST /api/timetable/slot (SEC-11)', () => {
     const r1 = await post(valid());
     expect(r1.status).toBe(409);
     expect((await r1.json()).conflict.type).toBe('teacher');
-    expect(slotFindFirst.mock.calls[0][0].where).toMatchObject({
+    expect(slotFindFirst.mock.calls[0]![0]!.where).toMatchObject({
       schoolId: 'school-A',
       teacherId: 't-1',
     });
@@ -256,7 +256,7 @@ describe('DELETE /api/timetable/slot/[id]', () => {
     signedInAs('admin');
     slotFindFirst.mockResolvedValue(null);
     expect((await del('slot-B')).status).toBe(404);
-    expect(slotFindFirst.mock.calls[0][0].where).toEqual({ id: 'slot-B', schoolId: 'school-A' });
+    expect(slotFindFirst.mock.calls[0]![0]!.where).toEqual({ id: 'slot-B', schoolId: 'school-A' });
     expect(slotDelete).not.toHaveBeenCalled();
   });
 

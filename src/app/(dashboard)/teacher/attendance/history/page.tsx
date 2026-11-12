@@ -88,28 +88,32 @@ export default function TeacherAttendanceHistoryPage() {
 
           <div className="space-y-2">
             {data.records.map((r) => {
-              const cfg = STATUS_STYLES[r.status] || STATUS_STYLES.present;
+              const cfg = STATUS_STYLES[r.status] ?? STATUS_STYLES['present'];
               return (
                 <div
                   key={r.id}
                   className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4"
                 >
-                  <div
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${cfg.bg}`}
-                  >
-                    <CheckCircle className={`h-4 w-4 ${cfg.text}`} />
-                  </div>
+                  {cfg && (
+                    <div
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${cfg.bg}`}
+                    >
+                      <CheckCircle className={`h-4 w-4 ${cfg.text}`} />
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate text-sm font-medium text-slate-900">
                         {r.learningArea || 'Lesson'}
                       </p>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${cfg.bg} ${cfg.text}`}
-                      >
-                        {cfg.label}
-                        {r.status === 'late' && r.minutesLate ? ` · ${r.minutesLate}m` : ''}
-                      </span>
+                      {cfg && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${cfg.bg} ${cfg.text}`}
+                        >
+                          {cfg.label}
+                          {r.status === 'late' && r.minutesLate ? ` · ${r.minutesLate}m` : ''}
+                        </span>
+                      )}
                     </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-slate-500">
                       <span>{r.date}</span>

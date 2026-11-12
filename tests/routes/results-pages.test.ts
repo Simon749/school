@@ -104,7 +104,7 @@ describe('teacher/markbook/[assessmentId] page (FEAT-01)', () => {
     asTeacher();
     h.state.returns['assessment.findFirst'] = assessment;
     await expect(run()).resolves.toBeDefined();
-    expect(callsTo('teacher.findFirst')[0].args?.where).toEqual({
+    expect(callsTo('teacher.findFirst')[0]!.args?.where).toEqual({
       userId: 'u-1',
       schoolId: 'school-A',
     });
@@ -114,7 +114,7 @@ describe('teacher/markbook/[assessmentId] page (FEAT-01)', () => {
     asTeacher();
     h.state.returns['assessment.findFirst'] = assessment;
     await run();
-    expect(callsTo('assessment.findFirst')[0].args?.where).toEqual({
+    expect(callsTo('assessment.findFirst')[0]!.args?.where).toEqual({
       id: 'a-1',
       teacherId: 't-1',
       schoolId: 'school-A',
@@ -132,7 +132,7 @@ describe('teacher/markbook/[assessmentId] page (FEAT-01)', () => {
     asTeacher();
     h.state.returns['assessment.findFirst'] = assessment;
     await run();
-    expect(callsTo('student.findMany')[0].args?.where).toMatchObject({
+    expect(callsTo('student.findMany')[0]!.args?.where).toMatchObject({
       streamId: 'st-7A',
       schoolId: 'school-A',
       status: 'active',
@@ -162,7 +162,7 @@ describe('teacher/reports/[studentId] page', () => {
     asTeacher();
     h.state.returns['student.findFirst'] = null;
     expect(text(await run())).toContain('Student not found');
-    expect(callsTo('student.findFirst')[0].args?.where).toMatchObject({
+    expect(callsTo('student.findFirst')[0]!.args?.where).toMatchObject({
       id: 'stu-1',
       schoolId: 'school-A',
       streamId: 'st-7A',
@@ -193,11 +193,11 @@ describe('teacher/reports/[studentId] page', () => {
     };
     h.state.returns['term.findFirst'] = { id: 'term-1', name: 'Term 1' };
     await run();
-    expect(callsTo('term.findFirst')[0].args?.where).toMatchObject({
+    expect(callsTo('term.findFirst')[0]!.args?.where).toMatchObject({
       schoolId: 'school-A',
       isCurrent: true,
     });
-    expect(callsTo('termReport.findUnique')[0].args?.where).toEqual({
+    expect(callsTo('termReport.findUnique')[0]!.args?.where).toEqual({
       studentId_termId: { studentId: 'stu-1', termId: 'term-1' },
     });
   });
@@ -219,7 +219,7 @@ describe('parent/[studentId]/reports page', () => {
     h.state.returns['user.findUnique'] = user('parent');
     h.state.returns['guardian.findFirst'] = guardian;
     await run();
-    expect(callsTo('guardian.findFirst')[0].args?.where).toMatchObject({
+    expect(callsTo('guardian.findFirst')[0]!.args?.where).toMatchObject({
       userId: 'u-1',
       studentId: 'stu-1',
       isActive: true,
@@ -238,7 +238,7 @@ describe('parent/[studentId]/reports page', () => {
     h.state.returns['user.findUnique'] = user('parent');
     h.state.returns['guardian.findFirst'] = guardian;
     await run();
-    expect(callsTo('termReport.findMany')[0].args?.where).toMatchObject({
+    expect(callsTo('termReport.findMany')[0]!.args?.where).toMatchObject({
       studentId: 'stu-1',
       schoolId: 'school-A',
       publishedAt: { not: null },

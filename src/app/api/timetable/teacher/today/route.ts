@@ -53,15 +53,17 @@ export async function GET() {
 
       const attendanceRecords = studentIds.length
         ? await prisma.studentDailyAttendance.findMany({
-            where: { studentId: { in: studentIds }, date: { gte: windowStart } },
-            select: { studentId: true, date: true, status: true },
-          })
+          where: { studentId: { in: studentIds }, date: { gte: windowStart } },
+          select: { studentId: true, date: true, status: true },
+        })
         : [];
 
       // Daily attendance %, last 5 dates that have any records
       const byDate = new Map<string, { present: number; total: number }>();
       for (const r of attendanceRecords) {
         const key = r.date.toISOString().split('T')[0];
+        if (!key) continue;
+
         const bucket = byDate.get(key) || { present: 0, total: 0 };
         bucket.total += 1;
         if (r.status === 'present' || r.status === 'late') bucket.present += 1;

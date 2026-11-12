@@ -80,12 +80,12 @@ describe('createUserAction (SEC-11 / SEC-12; decision D7)', () => {
     signedInAs('it_admin');
     expect(createUserAction.length).toBe(1);
     expect(await createUserAction(data())).toEqual({ success: true });
-    expect(userCreate.mock.calls[0][0].data).toMatchObject({
+    expect(userCreate.mock.calls[0]![0]!.data).toMatchObject({
       schoolId: 'school-A',
       role: 'teacher',
       email: 'joy@school.ke',
     });
-    expect('clerkId' in userCreate.mock.calls[0][0].data).toBe(false);
+    expect('clerkId' in userCreate.mock.calls[0]![0]!.data).toBe(false);
   });
 
   it.each(['admin', 'bursar', 'it_admin'])(
@@ -113,7 +113,7 @@ describe('createUserAction (SEC-11 / SEC-12; decision D7)', () => {
   it('audits creation (role and school, not personal details)', async () => {
     signedInAs('it_admin');
     await createUserAction(data());
-    const audit = logAudit.mock.calls[0][0];
+    const audit = logAudit.mock.calls[0]![0]!;
     expect(audit).toMatchObject({
       schoolId: 'school-A',
       actorId: 'u-1',
@@ -142,7 +142,7 @@ describe('updateUserAction (SEC-11 / SEC-12)', () => {
     signedInAs('it_admin');
     userFindFirst.mockResolvedValue(null);
     expect((await updateUserAction('u-of-school-B', data())).error).toMatch(/not found/i);
-    expect(userFindFirst.mock.calls[0][0].where).toEqual({
+    expect(userFindFirst.mock.calls[0]![0]!.where).toEqual({
       id: 'u-of-school-B',
       schoolId: 'school-A',
       deletedAt: null,
@@ -174,8 +174,8 @@ describe('updateUserAction (SEC-11 / SEC-12)', () => {
     expect(await updateUserAction('u-9', data({ role: 'deputy' }) as never)).toEqual({
       success: true,
     });
-    expect(userUpdate.mock.calls[0][0].where).toEqual({ id: 'u-9' });
-    expect(userUpdate.mock.calls[0][0].data).toMatchObject({ role: 'deputy' });
+    expect(userUpdate.mock.calls[0]![0]!.where).toEqual({ id: 'u-9' });
+    expect(userUpdate.mock.calls[0]![0]!.data).toMatchObject({ role: 'deputy' });
     expect(logAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         schoolId: 'school-A',

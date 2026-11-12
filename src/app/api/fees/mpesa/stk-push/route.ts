@@ -13,8 +13,9 @@ export async function POST(req: NextRequest) {
   if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const headersList = headers();
-  const ip = headersList.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown-ip';
-  
+  const forwarded = headersList.get('x-forwarded-for');
+  const ip = forwarded ? forwarded.split(',')[0]?.trim() ?? 'unknown-ip' : 'unknown-ip';
+
   const rateLimit = await checkRateLimit({
     uniqueKey: `stk-push:${ip}`,
     limit: 3,

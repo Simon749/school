@@ -189,7 +189,7 @@ export default function AdminAttendancePage() {
               return (
                 <div
                   key={slot.id}
-                  className={`p-4 border-l-4 ${statusColors[slot.status].split(' ')[2].replace('text-', 'border-')}`}
+                  className={`p-4 border-l-4 ${statusColors[slot.status]?.split(' ')[2]?.replace('text-', 'border-') ?? 'border-gray-300'}`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">

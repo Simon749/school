@@ -130,7 +130,7 @@ describe('POST /api/fees/assign (SEC-11)', () => {
     signedInAs('bursar');
     structureFindFirst.mockResolvedValue(null);
     expect((await doAssign({ structureId: 'fs-B', studentIds: ['s1'] })).status).toBe(404);
-    expect(structureFindFirst.mock.calls[0][0].where).toEqual({ id: 'fs-B', schoolId: 'school-A' });
+    expect(structureFindFirst.mock.calls[0]![0]!.where).toEqual({ id: 'fs-B', schoolId: 'school-A' });
     expect(feeUpsert).not.toHaveBeenCalled();
   });
 
@@ -140,12 +140,12 @@ describe('POST /api/fees/assign (SEC-11)', () => {
     const res = await doAssign({ structureId: 'fs-1', studentIds: ['s1', 's-other-school'] });
     expect(res.status).toBe(400);
     expect(feeUpsert).not.toHaveBeenCalled();
-    expect(studentFindMany.mock.calls[0][0].where).toMatchObject({
+    expect(studentFindMany.mock.calls[0]![0]!.where).toMatchObject({
       schoolId: 'school-A',
       deletedAt: null,
       status: 'active',
     });
-    expect(studentFindMany.mock.calls[0][0].where.id.in.sort()).toEqual(['s-other-school', 's1']);
+    expect(studentFindMany.mock.calls[0]![0]!.where.id.in.sort()).toEqual(['s-other-school', 's1']);
   });
 
   it("assigns every fee item to every student, in the caller's school and the structure's term", async () => {
@@ -153,7 +153,7 @@ describe('POST /api/fees/assign (SEC-11)', () => {
     const res = await doAssign({ structureId: 'fs-1', studentIds: ['s1', 's2'] });
     expect(res.status).toBe(200);
     expect((await res.json()).assigned).toBe(4);
-    expect(feeUpsert.mock.calls[0][0].create).toMatchObject({
+    expect(feeUpsert.mock.calls[0]![0]!.create).toMatchObject({
       schoolId: 'school-A',
       studentId: 's1',
       termId: 'term-1',
@@ -165,7 +165,7 @@ describe('POST /api/fees/assign (SEC-11)', () => {
     signedInAs('admin');
     const res = await doAssign({ structureId: 'fs-1', streamId: 'st-1' });
     expect(res.status).toBe(200);
-    expect(studentFindMany.mock.calls[0][0].where).toMatchObject({
+    expect(studentFindMany.mock.calls[0]![0]!.where).toMatchObject({
       streamId: 'st-1',
       schoolId: 'school-A',
       deletedAt: null,
@@ -216,7 +216,7 @@ describe('POST /api/fees/structure (SEC-11, mass assignment)', () => {
       })
     );
     expect(res.status).toBe(201);
-    const data = structureCreate.mock.calls[0][0].data;
+    const data = structureCreate.mock.calls[0]![0]!.data;
     expect(data).toMatchObject({
       schoolId: 'school-A',
       termId: 'term-1',
@@ -238,7 +238,7 @@ describe('POST /api/fees/structure (SEC-11, mass assignment)', () => {
     signedInAs('bursar');
     termFindFirst.mockResolvedValue(null);
     expect((await doCreate(validStructure())).status).toBe(400);
-    expect(termFindFirst.mock.calls[0][0].where).toEqual({ id: 'term-1', schoolId: 'school-A' });
+    expect(termFindFirst.mock.calls[0]![0]!.where).toEqual({ id: 'term-1', schoolId: 'school-A' });
     expect(structureCreate).not.toHaveBeenCalled();
   });
 
@@ -285,7 +285,7 @@ describe('GET /api/fees/structure', () => {
   it("lists only the caller's school, optionally by term", async () => {
     signedInAs('bursar');
     await listStructures(new Request('http://x/api/fees/structure?termId=term-1') as never);
-    expect(structureFindMany.mock.calls[0][0].where).toEqual({
+    expect(structureFindMany.mock.calls[0]![0]!.where).toEqual({
       schoolId: 'school-A',
       termId: 'term-1',
     });

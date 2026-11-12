@@ -27,7 +27,7 @@ export default function AttendanceRegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0] ?? '';
     setDate(today);
     fetch(`/api/attendance/student?slotId=${slotId}&date=${today}`)
       .then((r) => r.json())
@@ -141,7 +141,7 @@ export default function AttendanceRegisterPage() {
                     }
                     onClick={() => setStatus(entry.studentId, s)}
                   >
-                    {s[0].toUpperCase() + s.slice(1)}
+                    {s?.[0]?.toUpperCase() ?? ''}{s?.slice(1) ?? ''}
                   </Button>
                 ))}
               </div>

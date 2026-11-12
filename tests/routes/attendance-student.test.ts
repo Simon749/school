@@ -176,7 +176,7 @@ describe.each([
   it("looks the slot up inside the caller's school", async () => {
     signedInAs('admin');
     await run();
-    expect(slotFindFirst.mock.calls[0][0].where).toEqual({ id: SLOT, schoolId: 'school-A' });
+    expect(slotFindFirst.mock.calls[0]![0]!.where).toEqual({ id: SLOT, schoolId: 'school-A' });
   });
 
   it("404 for a slot that is not in the caller's school", async () => {
@@ -203,7 +203,7 @@ describe.each([
   it("the lesson's own teacher is allowed", async () => {
     signedInAs('teacher');
     expect((await run()).status).toBeLessThan(300);
-    expect(teacherFindFirst.mock.calls[0][0].where).toMatchObject({
+    expect(teacherFindFirst.mock.calls[0]![0]!.where).toMatchObject({
       userId: 'u-1',
       schoolId: 'school-A',
     });
@@ -214,7 +214,7 @@ describe.each([
     teacherFindFirst.mockResolvedValue({ id: 't-sub' });
     coverFindFirst.mockResolvedValue({ id: 'cover-1' });
     expect((await run()).status).toBeLessThan(300);
-    expect(coverFindFirst.mock.calls[0][0].where).toMatchObject({
+    expect(coverFindFirst.mock.calls[0]![0]!.where).toMatchObject({
       slotId: SLOT,
       substituteTeacherId: 't-sub',
       status: 'covered',
@@ -320,8 +320,8 @@ describe('POST: validation and behaviour', () => {
     expect(studentAttUpsert).toHaveBeenCalledTimes(2);
     expect(notifAdd).toHaveBeenCalledTimes(1);
 
-    const notifPayload = notifAdd.mock.calls[0][1];
-    const notifOptions = notifAdd.mock.calls[0][2];
+    const notifPayload = notifAdd.mock.calls[0]![1]!;
+    const notifOptions = notifAdd.mock.calls[0]![2]!;
 
     expect(notifPayload.data.studentId).toBe('s2');
     expect(notifOptions.delay).toBe(15 * 60 * 1000);
@@ -358,7 +358,7 @@ describe('POST: validation and behaviour', () => {
   it('only alerts ACTIVE guardians whose account is active (not deactivated ones)', async () => {
     signedInAs('teacher');
     await post(validBody());
-    const where = userFindFirst.mock.calls[0][0].where;
+    const where = userFindFirst.mock.calls[0]![0]!.where;
     expect(where).toMatchObject({ isActive: true, deletedAt: null });
     expect(where.guardians.some).toMatchObject({
       studentId: 's2',

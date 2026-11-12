@@ -181,7 +181,7 @@ describe.each([
   it('FEAT-01: finds the teacher by the INTERNAL user id, so a real teacher is no longer rejected', async () => {
     signedInAs('teacher');
     await run();
-    expect(teacherFindFirst.mock.calls[0][0].where).toEqual({
+    expect(teacherFindFirst.mock.calls[0]![0]!.where).toEqual({
       userId: 'u-1',
       schoolId: 'school-A',
     });
@@ -195,7 +195,7 @@ describe('GET /api/assessments', () => {
     await listAssessments(
       new Request(`http://x/api/assessments?termId=${TERM}&streamId=${STREAM}`) as never
     );
-    expect(assessmentFindMany.mock.calls[0][0].where).toEqual({
+    expect(assessmentFindMany.mock.calls[0]![0]!.where).toEqual({
       schoolId: 'school-A',
       teacherId: 't-1',
       termId: TERM,
@@ -225,7 +225,7 @@ describe('POST /api/assessments', () => {
       valid({ schoolId: 'school-EVIL', teacherId: 't-EVIL', status: 'published' })
     );
     expect(res.status).toBe(201);
-    const data = assessmentCreate.mock.calls[0][0].data;
+    const data = assessmentCreate.mock.calls[0]![0]!.data;
     expect(data).toMatchObject({
       schoolId: 'school-A',
       teacherId: 't-1',
@@ -237,7 +237,7 @@ describe('POST /api/assessments', () => {
   it('passes a real Date object to the database (a bare "2026-10-26" string is not a valid Prisma DateTime)', async () => {
     signedInAs('teacher');
     await create(valid());
-    const data = assessmentCreate.mock.calls[0][0].data;
+    const data = assessmentCreate.mock.calls[0]![0]!.data;
     expect(data.assessmentDate).toBeInstanceOf(Date);
     expect(data.assessmentDate.toISOString()).toBe('2026-10-26T00:00:00.000Z');
   });
@@ -245,7 +245,7 @@ describe('POST /api/assessments', () => {
   it('saves the instructions the teacher typed (the dialog has an Instructions field)', async () => {
     signedInAs('teacher');
     await create(valid({ instructions: 'Answer all questions. Calculators allowed.' }));
-    expect(assessmentCreate.mock.calls[0][0].data.instructions).toBe(
+    expect(assessmentCreate.mock.calls[0]![0]!.data.instructions).toBe(
       'Answer all questions. Calculators allowed.'
     );
   });
@@ -260,7 +260,7 @@ describe('POST /api/assessments', () => {
     signedInAs('teacher');
     const res = await create(valid({ dueDate: '2026-11-02' }));
     expect(res.status).toBe(201);
-    expect('dueDate' in assessmentCreate.mock.calls[0][0].data).toBe(false);
+    expect('dueDate' in assessmentCreate.mock.calls[0]![0]!.data).toBe(false);
   });
 
   it.each([
@@ -275,15 +275,15 @@ describe('POST /api/assessments', () => {
       const res = await create(valid());
       expect(res.status).toBe(400);
       expect(assessmentCreate).not.toHaveBeenCalled();
-      expect(streamFindFirst.mock.calls[0][0].where).toMatchObject({
+      expect(streamFindFirst.mock.calls[0]![0]!.where).toMatchObject({
         id: STREAM,
         schoolId: 'school-A',
       });
-      expect(termFindFirst.mock.calls[0][0].where).toMatchObject({
+      expect(termFindFirst.mock.calls[0]![0]!.where).toMatchObject({
         id: TERM,
         schoolId: 'school-A',
       });
-      expect(areaFindFirst.mock.calls[0][0].where).toMatchObject({
+      expect(areaFindFirst.mock.calls[0]![0]!.where).toMatchObject({
         id: AREA,
         schoolId: 'school-A',
       });
@@ -303,7 +303,7 @@ describe('POST /api/assessments', () => {
     it('looks for a slot of THIS teacher, in THIS school, class, learning area and term', async () => {
       signedInAs('teacher');
       await create(valid());
-      expect(slotFindFirst.mock.calls[0][0].where).toEqual({
+      expect(slotFindFirst.mock.calls[0]![0]!.where).toEqual({
         schoolId: 'school-A',
         teacherId: 't-1',
         streamId: STREAM,
@@ -337,7 +337,7 @@ describe('POST /api/assessments/[id]/publish', () => {
     signedInAs('teacher');
     assessmentFindFirst.mockResolvedValue(null);
     expect((await run()).status).toBe(404);
-    expect(assessmentFindFirst.mock.calls[0][0].where).toEqual({
+    expect(assessmentFindFirst.mock.calls[0]![0]!.where).toEqual({
       id: 'a-1',
       schoolId: 'school-A',
       teacherId: 't-1',
@@ -371,11 +371,11 @@ describe('POST /api/assessments/[id]/publish', () => {
     expect(res.status).toBe(200);
     
     // 1. Assessment update is called correctly
-    expect(assessmentUpdate.mock.calls[0][0].data).toMatchObject({ status: 'published' });
-    expect(assessmentUpdate.mock.calls[0][0].data.publishedAt).toBeInstanceOf(Date);
+    expect(assessmentUpdate.mock.calls[0]![0]!.data).toMatchObject({ status: 'published' });
+    expect(assessmentUpdate.mock.calls[0]![0]!.data.publishedAt).toBeInstanceOf(Date);
 
     // 2. Results query is scoped correctly
-    const q = resultFindMany.mock.calls[0][0];
+    const q = resultFindMany.mock.calls[0]![0]!;
     expect(q.where).toMatchObject({
       schoolId: 'school-A', // ➕ FIXED: Moved to root to match route.ts (was incorrectly nested inside student)
       assessmentId: 'a-1',
@@ -385,7 +385,7 @@ describe('POST /api/assessments/[id]/publish', () => {
 
     // 3. Notifications are sent correctly
     expect(notifAdd).toHaveBeenCalledTimes(1);
-    expect(notifAdd.mock.calls[0][1]).toMatchObject({ 
+    expect(notifAdd.mock.calls[0]![1]!).toMatchObject({ 
       userId: 'p-1', 
       type: 'result-published' // ➕ FIXED: Route sends 'result-published', test expected 'results'
     });
@@ -416,7 +416,7 @@ describe('POST /api/assessments/[id]/results', () => {
     signedInAs('teacher');
     assessmentFindFirst.mockResolvedValue(null);
     expect((await save({ results: [row()] })).status).toBe(404);
-    expect(assessmentFindFirst.mock.calls[0][0].where).toEqual({
+    expect(assessmentFindFirst.mock.calls[0]![0]!.where).toEqual({
       id: 'a-1',
       schoolId: 'school-A',
       teacherId: 't-1',
@@ -437,7 +437,7 @@ describe('POST /api/assessments/[id]/results', () => {
     const res = await save({ results: [row(), row({ studentId: S2 })] });
     expect(res.status).toBe(400);
     expect(txUpsert).not.toHaveBeenCalled();
-    expect(studentFindMany.mock.calls[0][0].where).toMatchObject({
+    expect(studentFindMany.mock.calls[0]![0]!.where).toMatchObject({
       streamId: STREAM,
       schoolId: 'school-A',
       deletedAt: null,
@@ -460,8 +460,8 @@ describe('POST /api/assessments/[id]/results', () => {
       results: [row({ marksObtained: 50 }), row({ studentId: S2, marksObtained: '' })],
     });
     expect(res.status).toBe(200);
-    expect(txUpsert.mock.calls[0][0].update.marksObtained).toBe(50);
-    expect(txUpsert.mock.calls[1][0].update.marksObtained).toBeNull();
+    expect(txUpsert.mock.calls[0]![0]!.update.marksObtained).toBe(50);
+    expect(txUpsert.mock.calls[1]![0]!.update.marksObtained).toBeNull();
   });
 
   it("400 when a rubric sub-strand does not belong to this assessment's learning area", async () => {
@@ -472,7 +472,7 @@ describe('POST /api/assessments/[id]/results', () => {
     });
     expect(res.status).toBe(400);
     expect(txUpsert).not.toHaveBeenCalled();
-    expect(subStrandFindMany.mock.calls[0][0].where).toMatchObject({
+    expect(subStrandFindMany.mock.calls[0]![0]!.where).toMatchObject({
       strand: { learningAreaId: AREA },
     });
   });
@@ -485,8 +485,8 @@ describe('POST /api/assessments/[id]/results', () => {
     expect(res.status).toBe(200);
     expect((await res.json()).saved).toBe(1);
     expect(txDeleteMany).toHaveBeenCalledTimes(1);
-    expect(txCreateMany.mock.calls[0][0].data[0]).toMatchObject({ subStrandId: SUB, score: 'EE' });
-    const audit = logAudit.mock.calls[0][0];
+    expect(txCreateMany.mock.calls[0]![0]!.data[0]).toMatchObject({ subStrandId: SUB, score: 'EE' });
+    const audit = logAudit.mock.calls[0]![0]!;
     expect(audit).toMatchObject({
       schoolId: 'school-A',
       actorId: 'u-1',

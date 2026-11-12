@@ -96,7 +96,7 @@ describe('GET /api/school/settings (SEC-13)', () => {
     expect(res.status).toBe(200);
     
     // ✅ PROOF: Verify the route constructed the correct Prisma select argument
-    const callArgs = schoolFindUnique.mock.calls[0][0];
+    const callArgs = schoolFindUnique.mock.calls[0]![0]!;
     expect(callArgs.select.latitude).toBeUndefined();
     expect(callArgs.select.longitude).toBeUndefined();
     expect(callArgs.select.geofenceRadius).toBeUndefined();
@@ -113,7 +113,7 @@ describe('GET /api/school/settings (SEC-13)', () => {
     expect(res.status).toBe(200);
     
     // ✅ PROOF: Verify the route included geofence fields in the select argument
-    const callArgs = schoolFindUnique.mock.calls[0][0];
+    const callArgs = schoolFindUnique.mock.calls[0]![0]!;
     expect(callArgs.select.latitude).toBe(true);
     expect(callArgs.select.longitude).toBe(true);
     expect(callArgs.select.geofenceRadius).toBe(true);
@@ -127,7 +127,7 @@ describe('GET /api/school/settings (SEC-13)', () => {
     const res = await get();
     expect(res.status).toBe(200);
     
-    const callArgs = schoolFindUnique.mock.calls[0][0];
+    const callArgs = schoolFindUnique.mock.calls[0]![0]!;
     expect(callArgs.select.latitude).toBe(true);
   });
 

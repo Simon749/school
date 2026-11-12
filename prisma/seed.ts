@@ -76,7 +76,12 @@ function mulberry32(seed: number) {
 }
 const rand = mulberry32(20260820);
 const randInt = (min: number, max: number) => Math.floor(rand() * (max - min + 1)) + min;
-const pick = <T>(arr: T[]): T => arr[randInt(0, arr.length - 1)];
+const pick = <T>(arr: T[]): T => {
+  if (arr.length === 0) {
+    throw new Error('Cannot pick from an empty array');
+  }
+  return arr[randInt(0, arr.length - 1)] as T;
+};
 const chance = (p: number) => rand() < p;
 
 async function createManyChunked<T>(
@@ -566,10 +571,18 @@ async function main() {
   // Assign remaining 21 streams a class teacher (round-robin over the pool,
   // skipping the hero teacher who's already assigned to Grade 5A)
   {
+    if (teachers.length === 0) {
+      throw new Error('No teachers available to assign as class teachers.');
+    }
+
     let ti = 1;
     for (const s of streams) {
       if (s.gradeName === 'Grade 5' && s.name === 'A') continue; // hero already assigned
       const teacherRow = teachers[ti % teachers.length];
+      if (!teacherRow) {
+        throw new Error('Class teacher assignment failed: teacher lookup returned undefined.');
+      }
+
       await prisma.teacher.update({
         where: { id: teacherRow.teacherId },
         data: { isClassTeacher: true, classTeacherStreamId: s.id },
@@ -603,6 +616,10 @@ async function main() {
       for (const period of teachingPeriods) {
         const area = stageAreas[subjectCursor % stageAreas.length];
         subjectCursor++;
+
+        if (!area) {
+          continue;
+        }
 
         // find a teacher whose specialisation roughly matches, else any free teacher
         let candidate = teachers.find(
@@ -715,8 +732,16 @@ async function main() {
 
   // Reserve one family for the hero parent (2 children, different grades)
   const heroFamily = families.shift()!;
-  while (heroFamily.length < 2) {
-    heroFamily.push(families.pop()![0]); // borrow a single-child family's kid if needed
+  while (heroFamily.length < 2 && families.length > 0) {
+    const borrowedFamily = families.pop();
+    if (!borrowedFamily || borrowedFamily.length === 0) {
+      break;
+    }
+    const borrowedStudent = borrowedFamily[0];
+    if (!borrowedStudent) {
+      break;
+    }
+    heroFamily.push(borrowedStudent); // borrow a single-child family's kid if needed
   }
 
   const heroParentUser = await prisma.user.create({
@@ -1166,7 +1191,7 @@ async function main() {
 
   const dailyRows: StudentDailyRow[] = [];
   for (const [key, agg] of Array.from(dailyAgg.entries())) {
-    const [studentId, dateStr] = key.split('|');
+    const [studentId, dateStr] = key.split('|') as [string, string];
     const allAbsent = agg.absent === agg.total;
     dailyRows.push({
       id: randomUUID(),

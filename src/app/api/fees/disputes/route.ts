@@ -1,44 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/db';
 import { requireUser } from '@/lib/auth/current-user';
+import { logAudit, getRequestMetadata } from '@/lib/audit';
 
-/**
- * Payment disputes (PAY-12).
- *
- * A PARENT raises a dispute for their own child (design RBAC: parent = disputes:raise).
- * It is NEVER resolved automatically, and the answer never says whether the claimed M-Pesa code
- * exists — that was a code-existence oracle. The bursar verifies it; a Daraja transaction lookup
- * is part of R3-11. (No screen raises disputes yet: the parent page is part of R6-13.)
- */
-const raiseSchema = z
-  .object({
-    studentId: z.string().min(1).max(64),
-    // Letters and digits only; the column is VARCHAR(20). The exact M-Pesa format is not assumed.
-    mpesaCodeClaimed: z
-      .string()
-      .trim()
-      .regex(/^[A-Za-z0-9]{1,20}$/, 'M-Pesa code must be letters and digits only (max 20)')
-      .optional(),
-    amountClaimed: z
-      .number()
-      .positive()
-      .max(100_000_000)
-      .refine((n) => Math.round(n * 100) / 100 === n, 'At most 2 decimal places')
-      .optional(),
-    // https only; real uploads (private storage, signed links) come with R6-08.
-    screenshotUrl: z
-      .string()
-      .url()
-      .max(500)
-      .refine((u) => u.startsWith('https://'), 'Screenshot link must be https')
-      .optional(),
-  })
-  .refine((v) => v.mpesaCodeClaimed || v.amountClaimed, {
-    message: 'Give the M-Pesa code or the amount you paid',
+// ── GET: Bursar/Admin defaulters list (your existing endpoint) ─────────────
+export async function GET() {
+  const { userId: clerkId } = await auth();
+  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const user = await prisma.user.findUnique({
+    where: { clerkId },
+    select: { schoolId: true, role: true },
+  });
+  if (!user?.schoolId || !['admin', 'bursar'].includes(user.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const currentTerm = await prisma.term.findFirst({
+    where: { schoolId: user.schoolId, isCurrent: true },
+  });
+  if (!currentTerm) return NextResponse.json({ defaulters: [] });
+
+  const students = await prisma.student.findMany({
+    where: { schoolId: user.schoolId, deletedAt: null, status: 'active' },
+    include: {
+      stream: { include: { grade: true } },
+      studentFees: { where: { termId: currentTerm.id }, include: { feeItem: true } },
+      feePayments: { where: { termId: currentTerm.id, isReversed: false } },
+    },
   });
 
+  const defaulters = students
+    .map((s) => {
+      const totalDue = s.studentFees.reduce(
+        (sum, fee) =>
+          sum + (Number(fee.amountDue) - Number(fee.discount) + Number(fee.carryForwardAmount)),
+        0
+      );
+      const totalPaid = s.feePayments.reduce((sum, p) => sum + Number(p.amount), 0);
+      const balance = totalDue - totalPaid;
+      return {
+        id: s.id,
+        name: `${s.firstName} ${s.lastName}`,
+        stream: `${s.stream.grade.name} ${s.stream.name}`,
+        totalDue,
+        totalPaid,
+        balance,
+      };
+    })
+    .filter((d) => d.balance > 0)
+    .sort((a, b) => b.balance - a.balance);
+
+  return NextResponse.json({ term: currentTerm.name, defaulters });
+}
+
+// ── POST: Parent raises a dispute (PAY-12 hardened) ────────────────────────
+const disputeSchema = z.object({
+  studentId: z.string().min(1).max(64),
+  mpesaCodeClaimed: z.string().min(5).max(20),
+  amountClaimed: z.number().positive('Amount must be positive'),
+  screenshotUrl: z.string().url('Invalid screenshot URL').optional().nullable(),
+});
+
 export async function POST(req: NextRequest) {
+  // 1. Role gating: Only parents can raise disputes
   const guard = await requireUser(['parent']);
   if (!guard.ok) return guard.response;
   const { user } = guard;
@@ -47,81 +74,79 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
   }
-  const parsed = raiseSchema.safeParse(body);
+
+  const parsed = disputeSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid dispute', issues: parsed.error.issues },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Invalid dispute data', details: parsed.error.issues }, { status: 400 });
   }
+
   const { studentId, mpesaCodeClaimed, amountClaimed, screenshotUrl } = parsed.data;
 
-  // Only the parent's own, active child in their school.
-  const link = await prisma.guardian.findFirst({
+  // 2. Guardian Check: Verify the caller is an ACTIVE guardian of this student in their school
+  const guardianship = await prisma.guardian.findFirst({
     where: {
       userId: user.id,
       studentId,
       isActive: true,
-      student: { schoolId: user.schoolId, deletedAt: null },
+      student: {
+        schoolId: user.schoolId,
+        deletedAt: null,
+      },
     },
     select: { id: true },
   });
-  if (!link) return NextResponse.json({ error: 'Student not found' }, { status: 404 });
 
-  const dispute = await prisma.paymentDispute.create({
-    data: {
+  if (!guardianship) {
+    return NextResponse.json({ error: 'You are not an active guardian of this student' }, { status: 403 });
+  }
+
+  // 3. ✅ PAY-12: Idempotency check — prevent duplicate disputes for the same MPesa code
+  const existingDispute = await prisma.paymentDispute.findFirst({
+    where: {
       schoolId: user.schoolId,
-      studentId,
-      raisedBy: user.id,
       mpesaCodeClaimed,
-      amountClaimed,
-      screenshotUrl,
+      status: { notIn: ['rejected'] }, // Allow re-raising if previously rejected
     },
   });
 
-  // Deliberately minimal: no `resolved` flag and nothing about whether the code was found.
-  return NextResponse.json(
-    { dispute: { id: dispute.id, status: dispute.status, createdAt: dispute.createdAt } },
-    { status: 201 }
-  );
-}
+  if (existingDispute) {
+    return NextResponse.json(
+      { error: 'A dispute for this MPesa code already exists', disputeId: existingDispute.id },
+      { status: 409 }
+    );
+  }
 
-export async function GET() {
-  const guard = await requireUser(['admin', 'bursar']);
-  if (!guard.ok) return guard.response;
-  const { user } = guard;
+  const auditMeta = getRequestMetadata(req);
 
-  const disputes = await prisma.paymentDispute.findMany({
-    where: { schoolId: user.schoolId },
-    orderBy: { createdAt: 'desc' },
+  // 4. Create dispute with status 'open' (NO auto-resolve, even if code exists locally)
+  const dispute = await prisma.$transaction(async (tx) => {
+    const newDispute = await tx.paymentDispute.create({
+      data: {
+        schoolId: user.schoolId,
+        studentId,
+        raisedBy: user.id,
+        mpesaCodeClaimed,
+        amountClaimed,
+        screenshotUrl: screenshotUrl || null,
+        status: 'open', // ✅ PAY-12: Never auto-resolve
+      },
+    });
+
+    await logAudit({
+      schoolId: user.schoolId,
+      actorId: user.id,
+      action: 'PAYMENT_DISPUTE_RAISED',
+      tableName: 'payment_disputes',
+      recordId: newDispute.id,
+      newData: { studentId, mpesaCodeClaimed, amountClaimed },
+      ipAddress: auditMeta.ipAddress,
+      userAgent: auditMeta.userAgent,
+    }, tx);
+
+    return newDispute;
   });
 
-  const studentIds = Array.from(new Set(disputes.map((d) => d.studentId).filter(Boolean)));
-  const students = await prisma.student.findMany({
-    where: { id: { in: studentIds }, schoolId: user.schoolId },
-    select: { id: true, firstName: true, lastName: true },
-  });
-  const studentMap = new Map(students.map((s) => [s.id, s]));
-
-  // Fetch raiser names separately (since raisedBy is not a relation)
-  const raiserIds = Array.from(new Set(disputes.map((d) => d.raisedBy).filter(Boolean)));
-  const raisers = await prisma.user.findMany({
-    where: { id: { in: raiserIds }, schoolId: user.schoolId },
-    select: { id: true, firstName: true, lastName: true },
-  });
-  const raiserMap = new Map(raisers.map((r) => [r.id, r]));
-
-  const enriched = disputes.map((d) => {
-    const raiser = raiserMap.get(d.raisedBy);
-    const student = studentMap.get(d.studentId);
-    return {
-      ...d,
-      raisedByName: raiser ? `${raiser.firstName} ${raiser.lastName}` : 'Unknown',
-      studentName: student ? `${student.firstName} ${student.lastName}` : 'Unknown',
-    };
-  });
-
-  return NextResponse.json({ disputes: enriched });
+  return NextResponse.json({ success: true, disputeId: dispute.id }, { status: 201 });
 }

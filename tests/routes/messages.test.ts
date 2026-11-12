@@ -152,13 +152,13 @@ describe('POST /api/messages: who may send (SEC-08)', () => {
       guardianFindMany.mockResolvedValue([{ student: { streamId: 'stream-7A' } }]);
       teacherFindFirst.mockResolvedValue({ id: 't-1' });
       expect((await post(direct)).status).toBe(201);
-      expect(teacherFindFirst.mock.calls[0][0].where).toMatchObject({
+      expect(teacherFindFirst.mock.calls[0]![0]!.where).toMatchObject({
         userId: RECIPIENT,
         schoolId: 'school-A',
         isClassTeacher: true,
         classTeacherStreamId: { in: ['stream-7A'] },
       });
-      expect(guardianFindMany.mock.calls[0][0].where).toMatchObject({
+      expect(guardianFindMany.mock.calls[0]![0]!.where).toMatchObject({
         userId: 'u-1',
         isActive: true,
       });
@@ -186,7 +186,7 @@ describe('POST /api/messages: who may send (SEC-08)', () => {
       slotFindMany.mockResolvedValue([{ streamId: 'stream-8B' }, { streamId: 'stream-7A' }]);
       guardianFindFirst.mockResolvedValue({ id: 'g-1' });
       expect((await post(direct)).status).toBe(201);
-      const where = guardianFindFirst.mock.calls[0][0].where;
+      const where = guardianFindFirst.mock.calls[0]![0]!.where;
       expect(where).toMatchObject({ userId: RECIPIENT, isActive: true });
       expect(where.student).toMatchObject({ schoolId: 'school-A', deletedAt: null });
       expect(where.student.streamId.in.sort()).toEqual(['stream-7A', 'stream-8B']);
@@ -206,7 +206,7 @@ describe('POST /api/messages: who may send (SEC-08)', () => {
     it('can message any active user in their own school', async () => {
       signedInAs('admin');
       expect((await post(direct)).status).toBe(201);
-      expect(userFindFirst.mock.calls[0][0].where).toMatchObject({
+      expect(userFindFirst.mock.calls[0]![0]!.where).toMatchObject({
         id: RECIPIENT,
         schoolId: 'school-A',
         isActive: true,
@@ -231,14 +231,14 @@ describe('POST /api/messages: correctness', () => {
     expect(res.status).toBe(201);
     expect((await res.json()).count).toBe(2);
     expect(messageCreate).toHaveBeenCalledTimes(2);
-    expect(smsAdd.mock.calls[0][1].messageIds).toHaveLength(2);
+    expect(smsAdd.mock.calls[0]![1]!.messageIds).toHaveLength(2);
   });
 
   it("scopes class and school-wide recipients to the sender's school (and active guardians)", async () => {
     signedInAs('admin');
     guardianFindMany.mockResolvedValue([{ userId: 'p-1' }]);
     await post({ body: 'x', messageType: 'class', streamId: STREAM });
-    expect(guardianFindMany.mock.calls[0][0].where).toMatchObject({
+    expect(guardianFindMany.mock.calls[0]![0]!.where).toMatchObject({
       isActive: true,
       student: { streamId: STREAM, schoolId: 'school-A', status: 'active' },
     });
@@ -299,7 +299,7 @@ describe('POST /api/messages: correctness', () => {
     signedInAs('admin');
     expect((await post(direct)).status).toBe(201);
     expect(notifAdd).toHaveBeenCalledTimes(1);
-    expect(notifAdd.mock.calls[0][1]).toMatchObject({ userId: RECIPIENT, type: 'message' });
+    expect(notifAdd.mock.calls[0]![1]!).toMatchObject({ userId: RECIPIENT, type: 'message' });
   });
 });
 
@@ -318,7 +318,7 @@ describe('GET /api/messages', () => {
     messageFindMany.mockResolvedValue([]);
     messageCount.mockResolvedValue(0);
     await get();
-    expect(messageFindMany.mock.calls[0][0].where).toMatchObject({
+    expect(messageFindMany.mock.calls[0]![0]!.where).toMatchObject({
       schoolId: 'school-A',
       recipientId: 'u-1',
     });
@@ -329,11 +329,11 @@ describe('GET /api/messages', () => {
     messageFindMany.mockResolvedValue([]);
     messageCount.mockResolvedValue(0);
     await get('?limit=100000&page=abc');
-    const args = messageFindMany.mock.calls[0][0];
+    const args = messageFindMany.mock.calls[0]![0]!;
     expect(args.take).toBe(100);
     expect(args.skip).toBe(0);
     await get('?limit=-5&page=0');
-    const args2 = messageFindMany.mock.calls[1][0];
+    const args2 = messageFindMany.mock.calls[1]![0]!;
     expect(args2.take).toBe(20);
     expect(args2.skip).toBe(0);
   });

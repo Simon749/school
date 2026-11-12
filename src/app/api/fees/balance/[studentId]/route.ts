@@ -1,25 +1,12 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { requireUser } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db';
+import { add, subtract, toNumber } from '@/lib/money/decimal';
 
 interface FeeAllocation {
   feeItemId?: string;
-  amountAllocated?: number;
-}
-
-interface FeePaymentData {
-  amount: string | number;
-  allocations?: FeeAllocation[];
-}
-
-interface StudentFeeData {
-  feeItemId: string;
-  amountDue: string | number;
-  discount: string | number;
-  carryForwardAmount: string | number;
-  feeItem: {
-    name: string;
-  };
+  amountAllocated?: number | string;
 }
 
 interface FeeItem {
@@ -39,9 +26,6 @@ export async function GET(
   _req: Request,
   { params }: { params: { studentId: string } }
 ): Promise<NextResponse<BalanceResponse | { error: string }>> {
-  // SEC-05: admin and bursar see any student in their own school; a parent only their own
-  // active child; every other role is refused. (Unchanged for now: the arithmetic below is one
-  // of several divergent balance calculations — PAY-07/PAY-15, replaced by a single ledger in R3.)
   const guard = await requireUser(['admin', 'bursar', 'parent']);
   if (!guard.ok) return guard.response as NextResponse<{ error: string }>;
   const { user } = guard;
@@ -72,24 +56,40 @@ export async function GET(
     }),
   ]);
 
-  const totalDue = fees.reduce(
-    (sum, f) => sum + Number(f.amountDue) - Number(f.discount) + Number(f.carryForwardAmount),
-    0
-  );
-  const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-  const balance = totalDue - totalPaid;
+  let totalDue = new Prisma.Decimal(0);
+  let totalPaid = new Prisma.Decimal(0);
+
+  const items: FeeItem[] = fees.map((f) => {
+    const due = add(
+      subtract(new Prisma.Decimal(f.amountDue), new Prisma.Decimal(f.discount)),
+      new Prisma.Decimal(f.carryForwardAmount)
+    );
+    totalDue = add(totalDue, due);
+
+    const paidForItem = payments.reduce((sum, p) => {
+      const allocations = (p.allocations as FeeAllocation[]) || [];
+      const allocated = allocations.find((a) => a.feeItemId === f.feeItemId);
+      if (allocated) {
+        return add(sum, new Prisma.Decimal(allocated.amountAllocated || 0));
+      }
+      return sum;
+    }, new Prisma.Decimal(0));
+
+    totalPaid = add(totalPaid, paidForItem);
+
+    return {
+      name: f.feeItem.name,
+      due: toNumber(due),
+      paid: toNumber(paidForItem),
+    };
+  });
+
+  const balance = subtract(totalDue, totalPaid);
 
   return NextResponse.json<BalanceResponse>({
-    totalDue,
-    totalPaid,
-    balance,
-    items: fees.map((f) => ({
-      name: f.feeItem.name,
-      due: Number(f.amountDue) - Number(f.discount),
-      paid: payments
-        .flatMap((p) => (p.allocations as FeeAllocation[]) || [])
-        .filter((a: FeeAllocation) => a?.feeItemId === f.feeItemId)
-        .reduce((s: number, a: FeeAllocation) => s + (a?.amountAllocated || 0), 0),
-    })),
+    totalDue: toNumber(totalDue),
+    totalPaid: toNumber(totalPaid),
+    balance: toNumber(balance),
+    items,
   });
 }

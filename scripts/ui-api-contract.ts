@@ -45,7 +45,9 @@ function loadRoutes(): Route[] {
           ...src.matchAll(
             /export\s+(?:async\s+)?(?:function|const)\s+(GET|POST|PUT|PATCH|DELETE)\b/g
           ),
-        ].map((m) => m[1])
+        ]
+          .map((m) => m[1])
+          .filter((method): method is string => typeof method === 'string')
       );
       return { url, rx: new RegExp('^' + url.replace(/\[[^\]]+\]/g, '[^/]+') + '$'), methods };
     });
@@ -67,7 +69,7 @@ function loadCalls(): Call[] {
       const meth = /method:\s*['"](GET|POST|PUT|PATCH|DELETE)/.exec(tail);
       calls.push({
         file: relative(ROOT, f).split('\\').join('/'),
-        url: m[2],
+        url: m[2] ?? '',
         method: meth?.[1] ?? 'GET',
       });
     }

@@ -33,16 +33,21 @@ export async function GET() {
     },
   });
 
-  const today = new Date().toISOString().split('T')[0];
+  const todayStr = new Date().toISOString().split('T')[0];
+  if (!todayStr) {
+    return NextResponse.json({ error: 'Missing date' }, { status: 400 });
+  }
+  const todayDate = new Date(todayStr);
+
   const children = await Promise.all(
     guardians.map(async (g) => {
       const [daily, lessons] = await Promise.all([
         prisma.studentDailyAttendance.findUnique({
-          where: { studentId_date: { studentId: g.student.id, date: new Date(today) } },
+          where: { studentId_date: { studentId: g.student.id, date: todayDate } },
           select: { status: true, arrivedAt: true },
         }),
         prisma.studentLessonAttendance.findMany({
-          where: { studentId: g.student.id, schoolId: user.schoolId, date: new Date(today) },
+          where: { studentId: g.student.id, schoolId: user.schoolId, date: todayDate },
           select: {
             status: true,
             absenceReason: true,

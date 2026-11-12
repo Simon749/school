@@ -46,7 +46,8 @@ interface DashboardSettings {
 }
 
 function dateOnly(d: Date): Date {
-  return new Date(d.toISOString().split('T')[0]);
+  const dateString = d.toISOString().slice(0, 10);
+  return new Date(`${dateString}T00:00:00Z`);
 }
 
 function pct(numerator: number, denominator: number): number | null {
@@ -303,7 +304,7 @@ export async function GET() {
       const mondayOffset = day === 0 ? -6 : 1 - day;
       const weekStart = new Date(d);
       weekStart.setDate(d.getDate() + mondayOffset);
-      const key = weekStart.toISOString().split('T')[0];
+      const key = weekStart.toISOString().slice(0, 10);
       weekBuckets.set(key, (weekBuckets.get(key) ?? 0) + Number(p.amount));
     }
     const weeklyTrend = [...weekBuckets.entries()]
@@ -504,9 +505,9 @@ export async function GET() {
   for (let i = 0; i < 7; i++) {
     const d = new Date(sevenDayWindowStart);
     d.setDate(d.getDate() + i);
-    const key = d.toISOString().split('T')[0];
+    const key = d.toISOString().slice(0, 10);
     const dayRecords = dailyLast7.filter(
-      (r: { date: Date }) => dateOnly(r.date).toISOString().split('T')[0] === key
+      (r: { date: Date }) => dateOnly(r.date).toISOString().slice(0, 10) === key
     );
     const dayPresent = dayRecords.filter(
       (r: { status: string }) => r.status === 'present' || r.status === 'late'

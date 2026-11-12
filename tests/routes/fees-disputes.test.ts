@@ -129,7 +129,7 @@ describe('POST /api/fees/disputes (raise a dispute) (PAY-12)', () => {
     guardianFindFirst.mockResolvedValue(null);
     expect((await post(claim({ studentId: 'stu-not-mine' }))).status).toBe(404);
     expect(disputeCreate).not.toHaveBeenCalled();
-    expect(guardianFindFirst.mock.calls[0][0].where).toMatchObject({
+    expect(guardianFindFirst.mock.calls[0]![0]!.where).toMatchObject({
       userId: 'u-1',
       studentId: 'stu-not-mine',
       isActive: true,
@@ -141,7 +141,7 @@ describe('POST /api/fees/disputes (raise a dispute) (PAY-12)', () => {
     signedInAs('parent');
     const res = await post(claim());
     expect(res.status).toBe(201);
-    const data = disputeCreate.mock.calls[0][0].data;
+    const data = disputeCreate.mock.calls[0]![0]!.data;
     expect(data).toMatchObject({
       schoolId: 'school-A',
       studentId: 'stu-1',
@@ -191,9 +191,9 @@ describe('GET /api/fees/disputes', () => {
     signedInAs('bursar');
     disputeFindMany.mockResolvedValue([{ id: 'd-1', studentId: 'stu-1', raisedBy: 'u-9' }]);
     await GET();
-    expect(disputeFindMany.mock.calls[0][0].where).toEqual({ schoolId: 'school-A' });
-    expect(studentFindMany.mock.calls[0][0].where).toMatchObject({ schoolId: 'school-A' });
-    expect(userFindMany.mock.calls[0][0].where).toMatchObject({ schoolId: 'school-A' });
+    expect(disputeFindMany.mock.calls[0]![0]!.where).toEqual({ schoolId: 'school-A' });
+    expect(studentFindMany.mock.calls[0]![0]!.where).toMatchObject({ schoolId: 'school-A' });
+    expect(userFindMany.mock.calls[0]![0]!.where).toMatchObject({ schoolId: 'school-A' });
   });
 });
 
@@ -214,7 +214,7 @@ describe('PATCH /api/fees/disputes/[id] (PAY-12, SEC-11)', () => {
     signedInAs('bursar');
     disputeFindFirst.mockResolvedValue(null);
     expect((await patch({ status: 'resolved' }, 'd-of-school-B')).status).toBe(404);
-    expect(disputeFindFirst.mock.calls[0][0].where).toEqual({
+    expect(disputeFindFirst.mock.calls[0]![0]!.where).toEqual({
       id: 'd-of-school-B',
       schoolId: 'school-A',
     });
@@ -225,7 +225,7 @@ describe('PATCH /api/fees/disputes/[id] (PAY-12, SEC-11)', () => {
     signedInAs('bursar');
     paymentFindFirst.mockResolvedValue(null);
     expect((await patch({ status: 'resolved', paymentId: 'pay-other' })).status).toBe(400);
-    expect(paymentFindFirst.mock.calls[0][0].where).toEqual({
+    expect(paymentFindFirst.mock.calls[0]![0]!.where).toEqual({
       id: 'pay-other',
       schoolId: 'school-A',
       studentId: 'stu-1',
@@ -241,7 +241,7 @@ describe('PATCH /api/fees/disputes/[id] (PAY-12, SEC-11)', () => {
       paymentId: 'pay-1',
     });
     expect(res.status).toBe(200);
-    const data = disputeUpdate.mock.calls[0][0].data;
+    const data = disputeUpdate.mock.calls[0]![0]!.data;
     expect(data).toMatchObject({
       status: 'resolved',
       resolutionNote: 'Matches receipt KIL-001001',
@@ -264,7 +264,7 @@ describe('PATCH /api/fees/disputes/[id] (PAY-12, SEC-11)', () => {
   it('moving to "investigating" records no resolver', async () => {
     signedInAs('bursar');
     await patch({ status: 'investigating' });
-    const data = disputeUpdate.mock.calls[0][0].data;
+    const data = disputeUpdate.mock.calls[0]![0]!.data;
     expect(data.resolvedBy).toBeNull();
     expect(data.resolvedAt).toBeNull();
   });

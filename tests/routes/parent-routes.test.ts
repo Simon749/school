@@ -135,7 +135,7 @@ describe.each(ROUTES)('%s: who may call it (SEC-03 / SEC-04)', (_name, run) => {
   it("only reads this parent's ACTIVE guardian links, inside their school", async () => {
     signedInAs('parent');
     await run();
-    const where = guardianFindMany.mock.calls[0][0].where;
+    const where = guardianFindMany.mock.calls[0]![0]!.where;
     expect(where).toMatchObject({ userId: 'u-1', isActive: true });
     expect(where.student).toMatchObject({ schoolId: 'school-A', deletedAt: null });
   });
@@ -143,7 +143,7 @@ describe.each(ROUTES)('%s: who may call it (SEC-03 / SEC-04)', (_name, run) => {
   it('never selects whole student rows (no medicalNotes / NEMIS / photo)', async () => {
     signedInAs('parent');
     await run();
-    const args = guardianFindMany.mock.calls[0][0];
+    const args = guardianFindMany.mock.calls[0]![0]!;
     expect(args.include).toBeUndefined();
     const paths = selectedPaths(args.select).filter((p) => p.startsWith('student'));
     expect(paths.some((p) => p.endsWith('(!)'))).toBe(false); // no bare relation = whole row
@@ -190,8 +190,8 @@ describe('parent/children (SEC-03)', () => {
   it("scopes the day's attendance queries to the child and school", async () => {
     signedInAs('parent');
     await getChildren();
-    expect(dailyFindUnique.mock.calls[0][0].where.studentId_date.studentId).toBe('stu-1');
-    expect(lessonFindMany.mock.calls[0][0].where).toMatchObject({
+    expect(dailyFindUnique.mock.calls[0]![0]!.where.studentId_date.studentId).toBe('stu-1');
+    expect(lessonFindMany.mock.calls[0]![0]!.where).toMatchObject({
       studentId: 'stu-1',
       schoolId: 'school-A',
     });
@@ -224,11 +224,11 @@ describe('parent/attendance (SEC-04)', () => {
   it('scopes daily and lesson queries to the child and school', async () => {
     signedInAs('parent');
     await getAttendance();
-    expect(dailyFindMany.mock.calls[0][0].where).toMatchObject({
+    expect(dailyFindMany.mock.calls[0]![0]!.where).toMatchObject({
       studentId: 'stu-1',
       schoolId: 'school-A',
     });
-    expect(lessonFindMany.mock.calls[0][0].where).toMatchObject({
+    expect(lessonFindMany.mock.calls[0]![0]!.where).toMatchObject({
       studentId: 'stu-1',
       schoolId: 'school-A',
     });
@@ -239,7 +239,7 @@ describe('parent/results (SEC-04): drafts must never reach parents', () => {
   it('asks only for PUBLISHED (or locked) assessments of the child, in the school', async () => {
     signedInAs('parent');
     await getResults();
-    const where = resultFindMany.mock.calls[0][0].where;
+    const where = resultFindMany.mock.calls[0]![0]!.where;
     expect(where.studentId).toBe('stu-1');
     expect(where.assessment).toMatchObject({
       schoolId: 'school-A',
@@ -250,7 +250,7 @@ describe('parent/results (SEC-04): drafts must never reach parents', () => {
   it('asks only for PUBLISHED term reports in the school', async () => {
     signedInAs('parent');
     await getResults();
-    expect(termReportFindMany.mock.calls[0][0].where).toMatchObject({
+    expect(termReportFindMany.mock.calls[0]![0]!.where).toMatchObject({
       studentId: 'stu-1',
       schoolId: 'school-A',
       publishedAt: { not: null },

@@ -137,7 +137,7 @@ export default async function DeputyDashboardPage() {
   const uncovered = slotsToday.filter((slot) => {
     const [h, m] = slot.period.startTime.toISOString().slice(11, 16).split(':').map(Number);
     const slotStart = new Date(today);
-    slotStart.setHours(h, m, 0, 0);
+    slotStart.setHours(h ?? 0, m ?? 0, 0, 0);
     const windowStart = new Date(slotStart.getTime() - 30 * 60 * 1000);
     const hasAttendance = slot.teacherAttendances.some(
       (a) => a.status === 'present' || a.status === 'late' || a.status === 'covered'

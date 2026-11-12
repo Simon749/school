@@ -33,7 +33,10 @@ export default function Step1SchoolPage() {
     if (!parsed.success) {
       const fieldErrors: Record<string, string> = {};
       parsed.error.issues.forEach((issue) => {
-        fieldErrors[issue.path[0]] = issue.message;
+        const key = issue.path[0];
+        if (typeof key === 'string') {
+          fieldErrors[key] = issue.message;
+        }
       });
       setErrors(fieldErrors);
       setLoading(false);

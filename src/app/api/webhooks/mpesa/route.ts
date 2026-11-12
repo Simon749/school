@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
   // PAY-02: Basic IP allowlist check (Safaricom production ranges)
   const forwarded = req.headers.get('x-forwarded-for') || '';
-  const clientIp = forwarded.split(',')[0].trim();
+  const clientIp = forwarded.split(',')[0]?.trim() ?? 'unknown';
   const allowedRanges = ['196.201.214.', '196.201.215.', '196.201.213.']; // Update per latest Safaricom docs
   
   const isAllowed = process.env.MPESA_ENV === 'production' 

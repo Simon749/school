@@ -100,10 +100,12 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
             marksObtained: result.marksObtained,
             teacherComment: result.teacherComment,
             submittedAt: new Date(),
+            schoolId: user.schoolId,
           },
           create: {
             assessmentId,
             studentId: result.studentId,
+            schoolId: user.schoolId,
             marksObtained: result.marksObtained,
             teacherComment: result.teacherComment,
             submittedAt: new Date(),

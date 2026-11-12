@@ -81,7 +81,8 @@ async function previewImport(schoolId: string, file: File) {
 
     const parsed = csvStudentRowSchema.safeParse(row);
     if (!parsed.success) {
-      errors.push({ row: rowNum, message: parsed.error.errors[0].message });
+      const firstError = parsed.error.errors[0];
+      errors.push({ row: rowNum, message: firstError?.message ?? 'Validation error' });
       continue;
     }
 

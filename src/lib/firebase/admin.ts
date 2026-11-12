@@ -59,7 +59,8 @@ export async function sendPushNotification(options: SendPushOptions) {
       const invalidTokens: string[] = [];
       response.responses.forEach((resp, idx) => {
         if (!resp.success && resp.error?.code === 'messaging/registration-token-not-registered') {
-          invalidTokens.push(tokens[idx]);
+          const token = tokens[idx];
+          if (token) invalidTokens.push(token);
         }
       });
 

@@ -113,7 +113,7 @@ describe('GET /api/results/reports/[id]/pdf (SEC-25)', () => {
     signedInAs('admin');
     reportFindFirst.mockResolvedValue(null);
     expect((await call()).status).toBe(404);
-    expect(reportFindFirst.mock.calls[0][0].where).toEqual({ id: 'r-1', schoolId: 'school-A' });
+    expect(reportFindFirst.mock.calls[0]![0]!.where).toEqual({ id: 'r-1', schoolId: 'school-A' });
   });
 
   it.each(['admin', 'deputy'])(
@@ -135,7 +135,7 @@ describe('GET /api/results/reports/[id]/pdf (SEC-25)', () => {
         classTeacherStreamId: 'stream-7A',
       });
       expect((await call()).status).toBe(200);
-      expect(teacherFindFirst.mock.calls[0][0].where).toMatchObject({
+      expect(teacherFindFirst.mock.calls[0]![0]!.where).toMatchObject({
         userId: 'u-1',
         schoolId: 'school-A',
       });
@@ -168,7 +168,7 @@ describe('GET /api/results/reports/[id]/pdf (SEC-25)', () => {
       signedInAs('parent');
       guardianFindFirst.mockResolvedValue({ id: 'g-1' });
       expect((await call()).status).toBe(200);
-      expect(guardianFindFirst.mock.calls[0][0].where).toEqual({
+      expect(guardianFindFirst.mock.calls[0]![0]!.where).toEqual({
         userId: 'u-1',
         studentId: 'stu-1',
         isActive: true,

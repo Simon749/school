@@ -110,7 +110,7 @@ describe('POST /api/attendance/unlock (SEC-11)', () => {
     signedInAs('admin');
     slotFindFirst.mockResolvedValue(null);
     expect((await doUnlock({ slotId: 'slot-B', date: '2026-10-26' })).status).toBe(404);
-    expect(slotFindFirst.mock.calls[0][0].where).toEqual({ id: 'slot-B', schoolId: 'school-A' });
+    expect(slotFindFirst.mock.calls[0]![0]!.where).toEqual({ id: 'slot-B', schoolId: 'school-A' });
     expect(registerUpsert).not.toHaveBeenCalled();
   });
 
@@ -133,7 +133,7 @@ describe('POST /api/attendance/unlock (SEC-11)', () => {
     signedInAs('admin');
     const res = await doUnlock({ slotId: 'slot-1', date: '2026-10-26' });
     expect(res.status).toBe(200);
-    const arg = registerUpsert.mock.calls[0][0];
+    const arg = registerUpsert.mock.calls[0]![0]!;
     expect(arg.create).toMatchObject({
       schoolId: 'school-A',
       slotId: 'slot-1',
@@ -161,14 +161,14 @@ describe('POST /api/timetable/publish', () => {
     termFindFirst.mockResolvedValue(null);
     expect((await doPublish({ termId: 'term-B' })).status).toBe(400);
     expect(slotUpdateMany).not.toHaveBeenCalled();
-    expect(termFindFirst.mock.calls[0][0].where).toEqual({ id: 'term-B', schoolId: 'school-A' });
+    expect(termFindFirst.mock.calls[0]![0]!.where).toEqual({ id: 'term-B', schoolId: 'school-A' });
   });
 
   it("publishes only this school's unpublished slots for that term, and audits the count", async () => {
     signedInAs('admin');
     const res = await doPublish({ termId: 'term-1' });
     expect(await res.json()).toEqual({ success: true, publishedCount: 12 });
-    expect(slotUpdateMany.mock.calls[0][0]).toEqual({
+    expect(slotUpdateMany.mock.calls[0]![0]!).toEqual({
       where: { termId: 'term-1', schoolId: 'school-A', isPublished: false },
       data: { isPublished: true },
     });

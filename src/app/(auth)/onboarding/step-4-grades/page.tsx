@@ -60,10 +60,19 @@ export default function Step4GradesPage() {
     value: string
   ) => {
     const current = [...(streams[gradeName] || [])];
-    current[idx] = {
-      ...current[idx],
-      [field]: field === 'capacity' ? parseInt(value) || 40 : value,
-    };
+    const existing = current[idx] ?? { name: 'A', capacity: 40 };
+
+    current[idx] =
+      field === 'capacity'
+        ? {
+            ...existing,
+            capacity: Number.parseInt(value, 10) || 40,
+          }
+        : {
+            ...existing,
+            name: value,
+          };
+
     setStreams({ ...streams, [gradeName]: current });
   };
 

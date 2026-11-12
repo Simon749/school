@@ -102,6 +102,11 @@ export default async function ParentResultsPage({ params }: { params: { studentI
         <div className="space-y-4">
           {assessmentsWithResults.map((assessment) => {
             const result = assessment.AssessmentResult[0];
+
+            if (!result) {
+              return null;
+            }
+
             const hasRubric = result.rubricScores.length > 0;
 
             return (

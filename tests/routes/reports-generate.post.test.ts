@@ -111,8 +111,8 @@ describe('POST /api/results/reports/generate (SEC-26)', () => {
   it("finds the term and the student INSIDE the caller's school", async () => {
     signedInAs('admin');
     await post({ studentId: STUDENT, termId: TERM });
-    expect(termFindFirst.mock.calls[0][0].where).toMatchObject({ id: TERM, schoolId: 'school-A' });
-    expect(studentFindFirst.mock.calls[0][0].where).toMatchObject({
+    expect(termFindFirst.mock.calls[0]![0]!.where).toMatchObject({ id: TERM, schoolId: 'school-A' });
+    expect(studentFindFirst.mock.calls[0]![0]!.where).toMatchObject({
       id: STUDENT,
       schoolId: 'school-A',
       deletedAt: null,
@@ -143,11 +143,11 @@ describe('POST /api/results/reports/generate (SEC-26)', () => {
         classTeacherComment: 'Well done',
       });
       expect(res.status).toBe(200);
-      expect(teacherFindFirst.mock.calls[0][0].where).toMatchObject({
+      expect(teacherFindFirst.mock.calls[0]![0]!.where).toMatchObject({
         userId: 'u-1',
         schoolId: 'school-A',
       });
-      expect(reportUpsert.mock.calls[0][0].create.schoolId).toBe('school-A');
+      expect(reportUpsert.mock.calls[0]![0]!.create.schoolId).toBe('school-A');
     });
 
     it("may NOT generate for a student in someone else's class", async () => {
@@ -195,7 +195,7 @@ describe('POST /api/results/reports/generate (SEC-26)', () => {
     expect(
       (await post({ studentId: STUDENT, termId: TERM, principalComment: 'Excellent term' })).status
     ).toBe(200);
-    expect(reportUpsert.mock.calls[0][0].create.principalComment).toBe('Excellent term');
+    expect(reportUpsert.mock.calls[0]![0]!.create.principalComment).toBe('Excellent term');
   });
 
   it('refuses to silently regenerate an already-published report (409)', async () => {

@@ -33,23 +33,26 @@ export const smsWorker = new Worker<SMSJobData>(
     });
 
     // Group by school for balance checking
-    const messagesBySchool = messages.reduce(
-      (acc, msg) => {
-        if (!acc[msg.schoolId]) acc[msg.schoolId] = [];
-        acc[msg.schoolId].push(msg);
-        return acc;
-      },
-      {} as Record<string, typeof messages>
-    );
+    const messagesBySchool = messages.reduce<Record<string, typeof messages>>((acc, msg) => {
+      if (!msg.schoolId) return acc;
+
+      const schoolMessages = acc[msg.schoolId] ?? [];
+      schoolMessages.push(msg);
+      acc[msg.schoolId] = schoolMessages;
+
+      return acc;
+    }, {});
 
     for (const [schoolId, schoolMessages] of Object.entries(messagesBySchool)) {
-      const school = schoolMessages[0].school;
+      const firstMsg = schoolMessages[0];
+      if (!firstMsg) continue;
+      const school = firstMsg.school;
       let availableBalance = school.smsBalance;
 
       for (const message of schoolMessages) {
         // Check if recipient has app installed (skip SMS unless high priority)
         if (message.recipient?.hasAppInstalled && priority !== 'high') {
-          console.log(`[SMS Worker] Skipping SMS for ${message.recipient.phone} - has app`);
+          console.log(`[SMS Worker] Skipping SMS for ${message.recipient?.phone ?? 'unknown'} - has app`);
           await prisma.message.update({
             where: { id: message.id },
             data: {
@@ -64,6 +67,8 @@ export const smsWorker = new Worker<SMSJobData>(
           console.log(`[SMS Worker] No phone number for recipient ${message.recipientId}`);
           continue;
         }
+
+        const recipientPhone = message.recipient.phone;
 
         // Check SMS balance
         const smsCount = Math.ceil(message.body.length / 160);
@@ -85,39 +90,42 @@ export const smsWorker = new Worker<SMSJobData>(
         try {
           // Send SMS
           const result = await sendSMS({
-            to: [message.recipient.phone],
+            to: [recipientPhone],
             message: message.body,
           });
 
-          const recipient = result.recipients[0];
+          const recipient = result.recipients?.[0];
 
-          if (recipient.status === 'Success') {
-            // Update message record
-            await prisma.message.update({
-              where: { id: message.id },
-              data: {
-                smsSent: true,
-                smsMessageId: recipient.messageId,
-              },
+          // PIPE-08: Atomic transaction for balance decrement and status update
+          if (recipient && recipient.status === 'Success') {
+            await prisma.$transaction(async (tx) => {
+              // 1. Update message status
+              await tx.message.update({
+                where: { id: message.id },
+                data: {
+                  smsSent: true,
+                  smsMessageId: recipient.messageId,
+                },
+              });
+
+              // 2. Atomically decrement school balance
+              await tx.school.update({
+                where: { id: schoolId },
+                data: {
+                  smsBalance: { decrement: cost },
+                },
+              });
             });
 
-            // Deduct from school SMS balance
-            await prisma.school.update({
-              where: { id: schoolId },
-              data: {
-                smsBalance: { decrement: cost },
-              },
-            });
-
-            availableBalance -= cost;
+            availableBalance -= cost; // Update local tracker for subsequent messages in this batch
 
             console.log(
-              `[SMS Worker] SMS sent to ${message.recipient.phone} - Message ID: ${recipient.messageId}`
+              `[SMS Worker] SMS sent to ${recipientPhone} - Message ID: ${recipient.messageId}`
             );
           } else {
-            console.error(
-              `[SMS Worker] SMS failed for ${message.recipient.phone}: ${recipient.status}`
-            );
+            const failureStatus = recipient?.status ?? 'unknown';
+
+            console.error(`[SMS Worker] SMS failed for ${recipientPhone}: ${failureStatus}`);
             await prisma.message.update({
               where: { id: message.id },
               data: {
@@ -127,7 +135,7 @@ export const smsWorker = new Worker<SMSJobData>(
             });
           }
         } catch (error: any) {
-          console.error(`[SMS Worker] Error sending SMS to ${message.recipient.phone}:`, error);
+          console.error(`[SMS Worker] Error sending SMS to ${recipientPhone}:`, error);
           // Don't deduct balance on error
           await prisma.message.update({
             where: { id: message.id },

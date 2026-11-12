@@ -46,6 +46,23 @@ async function handleCallback(data: any) {
     return { missing: true }; // Idempotent: job is done, no need to retry
   }
 
+  // PIPE-06: Re-validate that the student and term belong to this school
+  const [student, term] = await Promise.all([
+    prisma.student.findFirst({
+      where: { id: attempt.studentId, schoolId: attempt.schoolId, deletedAt: null },
+    }),
+    prisma.term.findFirst({
+      where: { id: attempt.termId, schoolId: attempt.schoolId },
+    }),
+  ]);
+
+  if (!student) {
+    throw new Error(`Student ${attempt.studentId} not found in school ${attempt.schoolId}`);
+  }
+  if (!term) {
+    throw new Error(`Term ${attempt.termId} not found in school ${attempt.schoolId}`);
+  }
+
   // If already completed, skip (idempotency)
   if (attempt.status === 'completed') {
     console.log(`[MpesaWorker] Already processed: ${checkoutRequestId}`);

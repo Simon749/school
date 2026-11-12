@@ -133,7 +133,7 @@ describe('POST /api/fees/payments (manual payment) (SEC-11)', () => {
     signedInAs('bursar');
     studentFindFirst.mockResolvedValue(null);
     expect((await post(valid({ studentId: 'stu-other-school' }))).status).toBe(400);
-    expect(studentFindFirst.mock.calls[0][0].where).toEqual({
+    expect(studentFindFirst.mock.calls[0]![0]!.where).toEqual({
       id: 'stu-other-school',
       schoolId: 'school-A',
       deletedAt: null,
@@ -186,8 +186,8 @@ describe('POST /api/fees/payments (manual payment) (SEC-11)', () => {
       valid({ schoolId: 'school-EVIL', recordedBy: 'u-EVIL', isReversed: true })
     );
     expect(res.status).toBe(201);
-    expect(termFindFirst.mock.calls[0][0].where).toEqual({ schoolId: 'school-A', isCurrent: true });
-    const data = paymentCreate.mock.calls[0][0].data;
+    expect(termFindFirst.mock.calls[0]![0]!.where).toEqual({ schoolId: 'school-A', isCurrent: true });
+    const data = paymentCreate.mock.calls[0]![0]!.data;
     
     expect(data.schoolId).toBe('school-A');
     expect(data.studentId).toBe('stu-1');
@@ -214,14 +214,14 @@ describe('POST /api/fees/payments (manual payment) (SEC-11)', () => {
       }),
       expect.anything() // The tx client
     );
-    const where = userFindFirst.mock.calls[0][0].where;
+    const where = userFindFirst.mock.calls[0]![0]!.where;
     expect(where).toMatchObject({ isActive: true, deletedAt: null });
     expect(where.guardians.some).toMatchObject({
       studentId: 'stu-1',
       isPrimary: true,
       isActive: true,
     });
-    expect(notifAdd.mock.calls[0][1]).toMatchObject({ userId: 'parent-1', type: 'payment' });
+    expect(notifAdd.mock.calls[0]![1]!).toMatchObject({ userId: 'parent-1', type: 'payment' });
   });
 });
 
@@ -229,7 +229,7 @@ describe('GET /api/fees/payments', () => {
   it("is scoped to the caller's school and excludes reversed payments", async () => {
     signedInAs('bursar');
     await get('?studentId=stu-1&termId=term-1');
-    expect(paymentFindMany.mock.calls[0][0].where).toEqual({
+    expect(paymentFindMany.mock.calls[0]![0]!.where).toEqual({
       schoolId: 'school-A',
       isReversed: false,
       studentId: 'stu-1',
@@ -247,7 +247,7 @@ describe('GET /api/fees/payments', () => {
   it('applies valid date filters', async () => {
     signedInAs('bursar');
     await get('?from=2026-01-01&to=2026-03-31');
-    const paidAt = paymentFindMany.mock.calls[0][0].where.paidAt;
+    const paidAt = paymentFindMany.mock.calls[0]![0]!.where.paidAt;
     expect(paidAt.gte).toBeInstanceOf(Date);
     expect(paidAt.lte).toBeInstanceOf(Date);
   });

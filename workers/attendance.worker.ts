@@ -1,14 +1,14 @@
-import { Worker } from 'bullmq';
-import { connection } from '@/lib/queue/connection';
+import { Worker, Job } from 'bullmq';
+import { connection } from '@/lib/queue/connection'; // Ensure this path matches your setup
 import { prisma } from '@/lib/db';
 import { notificationQueue } from '@/lib/queue';
 
 export const attendanceWorker = new Worker(
-  'attendance',
-  async (job) => {
+  'attendance-queue', // Fixed: was 'attendance' (PIPE-02 mismatch)
+  async (job: Job) => {
     const { type, payload } = job.data;
 
-        if (type === 'teacher-check-in') {
+    if (type === 'teacher-check-in') {
       const {
         teacherId,
         schoolId,
@@ -24,14 +24,29 @@ export const attendanceWorker = new Worker(
         lessonNotes,
       } = payload;
 
+      // PIPE-06: Re-validate school exists and is active
+      const school = await prisma.school.findUnique({
+        where: { id: schoolId, deletedAt: null },
+      });
+      if (!school) throw new Error(`School ${schoolId} not found or deleted`);
+
+      // PIPE-06: Re-validate teacher belongs to this school
+      const teacher = await prisma.teacher.findFirst({
+        where: { id: teacherId, schoolId },
+      });
+      if (!teacher) throw new Error(`Teacher ${teacherId} not found in school ${schoolId}`);
+
+      // PIPE-06: Re-validate slot belongs to this school and is published
+      const slot = await prisma.timetableSlot.findFirst({
+        where: { id: slotId, schoolId, isPublished: true },
+        select: { secondPeriodId: true, learningArea: { select: { name: true } } },
+      });
+      if (!slot) throw new Error(`Slot ${slotId} not found, unpublished, or wrong school`);
+
       // 1. ATT-12: Check for existing record to prevent silent overwrites
       const existingRecord = await prisma.teacherAttendance.findUnique({
         where: {
-          teacherId_slotId_date: {
-            teacherId,
-            slotId,
-            date: new Date(date),
-          },
+          teacherId_slotId_date: { teacherId, slotId, date: new Date(date) },
         },
       });
 
@@ -39,23 +54,12 @@ export const attendanceWorker = new Worker(
         throw new Error('TEACHER_ALREADY_CHECKED_IN');
       }
 
-      // 2. Fetch slot to check for double-lesson auto-cover
-      const slot = await prisma.timetableSlot.findUnique({
-        where: { id: slotId },
-        select: { secondPeriodId: true, learningArea: { select: { name: true } } },
-      });
-
       // 3. Perform the upsert (safe create/update)
       const record = await prisma.teacherAttendance.upsert({
         where: {
-          teacherId_slotId_date: {
-            teacherId,
-            slotId,
-            date: new Date(date),
-          },
+          teacherId_slotId_date: { teacherId, slotId, date: new Date(date) },
         },
         update: {
-          // Preserve original check-in time if it somehow existed without being marked 'checkedInAt'
           checkedInAt: existingRecord?.checkedInAt || new Date(checkedInAt),
           checkInLat,
           checkInLng,
@@ -82,7 +86,7 @@ export const attendanceWorker = new Worker(
       });
 
       // 4. ATT-12: Double-lesson auto-cover
-      if (slot?.secondPeriodId) {
+      if (slot.secondPeriodId) {
         await prisma.teacherAttendance.upsert({
           where: {
             teacherId_slotId_date: {
@@ -112,6 +116,13 @@ export const attendanceWorker = new Worker(
 
     if (type === 'student-register') {
       const { schoolId, slotId, date, markedBy, entries } = payload;
+
+      // PIPE-06: Re-validate slot belongs to school
+      const slot = await prisma.timetableSlot.findFirst({
+        where: { id: slotId, schoolId },
+        include: { learningArea: true },
+      });
+      if (!slot) throw new Error(`Slot ${slotId} not found in school ${schoolId}`);
 
       const results = await prisma.$transaction([
         ...entries.map((entry: { studentId: string; status: string; absenceReason?: string }) =>
@@ -153,11 +164,6 @@ export const attendanceWorker = new Worker(
         }),
       ]);
 
-      const slot = await prisma.timetableSlot.findUnique({
-        where: { id: slotId },
-        include: { learningArea: true },
-      });
-
       for (const entry of entries) {
         if (entry.status !== 'absent') continue;
         const reason = entry.absenceReason || 'unknown';
@@ -169,7 +175,7 @@ export const attendanceWorker = new Worker(
             studentId: entry.studentId,
             slotId,
             date,
-            lessonName: slot?.learningArea.name || 'Lesson',
+            lessonName: slot.learningArea.name || 'Lesson',
             reason,
           },
           { delay: 15 * 60 * 1000, jobId: `absence-${entry.studentId}-${slotId}-${date}` }

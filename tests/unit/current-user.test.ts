@@ -52,7 +52,7 @@ describe('resolveUser (D1: identity comes from the DB, keyed by clerkId)', () =>
     authMock.mockResolvedValue({ userId: 'clerk_1' });
     findUnique.mockResolvedValue(dbUser());
     await resolveUser();
-    expect(findUnique.mock.calls[0][0].where).toEqual({ clerkId: 'clerk_1' });
+    expect(findUnique.mock.calls[0]![0]!.where).toEqual({ clerkId: 'clerk_1' });
   });
 
   it('is forbidden when Clerk knows the person but our DB does not (SEC-25 hole)', async () => {
@@ -176,7 +176,7 @@ describe('requireTeacher / requirePageTeacher (FEAT-01: the teacher record is ke
     teacherFindFirst.mockResolvedValue(teacherRow);
     const r = await requireTeacher();
     expect(r.ok).toBe(true);
-    expect(teacherFindFirst.mock.calls[0][0].where).toEqual({
+    expect(teacherFindFirst.mock.calls[0]![0]!.where).toEqual({
       userId: 'u-1',
       schoolId: 'school-A',
     });

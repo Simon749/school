@@ -85,7 +85,9 @@ export default function TeacherTodayPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const formatTime = (t: string) => {
+  const formatTime = (t?: string) => {
+    if (!t) return '—';
+
     if (t.includes('T')) {
       return new Date(t).toLocaleTimeString('en-KE', {
         hour: '2-digit',
@@ -93,9 +95,10 @@ export default function TeacherTodayPage() {
         hour12: true,
       });
     }
-    const [hours, minutes] = t.split(':');
+
+    const [hours = '0', minutes = '0'] = t.split(':');
     const date = new Date();
-    date.setHours(parseInt(hours), parseInt(minutes));
+    date.setHours(Number.parseInt(hours, 10) || 0, Number.parseInt(minutes, 10) || 0);
     return date.toLocaleTimeString('en-KE', {
       hour: '2-digit',
       minute: '2-digit',

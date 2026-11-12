@@ -19,12 +19,16 @@ export function verifyQrToken(token: string): { slotId: string; date: string; va
   if (parts.length !== 4) return { slotId: '', date: '', valid: false };
 
   const [slotId, date, random, hmac] = parts;
+
+  if (!hmac) throw new Error('Invalid QR token: missing HMAC');
+  const a = Buffer.from(hmac);
+
   const payload = `${slotId}:${date}:${random}`;
   const expected = crypto.createHmac('sha256', secret()).update(payload).digest('base64url');
 
-  const a = Buffer.from(hmac);
   const b = Buffer.from(expected);
   const valid = a.length === b.length && crypto.timingSafeEqual(a, b);
 
+  if (!slotId || !date) throw new Error('Invalid QR token: missing slotId or date');
   return { slotId, date, valid };
 }

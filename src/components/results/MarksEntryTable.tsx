@@ -108,9 +108,9 @@ export function MarksEntryTable({
           teacherComment: state.teacherComment || null,
           rubricScores: hasRubric
             ? Object.entries(state.rubricScores).map(([subStrandId, score]) => ({
-                subStrandId,
-                score,
-              }))
+              subStrandId,
+              score,
+            }))
             : undefined,
         }));
 
@@ -136,18 +136,29 @@ export function MarksEntryTable({
   }, []);
 
   const updateStudentState = (studentId: string, field: keyof StudentState, value: any) => {
-    setStudentStates((prev) => ({ ...prev, [studentId]: { ...prev[studentId], [field]: value } }));
+    setStudentStates((prev) => {
+      const current = prev[studentId] ?? { marksObtained: '', teacherComment: '', rubricScores: {} };
+      return { ...prev, [studentId]: { ...current, [field]: value } };
+    });
     triggerSave();
   };
 
   const updateRubricScore = (studentId: string, subStrandId: string, score: string) => {
-    setStudentStates((prev) => ({
-      ...prev,
-      [studentId]: {
-        ...prev[studentId],
-        rubricScores: { ...prev[studentId].rubricScores, [subStrandId]: score },
-      },
-    }));
+    setStudentStates((prev) => {
+      const current = prev[studentId] ?? {
+        marksObtained: '',
+        teacherComment: '',
+        rubricScores: {},
+      };
+
+      return {
+        ...prev,
+        [studentId]: {
+          ...current,
+          rubricScores: { ...current.rubricScores, [subStrandId]: score },
+        } satisfies StudentState,
+      };
+    });
     triggerSave();
   };
 
@@ -214,7 +225,7 @@ export function MarksEntryTable({
                     <TableCell>
                       <Input
                         type="number"
-                        value={state.marksObtained}
+                        value={state?.marksObtained ?? ''}
                         onChange={(e) =>
                           updateStudentState(student.id, 'marksObtained', e.target.value)
                         }
@@ -229,7 +240,7 @@ export function MarksEntryTable({
                     subStrands.map((ss) => (
                       <TableCell key={ss.id}>
                         <Select
-                          value={state.rubricScores[ss.id] || ''}
+                          value={state?.rubricScores?.[ss.id] ?? ''}
                           onValueChange={(val: string | null) =>
                             updateRubricScore(student.id, ss.id, val || '')
                           }
@@ -250,7 +261,7 @@ export function MarksEntryTable({
 
                   <TableCell>
                     <Textarea
-                      value={state.teacherComment}
+                      value={state?.teacherComment ?? ''}
                       onChange={(e) =>
                         updateStudentState(student.id, 'teacherComment', e.target.value)
                       }

@@ -85,7 +85,7 @@ describe('GET /api/fees/balance/[studentId] (SEC-05)', () => {
       signedInAs(role);
       studentFindFirst.mockResolvedValue(null);
       expect((await call()).status).toBe(404);
-      expect(studentFindFirst.mock.calls[0][0].where).toEqual({
+      expect(studentFindFirst.mock.calls[0]![0]!.where).toEqual({
         id: 'stu-1',
         schoolId: 'school-A',
         deletedAt: null,
@@ -99,11 +99,11 @@ describe('GET /api/fees/balance/[studentId] (SEC-05)', () => {
     async (role) => {
       signedInAs(role);
       expect((await call()).status).toBe(200);
-      expect(feesFindMany.mock.calls[0][0].where).toMatchObject({
+      expect(feesFindMany.mock.calls[0]![0]!.where).toMatchObject({
         studentId: 'stu-1',
         schoolId: 'school-A',
       });
-      expect(paymentsFindMany.mock.calls[0][0].where).toMatchObject({
+      expect(paymentsFindMany.mock.calls[0]![0]!.where).toMatchObject({
         studentId: 'stu-1',
         schoolId: 'school-A',
         isReversed: false,
@@ -114,7 +114,7 @@ describe('GET /api/fees/balance/[studentId] (SEC-05)', () => {
   it('a parent can read only their OWN active child (and a stranger gets 404, not a hint)', async () => {
     signedInAs('parent');
     expect((await call()).status).toBe(200);
-    expect(guardianFindFirst.mock.calls[0][0].where).toMatchObject({
+    expect(guardianFindFirst.mock.calls[0]![0]!.where).toMatchObject({
       userId: 'u-1',
       studentId: 'stu-1',
       isActive: true,

@@ -75,7 +75,7 @@ describe('GET /api/students/[id] (SEC-02): the full profile is admin-only', () =
   it("scopes the lookup to the caller's school and excludes soft-deleted students", async () => {
     signedInAs('admin');
     await call();
-    expect(studentFindFirst.mock.calls[0][0].where).toEqual({
+    expect(studentFindFirst.mock.calls[0]![0]!.where).toEqual({
       id: 's-1',
       schoolId: 'school-A',
       deletedAt: null,
@@ -85,7 +85,7 @@ describe('GET /api/students/[id] (SEC-02): the full profile is admin-only', () =
   it('uses an explicit field whitelist, never `include` (no whole rows)', async () => {
     signedInAs('admin');
     await call();
-    const args = studentFindFirst.mock.calls[0][0];
+    const args = studentFindFirst.mock.calls[0]![0]!;
     expect(args.include).toBeUndefined();
     expect(args.select).toBeDefined();
   });
@@ -93,7 +93,7 @@ describe('GET /api/students/[id] (SEC-02): the full profile is admin-only', () =
   it('does not select guardian email, national ID, Clerk ID or any other guardian-account field', async () => {
     signedInAs('admin');
     await call();
-    const paths = selectedPaths(studentFindFirst.mock.calls[0][0].select);
+    const paths = selectedPaths(studentFindFirst.mock.calls[0]![0]!.select);
     const guardianUser = paths.filter((p) => p.startsWith('guardians.user.'));
     expect(guardianUser.sort()).toEqual([
       'guardians.user.firstName',
@@ -105,7 +105,7 @@ describe('GET /api/students/[id] (SEC-02): the full profile is admin-only', () =
   it('selects exactly the student fields the admin profile page uses', async () => {
     signedInAs('admin');
     await call();
-    const paths = selectedPaths(studentFindFirst.mock.calls[0][0].select).filter(
+    const paths = selectedPaths(studentFindFirst.mock.calls[0]![0]!.select).filter(
       (p) => !p.startsWith('guardians.')
     );
     expect(paths.sort()).toEqual(
@@ -132,7 +132,7 @@ describe('GET /api/students/[id] (SEC-02): the full profile is admin-only', () =
   it('only returns active guardians', async () => {
     signedInAs('admin');
     await call();
-    expect(studentFindFirst.mock.calls[0][0].select.guardians.where).toEqual({ isActive: true });
+    expect(studentFindFirst.mock.calls[0]![0]!.select.guardians.where).toEqual({ isActive: true });
   });
 
   it("answers 404 (not 403) for a student that is not in the caller's school", async () => {

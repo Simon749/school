@@ -139,8 +139,8 @@ describe('POST /api/onboarding/step-1 (SEC-22)', () => {
     signedInAs('admin');
     const res = await step1(req({ ...identity(), schoolId: 'school-EVIL' }));
     expect(res.status).toBe(200);
-    expect(schoolUpdate.mock.calls[0][0].where).toEqual({ id: 'school-A' });
-    expect(schoolFindUnique.mock.calls[0][0].where).toEqual({ id: 'school-A' });
+    expect(schoolUpdate.mock.calls[0]![0]!.where).toEqual({ id: 'school-A' });
+    expect(schoolFindUnique.mock.calls[0]![0]!.where).toEqual({ id: 'school-A' });
   });
 
   it('can never create a school or move a user into one', async () => {
@@ -205,19 +205,19 @@ describe('POST /api/onboarding/step-4 (SEC-23): grades and streams, safe to repe
   it("creates missing grades and their streams in the caller's school", async () => {
     signedInAs('admin');
     expect((await step4(req(grades(['Grade 1'])))).status).toBe(200);
-    expect(gradeCreate.mock.calls[0][0].data).toMatchObject({
+    expect(gradeCreate.mock.calls[0]![0]!.data).toMatchObject({
       schoolId: 'school-A',
       name: 'Grade 1',
       level: 2,
     });
     expect(streamUpsert).toHaveBeenCalledTimes(2);
-    expect(streamUpsert.mock.calls[0][0].create).toMatchObject({
+    expect(streamUpsert.mock.calls[0]![0]!.create).toMatchObject({
       schoolId: 'school-A',
       gradeId: 'g-new',
       name: 'A',
       capacity: 40,
     });
-    expect(txSchoolUpdate.mock.calls[0][0]).toMatchObject({
+    expect(txSchoolUpdate.mock.calls[0]![0]!).toMatchObject({
       where: { id: 'school-A' },
       data: { onboardingStep: 4 },
     });
@@ -227,15 +227,15 @@ describe('POST /api/onboarding/step-4 (SEC-23): grades and streams, safe to repe
     signedInAs('admin');
     gradeFindFirst.mockResolvedValue({ id: 'g-existing' });
     expect((await step4(req(grades(['Grade 1'])))).status).toBe(200);
-    expect(gradeFindFirst.mock.calls[0][0].where).toEqual({
+    expect(gradeFindFirst.mock.calls[0]![0]!.where).toEqual({
       schoolId: 'school-A',
       name: 'Grade 1',
     });
     expect(gradeCreate).not.toHaveBeenCalled();
-    expect(streamUpsert.mock.calls[0][0].where).toEqual({
+    expect(streamUpsert.mock.calls[0]![0]!.where).toEqual({
       gradeId_name: { gradeId: 'g-existing', name: 'A' },
     });
-    expect(streamUpsert.mock.calls[0][0].update).toEqual({ capacity: 40 });
+    expect(streamUpsert.mock.calls[0]![0]!.update).toEqual({ capacity: 40 });
   });
 
   it('400 for bad JSON / invalid payload; generic 500 on failure', async () => {

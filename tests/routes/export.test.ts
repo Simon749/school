@@ -126,7 +126,7 @@ describe('POST /api/export (SEC-06)', () => {
       userId: 'u-EVIL',
       filters: { termId: 't1' },
     });
-    const data = queueAdd.mock.calls[0][1];
+    const data = queueAdd.mock.calls[0]![1]!;
     expect(data).toMatchObject({
       type: 'fees-term',
       schoolId: 'school-A',

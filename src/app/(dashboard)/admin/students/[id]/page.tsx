@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import err from 'next/error';
 import {
   ArrowLeft,
   Edit2,
@@ -16,13 +15,22 @@ import {
   MapPin,
   AlertCircle,
   Trash2,
+  ShieldOff,
+  ShieldCheck,
+  Ban,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { DeactivateGuardianDialog } from '@/components/admin/DeactivateGuardianDialog';
 
 interface Guardian {
   id: string;
   relationship: string;
   isPrimary: boolean;
   canPickup: boolean;
+  isActive: boolean;
+  hasRestrictedAccess: boolean;
+  deactivationReason: string | null;
+  deactivatedAt: string | null;
   user: {
     firstName: string;
     lastName: string;
@@ -59,6 +67,13 @@ export default function StudentProfilePage() {
   const [editForm, setEditForm] = useState<Partial<Student>>({});
   const [saving, setSaving] = useState(false);
 
+  // R1-25: Guardian deactivation dialog state
+  const [deactivateDialog, setDeactivateDialog] = useState<{
+    open: boolean;
+    guardianId: string | null;
+    guardianName: string;
+  }>({ open: false, guardianId: null, guardianName: '' });
+
   const fetchStudent = useCallback(async () => {
     try {
       const res = await fetch(`/api/students/${id}`);
@@ -66,7 +81,7 @@ export default function StudentProfilePage() {
       const data = await res.json();
       setStudent(data.student);
       setEditForm(data.student);
-    } catch (err) {
+    } catch {
       router.push('/admin/students');
     } finally {
       setLoading(false);
@@ -101,8 +116,9 @@ export default function StudentProfilePage() {
       if (!res.ok) throw new Error(json.error || 'Update failed');
       setStudent(json.student);
       setIsEditing(false);
+      toast.success('Student updated');
     } catch (error: any) {
-      alert((error as Error).message);
+      toast.error(error.message);
     } finally {
       setSaving(false);
     }
@@ -115,7 +131,43 @@ export default function StudentProfilePage() {
       if (!res.ok) throw new Error('Delete failed');
       router.push('/admin/students');
     } catch (error: any) {
-      alert((error as Error).message);
+      toast.error(error.message);
+    }
+  }
+
+  // R1-25: Toggle restricted access for a guardian (DATA-02 / D4)
+  async function handleToggleRestrictedAccess(guardianId: string, current: boolean) {
+    try {
+      const res = await fetch(`/api/guardians/${guardianId}/restrict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hasRestrictedAccess: !current }),
+      });
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || 'Failed to update access');
+      }
+      toast.success(current ? 'Full access restored' : 'Restricted access enabled');
+      await fetchStudent(); // Refresh to show updated state
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  }
+
+  // R1-25: Reactivate a previously deactivated guardian
+  async function handleReactivateGuardian(guardianId: string) {
+    if (!confirm('Reactivate this guardian? They will regain full access to the parent portal.'))
+      return;
+    try {
+      const res = await fetch(`/api/guardians/${guardianId}/reactivate`, { method: 'POST' });
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || 'Failed to reactivate');
+      }
+      toast.success('Guardian reactivated');
+      await fetchStudent();
+    } catch (error: any) {
+      toast.error(error.message);
     }
   }
 
@@ -380,24 +432,107 @@ export default function StudentProfilePage() {
             ) : (
               <div className="space-y-3">
                 {student.guardians.map((g) => (
-                  <div key={g.id} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <div
+                    key={g.id}
+                    className={`p-3 rounded-lg border ${
+                      g.isActive
+                        ? 'bg-gray-50 border-gray-100'
+                        : 'bg-red-50/50 border-red-200 opacity-75'
+                    }`}
+                  >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-sm text-gray-900">
+                      <span
+                        className={`font-medium text-sm ${
+                          g.isActive ? 'text-gray-900' : 'text-gray-500 line-through'
+                        }`}
+                      >
                         {g.user.firstName} {g.user.lastName}
                       </span>
-                      {g.isPrimary && (
-                        <span className="text-[10px] font-medium px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
-                          Primary
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {g.isPrimary && (
+                          <span className="text-[10px] font-medium px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
+                            Primary
+                          </span>
+                        )}
+                        {g.hasRestrictedAccess && g.isActive && (
+                          <span className="text-[10px] font-medium px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full flex items-center gap-1">
+                            <ShieldOff className="w-2.5 h-2.5" />
+                            Restricted
+                          </span>
+                        )}
+                        {!g.isActive && (
+                          <span className="text-[10px] font-medium px-2 py-0.5 bg-red-100 text-red-700 rounded-full flex items-center gap-1">
+                            <Ban className="w-2.5 h-2.5" />
+                            Deactivated
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className="text-xs text-gray-500 capitalize">{g.relationship}</p>
                     {g.user.phone && <p className="text-xs text-gray-500">{g.user.phone}</p>}
-                    {!g.canPickup && (
+                    {!g.canPickup && g.isActive && (
                       <p className="text-[10px] text-red-600 mt-1 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3" />
                         Cannot pick up
                       </p>
+                    )}
+                    {!g.isActive && g.deactivationReason && (
+                      <p className="text-[10px] text-red-700 mt-1 italic">
+                        Reason: {g.deactivationReason}
+                      </p>
+                    )}
+
+                    {/* Action buttons */}
+                    {g.isActive ? (
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-200">
+                        <button
+                          onClick={() =>
+                            handleToggleRestrictedAccess(g.id, g.hasRestrictedAccess)
+                          }
+                          className="text-[11px] font-medium text-amber-700 hover:text-amber-900 flex items-center gap-1"
+                          title={
+                            g.hasRestrictedAccess
+                              ? 'Restore full access (can see arrival times)'
+                              : 'Restrict access (hide arrival times, keep results)'
+                          }
+                        >
+                          {g.hasRestrictedAccess ? (
+                            <>
+                              <ShieldCheck className="w-3 h-3" />
+                              Restore access
+                            </>
+                          ) : (
+                            <>
+                              <ShieldOff className="w-3 h-3" />
+                              Restrict access
+                            </>
+                          )}
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          onClick={() =>
+                            setDeactivateDialog({
+                              open: true,
+                              guardianId: g.id,
+                              guardianName: `${g.user.firstName} ${g.user.lastName}`,
+                            })
+                          }
+                          className="text-[11px] font-medium text-red-600 hover:text-red-800 flex items-center gap-1"
+                        >
+                          <Ban className="w-3 h-3" />
+                          Deactivate
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-3 pt-3 border-t border-red-200">
+                        <button
+                          onClick={() => handleReactivateGuardian(g.id)}
+                          className="text-[11px] font-medium text-green-700 hover:text-green-900 flex items-center gap-1"
+                        >
+                          <ShieldCheck className="w-3 h-3" />
+                          Reactivate guardian
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -406,6 +541,20 @@ export default function StudentProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* R1-25: Guardian deactivation dialog */}
+      {deactivateDialog.guardianId && (
+        <DeactivateGuardianDialog
+          guardianId={deactivateDialog.guardianId}
+          guardianName={deactivateDialog.guardianName}
+          isOpen={deactivateDialog.open}
+          onClose={() => setDeactivateDialog({ open: false, guardianId: null, guardianName: '' })}
+          onDeactivated={async () => {
+            // Refresh student data to show the deactivated state
+            await fetchStudent();
+          }}
+        />
+      )}
     </div>
   );
 }

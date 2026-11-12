@@ -66,7 +66,10 @@ export async function GET() {
       // Group lesson attendance by date for recentDays
       const attendanceByDate = new Map<string, typeof lessonAttendance>();
       lessonAttendance.forEach((lesson) => {
-        const dateStr = lesson.date.toISOString().split('T')[0];
+        const dateIso = lesson.date.toISOString().split('T')[0];
+        if (!dateIso) return;
+        const dateStr = dateIso;
+        if (!dateStr) return;
         if (!attendanceByDate.has(dateStr)) {
           attendanceByDate.set(dateStr, []);
         }
@@ -84,21 +87,28 @@ export async function GET() {
             arrivedAt: restricted ? undefined : daily?.arrivedAt?.toISOString(),
             departedAt: restricted ? undefined : daily?.departedAt?.toISOString(),
             dailyStatus: daily?.status || 'absent',
-            lessons: lessons.map((l) => ({
-              id: l.id,
-              slot: l.slot
-                ? {
-                    learningArea: { name: l.slot.learningArea.name },
-                    period: {
-                      startTime: l.slot.period.startTime.toISOString().split('T')[1].slice(0, 5),
-                      endTime: l.slot.period.endTime.toISOString().split('T')[1].slice(0, 5),
-                    },
-                  }
-                : null,
-              status: l.status,
-              absenceReason: l.absenceReason || undefined,
-              markedAt: l.createdAt.toISOString(),
-            })),
+            lessons: lessons.map((l) => {
+              const startIso = l.slot?.period?.startTime.toISOString();
+              const endIso = l.slot?.period?.endTime.toISOString();
+              const startTimeStr = startIso ? startIso.split('T')[1]?.slice(0, 5) ?? '00:00' : '00:00';
+              const endTimeStr = endIso ? endIso.split('T')[1]?.slice(0, 5) ?? '00:00' : '00:00';
+
+              return {
+                id: l.id,
+                slot: l.slot
+                  ? {
+                      learningArea: { name: l.slot.learningArea.name },
+                      period: {
+                        startTime: startTimeStr,
+                        endTime: endTimeStr,
+                      },
+                    }
+                  : null,
+                status: l.status,
+                absenceReason: l.absenceReason || undefined,
+                markedAt: l.createdAt.toISOString(),
+              };
+            }),
             presentLessons,
             totalLessons: lessons.length,
             attendanceRate:

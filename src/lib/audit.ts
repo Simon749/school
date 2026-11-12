@@ -35,7 +35,7 @@ export async function logAudit(
       // headers() only works in App Router server components/routes, not background workers
       const headersList = headers();
       if (ipAddress === 'unknown') {
-        ipAddress = headersList.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
+        ipAddress = headersList.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
       }
       if (userAgent === 'unknown') {
         userAgent = headersList.get('user-agent') || 'unknown';
@@ -73,11 +73,14 @@ export async function logAudit(
 export function getRequestMetadata(req?: Request) {
   let ipAddress = 'unknown';
   let userAgent = 'unknown';
-  
+
   if (req) {
-    ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
+    const headersList = headers();
+    const forwarded = headersList.get('x-forwarded-for');
+    const firstForwardedIp = forwarded?.split(',')[0]?.trim();
+    ipAddress = firstForwardedIp || 'unknown';
     userAgent = req.headers.get('user-agent') || 'unknown';
   }
-  
+
   return { ipAddress, userAgent };
 }
