@@ -1,99 +1,122 @@
 import { Prisma } from '@prisma/client';
-import { add, subtract, equals, isZero } from '@/lib/money/decimal';
+import { prisma } from '@/lib/db';
+import { add, subtract, isZero, toNumber } from '@/lib/money/decimal';
 
-interface BalanceInput {
-  studentId: string;
-  termId: string;
-  tx?: Prisma.TransactionClient;
+export interface FeeBalanceItem {
+  feeItemId: string;
+  feeName: string;
+  amountDue: number;
+  discount: number;
+  carryForward: number;
+  paid: number;
+  balance: number;
 }
 
-interface BalanceResult {
+export interface FeeBalanceResult {
+  studentId: string;
+  termId: string;
   totalDue: number;
   totalPaid: number;
   balance: number;
-  items: Array<{
-    feeItemId: string;
-    feeName: string;
-    amountDue: number;
-    discount: number;
-    carryForward: number;
-    paid: number;
-    balance: number;
-  }>;
+  isOverpaid: boolean;
+  overpaymentAmount: number;
+  items: FeeBalanceItem[];
 }
 
 /**
- * Calculate the exact balance for a student/term using safe decimal math.
- * This is the single source of truth for all balance displays.
+ * SINGLE SOURCE OF TRUTH for all fee balance calculations.
+ *
+ * Used by:
+ * - Parent fee view (balance/[studentId])
+ * - Bursar defaulters list
+ * - SMS fee reminders
+ * - CSV/PDF exports
+ * - Allocation logic
+ *
+ * PAY-07 / PAY-15: Eliminates divergent balance math across the app.
+ * SEC-11: Enforces schoolId scoping at the data layer for defensive depth.
+ * R3-06: All arithmetic uses Prisma.Decimal to prevent floating-point errors.
  */
-export async function calculateBalance({
-  studentId,
-  termId,
-  tx,
-}: BalanceInput): Promise<BalanceResult> {
-  const client = tx || (await import('@/lib/db')).prisma;
+export async function calculateBalance(
+  studentId: string,
+  termId: string,
+  schoolId: string,
+  tx?: Prisma.TransactionClient
+): Promise<FeeBalanceResult> {
+  const client = tx || prisma;
 
-  // Fetch all fee items for this student/term
-  const feeItems = await client.studentFee.findMany({
-    where: { studentId, termId },
+  // 1. Fetch all fee items assigned to this student for this term (scoped to school)
+  const studentFees = await client.studentFee.findMany({
+    where: { studentId, termId, schoolId },
     include: { feeItem: true },
+    orderBy: { feeItem: { priorityOrder: 'asc' } },
   });
 
-  // Fetch all payments for this student/term
+  // 2. Fetch all confirmed, non-reversed payments for this student/term (scoped to school)
   const payments = await client.feePayment.findMany({
     where: {
       studentId,
       termId,
+      schoolId,
       isReversed: false,
+    },
+    select: {
+      id: true,
+      amount: true,
+      allocations: true,
     },
   });
 
   let totalDue = new Prisma.Decimal(0);
   let totalPaid = new Prisma.Decimal(0);
-  const items: BalanceResult['items'] = [];
+  const items: FeeBalanceItem[] = [];
 
-  for (const studentFee of feeItems) {
-    const amountDue = studentFee.amountDue;
-    const discount = studentFee.discount;
-    const carryForward = studentFee.carryForwardAmount;
+  for (const sf of studentFees) {
+    const amountDue = new Prisma.Decimal(sf.amountDue);
+    const discount = new Prisma.Decimal(sf.discount);
+    const carryForward = new Prisma.Decimal(sf.carryForwardAmount);
 
-    // Calculate total owed for this item
-    const itemTotalDue = add(subtract(amountDue, discount), carryForward);
-    totalDue = add(totalDue, itemTotalDue);
+    // Total owed for this specific fee item
+    const itemDue = add(subtract(amountDue, discount), carryForward);
+    totalDue = add(totalDue, itemDue);
 
-    // Calculate what's been paid to this item
+    // Calculate what has been paid towards this specific fee item
     let itemPaid = new Prisma.Decimal(0);
-    for (const payment of payments) {
-      const allocations = payment.allocations as Array<{ feeItemId: string; amount: number }>;
-      const allocationForThisItem = allocations.find(
-        (a) => a.feeItemId === studentFee.feeItemId
-      );
-      if (allocationForThisItem) {
-        itemPaid = add(itemPaid, allocationForThisItem.amount);
+    const allocations = (payments as Array<{ id: string; amount: Prisma.Decimal; allocations: unknown }>)
+      .flatMap((p) => (p.allocations as Array<{ feeItemId: string; amountAllocated: number }>) || []);
+
+    for (const allocation of allocations) {
+      if (allocation.feeItemId === sf.feeItemId) {
+        itemPaid = add(itemPaid, new Prisma.Decimal(allocation.amountAllocated));
       }
     }
 
     totalPaid = add(totalPaid, itemPaid);
-
-    const itemBalance = subtract(itemTotalDue, itemPaid);
+    const itemBalance = subtract(itemDue, itemPaid);
 
     items.push({
-      feeItemId: studentFee.feeItemId,
-      feeName: studentFee.feeItem.name,
-      amountDue: amountDue.toNumber(),
-      discount: discount.toNumber(),
-      carryForward: carryForward.toNumber(),
-      paid: itemPaid.toNumber(),
-      balance: itemBalance.toNumber(),
+      feeItemId: sf.feeItemId,
+      feeName: sf.feeItem.name,
+      amountDue: toNumber(amountDue),
+      discount: toNumber(discount),
+      carryForward: toNumber(carryForward),
+      paid: toNumber(itemPaid),
+      balance: toNumber(itemBalance),
     });
   }
 
   const balance = subtract(totalDue, totalPaid);
+  const isOverpaid = balance.isNegative();
+  const overpaymentAmount = isOverpaid ? toNumber(balance.abs()) : 0;
 
   return {
-    totalDue: totalDue.toNumber(),
-    totalPaid: totalPaid.toNumber(),
-    balance: balance.toNumber(),
+    studentId,
+    termId,
+    totalDue: toNumber(totalDue),
+    totalPaid: toNumber(totalPaid),
+    balance: toNumber(balance),
+    isOverpaid,
+    overpaymentAmount,
     items,
   };
 }

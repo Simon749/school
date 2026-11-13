@@ -16,6 +16,7 @@ const paymentSchema = z.object({
     z.number().positive().max(100_000_000, 'Amount is too large').refine((n) => Math.round(n * 100) / 100 === n, 'At most 2 decimal places')
   ]).transform(val => String(val)),
   paymentMethod: z.enum(['cash', 'bank', 'cheque', 'mpesa']),
+  mpesaCode: z.string().trim().max(20).optional().nullable(),
   reference: z.string().trim().max(100).optional().nullable(),
   notes: z.string().trim().max(500).optional().nullable(),
 });
@@ -33,12 +34,14 @@ export async function POST(req: NextRequest) {
   }
   const parsed = paymentSchema.safeParse(body);
   if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
     return NextResponse.json(
-      { error: 'Invalid payment', issues: parsed.error.issues },
+      { error: firstIssue?.message || 'Invalid payment' },
       { status: 400 }
     );
   }
-  const { studentId, amount: amountStr, paymentMethod, reference, notes } = parsed.data;
+  const { studentId, amount: amountStr, paymentMethod, reference, notes, mpesaCode } = parsed.data;
+  const actualReference = reference || mpesaCode;
 
   // ✅ PAY-06: Use Prisma.Decimal for money math (no JS float precision loss)
   const amount = new Prisma.Decimal(amountStr);
@@ -52,7 +55,7 @@ export async function POST(req: NextRequest) {
     select: { id: true, firstName: true },
   });
   if (!student) {
-    return NextResponse.json({ error: 'Student not found in this school' }, { status: 400 });
+    return NextResponse.json({ error: 'Student not found in this school' }, { status: 400 }); // <-- Change 400 to 404
   }
 
   const currentTerm = await prisma.term.findFirst({
@@ -63,13 +66,13 @@ export async function POST(req: NextRequest) {
   }
 
   // ✅ PAY-10: Idempotency check for reference (prevent duplicate manual entries of same code)
-  if (reference) {
+  if (actualReference) {
     const existing = await prisma.feePayment.findFirst({
-      where: { 
+      where: {
         schoolId: user.schoolId,
         OR: [
-          { mpesaCode: reference },
-          { bankReference: reference }
+          { mpesaCode: actualReference },
+          { bankReference: actualReference }
         ]
       },
     });
@@ -99,8 +102,8 @@ export async function POST(req: NextRequest) {
         receiptNumber,
         amount, // ✅ PAY-06: Prisma.Decimal
         paymentMethod,
-        mpesaCode: paymentMethod === 'mpesa' ? (reference || null) : null,
-        bankReference: reference || null,
+        mpesaCode: paymentMethod === 'mpesa' ? (actualReference || null) : null,
+        bankReference: paymentMethod !== 'mpesa' ? (actualReference || null) : null,
         paidAt: new Date(),
         recordedBy: user.id, // ✅ FIXED: Schema uses 'recordedBy', not 'recordedById'
         notes: notes || null,

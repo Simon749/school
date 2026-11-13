@@ -210,7 +210,7 @@ export async function POST(req: NextRequest) {
   }
 
   // A locked register cannot be changed by another submission.
-  if (existingRegister?.isLocked) {
+  if (existingRegister?.isLocked && user.role !== 'admin') {
     return NextResponse.json(
       { error: 'This register is already locked. Please contact an admin.' },
       { status: 423 }

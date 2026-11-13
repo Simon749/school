@@ -1,95 +1,60 @@
 import { NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
 import { requireUser } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db';
-import { add, subtract, toNumber } from '@/lib/money/decimal';
-
-interface FeeAllocation {
-  feeItemId?: string;
-  amountAllocated?: number | string;
-}
-
-interface FeeItem {
-  name: string;
-  due: number;
-  paid: number;
-}
-
-interface BalanceResponse {
-  totalDue: number;
-  totalPaid: number;
-  balance: number;
-  items: FeeItem[];
-}
+import { calculateBalance } from '@/lib/fees/balance';
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: { studentId: string } }
-): Promise<NextResponse<BalanceResponse | { error: string }>> {
+) {
   const guard = await requireUser(['admin', 'bursar', 'parent']);
-  if (!guard.ok) return guard.response as NextResponse<{ error: string }>;
+  if (!guard.ok) return guard.response;
   const { user } = guard;
 
-  const notFound = () => NextResponse.json({ error: 'Student not found' }, { status: 404 });
+  const { searchParams } = new URL(req.url);
+  let termId = searchParams.get('termId');
 
+  // 1. SEC-05 / SEC-11: Role-based access control + student/guardian existence check FIRST
   if (user.role === 'parent') {
     const link = await prisma.guardian.findFirst({
       where: { userId: user.id, studentId: params.studentId, isActive: true },
       select: { id: true },
     });
-    if (!link) return notFound();
+    if (!link) {
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    }
   } else {
     const student = await prisma.student.findFirst({
       where: { id: params.studentId, schoolId: user.schoolId, deletedAt: null },
       select: { id: true },
     });
-    if (!student) return notFound();
+    if (!student) {
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    }
   }
 
-  const [fees, payments] = await Promise.all([
-    prisma.studentFee.findMany({
-      where: { studentId: params.studentId, schoolId: user.schoolId },
-      include: { feeItem: true },
-    }),
-    prisma.feePayment.findMany({
-      where: { studentId: params.studentId, schoolId: user.schoolId, isReversed: false },
-    }),
-  ]);
+  // 2. If termId is not provided, default to the current active term for the school
+  if (!termId) {
+    const currentTerm = await prisma.term.findFirst({
+      where: { schoolId: user.schoolId, isCurrent: true },
+      select: { id: true },
+    });
+    
+    if (currentTerm) {
+      termId = currentTerm.id;
+    } else {
+      // Fallback if no explicit current term is flagged, grab the latest term
+      const latestTerm = await prisma.term.findFirst({
+        where: { schoolId: user.schoolId },
+        orderBy: { startDate: 'desc' },
+        select: { id: true },
+      });
+      termId = latestTerm ? latestTerm.id : '';
+    }
+  }
 
-  let totalDue = new Prisma.Decimal(0);
-  let totalPaid = new Prisma.Decimal(0);
+  // R3-07: Use the single source of truth for balance calculation
+  const balance = await calculateBalance(params.studentId, termId, user.schoolId);
 
-  const items: FeeItem[] = fees.map((f) => {
-    const due = add(
-      subtract(new Prisma.Decimal(f.amountDue), new Prisma.Decimal(f.discount)),
-      new Prisma.Decimal(f.carryForwardAmount)
-    );
-    totalDue = add(totalDue, due);
-
-    const paidForItem = payments.reduce((sum, p) => {
-      const allocations = (p.allocations as FeeAllocation[]) || [];
-      const allocated = allocations.find((a) => a.feeItemId === f.feeItemId);
-      if (allocated) {
-        return add(sum, new Prisma.Decimal(allocated.amountAllocated || 0));
-      }
-      return sum;
-    }, new Prisma.Decimal(0));
-
-    totalPaid = add(totalPaid, paidForItem);
-
-    return {
-      name: f.feeItem.name,
-      due: toNumber(due),
-      paid: toNumber(paidForItem),
-    };
-  });
-
-  const balance = subtract(totalDue, totalPaid);
-
-  return NextResponse.json<BalanceResponse>({
-    totalDue: toNumber(totalDue),
-    totalPaid: toNumber(totalPaid),
-    balance: toNumber(balance),
-    items,
-  });
+  return NextResponse.json(balance);
 }

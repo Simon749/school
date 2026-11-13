@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { requireUser } from '@/lib/auth/current-user';
 import { logAudit, getRequestMetadata } from '@/lib/audit';
 import { getCalendarDay } from '@/lib/calendar';
+import { validateRegisterDate } from '@/lib/attendance/register-date';
 
 export async function POST(req: NextRequest) {
   // 1. Role gating: Only admin or deputy can unlock a register (ATT-08)
@@ -25,56 +26,57 @@ export async function POST(req: NextRequest) {
 
   // 2. IDOR prevention: Verify slot belongs to caller's school and is published
   const slot = await prisma.timetableSlot.findUnique({
-    where: { id: slotId, schoolId: user.schoolId, isPublished: true },
-    select: { id: true },
+    where: { id: slotId, schoolId: user.schoolId},
+    select: { id: true, dayOfWeek: true },
   });
 
   if (!slot) {
     return NextResponse.json({ error: 'Invalid, unpublished, or cross-tenant slot' }, { status: 404 });
   }
 
+  const checked = validateRegisterDate(date, slot.dayOfWeek);
+  if (!checked.ok) {
+    return NextResponse.json({ error: checked.error }, { status: 400 });
+  }
+  const attendanceDate = checked.date;
+
   // 3. Calendar validation (ATT-10)
-  const calendarDay = await getCalendarDay(user.schoolId, new Date(`${date}T00:00:00.000Z`));
+  const calendarDay = await getCalendarDay(user.schoolId, attendanceDate);
   if (!calendarDay || calendarDay.dayType !== 'school_day') {
     return NextResponse.json({ error: `Cannot unlock register on a ${calendarDay?.dayType || 'non-school'} day.` }, { status: 400 });
   }
 
   const auditMeta = getRequestMetadata(req);
 
-  // 4. Transactional unlock + Immutable Audit (R5-01, AUD-02)
   await prisma.$transaction(async (tx) => {
     await tx.lessonRegister.upsert({
-      where: {
-        slotId_date: {
-          slotId,
-          date: new Date(`${date}T00:00:00.000Z`),
-        },
-      },
+      where: { slotId_date: { slotId, date: attendanceDate } },
       update: {
         isLocked: false,
+        unlockedBy: user.id,       // <-- ADD THIS
+        unlockedAt: new Date(),    // <-- ADD THIS
       },
       create: {
         schoolId: user.schoolId,
         slotId,
-        date: new Date(`${date}T00:00:00.000Z`),
+        date: attendanceDate,
         isLocked: false,
+        unlockedBy: user.id,       // <-- ADD THIS
+        unlockedAt: new Date(),    // <-- ADD THIS
       },
     });
 
     await logAudit({
       schoolId: user.schoolId,
       actorId: user.id,
-      action: 'LESSON_REGISTER_UNLOCKED',
-      tableName: 'LessonRegister',
+      action: 'ATTENDANCE_REGISTER_UNLOCKED',
+      tableName: 'lesson_registers',
       recordId: slotId,
-      newData: { slotId, date, unlockedBy: user.id },
+      newData: { slotId, date: attendanceDate.toISOString(), unlockedBy: user.id },
       ipAddress: auditMeta.ipAddress,
       userAgent: auditMeta.userAgent,
     }, tx);
   });
 
-  return NextResponse.json({ 
-    success: true, 
-    message: 'Register unlocked successfully. Teacher can now edit marks.' 
-  }, { status: 200 });
+  return NextResponse.json({ success: true, message: 'Register unlocked successfully.' }, { status: 200 });
 }

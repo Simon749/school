@@ -1,53 +1,61 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { requireUser } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db';
+import { calculateBalance } from '@/lib/fees/balance';
 
-export async function GET() {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function GET(req: Request) {
+  // SEC-11: Use the central guard (not hand-rolled auth)
+  const guard = await requireUser(['admin', 'bursar']);
+  if (!guard.ok) return guard.response;
+  const { user } = guard;
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { schoolId: true, role: true },
-  });
-  if (!user?.schoolId || !['admin', 'bursar'].includes(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const { searchParams } = new URL(req.url);
+  const termId = searchParams.get('termId');
+
+  if (!termId) {
+    return NextResponse.json({ error: 'termId is required' }, { status: 400 });
   }
 
-  const currentTerm = await prisma.term.findFirst({
-    where: { schoolId: user.schoolId, isCurrent: true },
+  // SEC-11: Verify the term belongs to this school
+  const term = await prisma.term.findFirst({
+    where: { id: termId, schoolId: user.schoolId },
+    select: { id: true, name: true },
   });
-  if (!currentTerm) return NextResponse.json({ defaulters: [] });
+  if (!term) {
+    return NextResponse.json({ error: 'Term not found' }, { status: 404 });
+  }
 
+  // Fetch all active students in the school
   const students = await prisma.student.findMany({
-    where: { schoolId: user.schoolId, deletedAt: null, status: 'active' },
-    include: {
-      stream: { include: { grade: true } },
-      studentFees: { where: { termId: currentTerm.id }, include: { feeItem: true } },
-      feePayments: { where: { termId: currentTerm.id, isReversed: false } },
+    where: { schoolId: user.schoolId, status: 'active', deletedAt: null },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      stream: { select: { name: true, grade: { select: { name: true } } } },
     },
   });
 
-  const defaulters = students
-    .map((s) => {
-      const totalDue = s.studentFees.reduce(
-        (sum, fee) =>
-          sum + (Number(fee.amountDue) - Number(fee.discount) + Number(fee.carryForwardAmount)),
-        0
-      );
-      const totalPaid = s.feePayments.reduce((sum, p) => sum + Number(p.amount), 0);
-      const balance = totalDue - totalPaid;
-      return {
-        id: s.id,
-        name: `${s.firstName} ${s.lastName}`,
-        stream: `${s.stream.grade.name} ${s.stream.name}`,
-        totalDue,
-        totalPaid,
-        balance,
-      };
-    })
-    .filter((d) => d.balance > 0)
-    .sort((a, b) => b.balance - a.balance);
+  const defaulters = [];
 
-  return NextResponse.json({ term: currentTerm.name, defaulters });
+  // R3-07: Reuse the exact same single source of truth
+  for (const student of students) {
+    const ledger = await calculateBalance(student.id, termId, user.schoolId);
+
+    if (ledger.balance > 0) {
+      defaulters.push({
+        studentId: student.id,
+        name: `${student.firstName} ${student.lastName}`,
+        stream: `${student.stream.grade.name} ${student.stream.name}`,
+        totalDue: ledger.totalDue,
+        totalPaid: ledger.totalPaid,
+        balance: ledger.balance,
+      });
+    }
+  }
+
+  // Sort by highest balance first
+  defaulters.sort((a, b) => b.balance - a.balance);
+
+  return NextResponse.json({ term: term.name, defaulters });
 }

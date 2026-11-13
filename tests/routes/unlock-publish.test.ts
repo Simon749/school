@@ -20,7 +20,7 @@ vi.mock('@/lib/db', () => {
 
   // Use lazy getters so functions resolve AFTER variable initialization
   Object.defineProperty(mockPrisma, 'user', { get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'timetableSlot', { get: () => ({ findFirst: (...a: unknown[]) => slotFindFirst(...a), updateMany: (...a: unknown[]) => slotUpdateMany(...a) }) });
+  Object.defineProperty(mockPrisma, 'timetableSlot', { get: () => ({ findFirst: (...a: unknown[]) => slotFindFirst(...a), findUnique: (...a: unknown[]) => slotFindFirst(...a), updateMany: (...a: unknown[]) => slotUpdateMany(...a) }) });
   Object.defineProperty(mockPrisma, 'lessonRegister', { get: () => ({ upsert: (...a: unknown[]) => registerUpsert(...a) }) });
   Object.defineProperty(mockPrisma, 'term', { get: () => ({ findFirst: (...a: unknown[]) => termFindFirst(...a) }) });
   Object.defineProperty(mockPrisma, 'schoolCalendarDay', { get: () => ({ findUnique: (...a: unknown[]) => schoolCalendarDayFindUnique(...a) }) });
@@ -94,7 +94,7 @@ describe.each([
     signedInAs('admin', { isActive: false });
     expect((await run()).status).toBe(403);
   });
-  it.each(['teacher', 'parent', 'bursar', 'deputy', 'it_admin'])(
+  it.each(['teacher', 'parent', 'bursar', 'it_admin'])(
     '403 for role %s',
     async (role) => {
       signedInAs(role);

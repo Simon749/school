@@ -7,7 +7,8 @@ const guardianUpdate = vi.fn();
 const logAudit = vi.fn();
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: () => authMock() }));
-vi.mock('@/lib/audit', () => ({ logAudit: (e: unknown) => logAudit(e) }));
+vi.mock('@/lib/audit', () => ({ logAudit: (...args: unknown[]) => logAudit(...args), 
+  getRequestMetadata: () => ({ ipAddress: '1.2.3.4', userAgent: 'test' })}));
 vi.mock('@/lib/db', () => ({
   prisma: {
     user: { findUnique: (...a: unknown[]) => userFindUnique(...a) },

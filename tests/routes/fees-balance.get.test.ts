@@ -6,6 +6,7 @@ const studentFindFirst = vi.fn();
 const guardianFindFirst = vi.fn();
 const feesFindMany = vi.fn();
 const paymentsFindMany = vi.fn();
+const termFindFirst = vi.fn();
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: () => authMock() }));
 vi.mock('@/lib/db', () => ({
@@ -15,6 +16,7 @@ vi.mock('@/lib/db', () => ({
     guardian: { findFirst: (...a: unknown[]) => guardianFindFirst(...a) },
     studentFee: { findMany: (...a: unknown[]) => feesFindMany(...a) },
     feePayment: { findMany: (...a: unknown[]) => paymentsFindMany(...a) },
+    term: { findFirst: (...a: unknown[]) => termFindFirst(...a) },
   },
 }));
 
@@ -44,11 +46,13 @@ beforeEach(() => {
     guardianFindFirst,
     feesFindMany,
     paymentsFindMany,
+    termFindFirst,
   ])
     m.mockReset();
   studentFindFirst.mockResolvedValue({ id: 'stu-1' });
   guardianFindFirst.mockResolvedValue({ id: 'g-1' });
   feesFindMany.mockResolvedValue([]);
+  termFindFirst.mockResolvedValue({ id: 'term-1', schoolId: 'school-A', isCurrent: true });
   paymentsFindMany.mockResolvedValue([]);
 });
 
@@ -127,7 +131,7 @@ describe('GET /api/fees/balance/[studentId] (SEC-05)', () => {
     noFinancialRead();
   });
 
-  it('keeps the existing response shape and arithmetic', async () => {
+    it('keeps the existing response shape and arithmetic', async () => {
     signedInAs('bursar');
     feesFindMany.mockResolvedValue([
       {
@@ -142,11 +146,21 @@ describe('GET /api/fees/balance/[studentId] (SEC-05)', () => {
       { amount: '4000', allocations: [{ feeItemId: 'f1', amountAllocated: 4000 }] },
     ]);
     const body = await (await call()).json();
-    expect(body).toEqual({
-      totalDue: 9500,
-      totalPaid: 4000,
-      balance: 5500,
-      items: [{ name: 'Tuition', due: 9000, paid: 4000 }],
-    });
+    
+    // Updated to match the richer R3-07 response shape
+    expect(body.totalDue).toBe(9500);
+    expect(body.totalPaid).toBe(4000);
+    expect(body.balance).toBe(5500);
+    expect(body.items).toEqual([
+      { 
+        feeItemId: 'f1', 
+        feeName: 'Tuition', 
+        amountDue: 10000, 
+        discount: 1000, 
+        carryForward: 500, 
+        paid: 4000, 
+        balance: 5500 
+      }
+    ]);
   });
 });

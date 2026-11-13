@@ -15,17 +15,18 @@ vi.mock('@/lib/audit', () => ({
 
 vi.mock('@/lib/db', () => {
   const mockPrisma: any = {};
+  Object.defineProperty(mockPrisma, 'schoolCalendarDay', { get: () => ({ findUnique: (...a: unknown[]) => calendarFindUnique(...a) }) });
   Object.defineProperty(mockPrisma, 'user', { get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }) });
   // ✅ Added both findUnique and findFirst to be bulletproof
-  Object.defineProperty(mockPrisma, 'timetableSlot', { 
-    get: () => ({ 
+  Object.defineProperty(mockPrisma, 'timetableSlot', {
+    get: () => ({
       findUnique: (...a: unknown[]) => slotFindUnique(...a),
-      findFirst: (...a: unknown[]) => slotFindUnique(...a) 
-    }) 
+      findFirst: (...a: unknown[]) => slotFindUnique(...a)
+    })
   });
   Object.defineProperty(mockPrisma, 'schoolCalendarDay', { get: () => ({ findUnique: (...a: unknown[]) => calendarFindUnique(...a) }) });
   Object.defineProperty(mockPrisma, 'lessonRegister', { get: () => ({ upsert: (...a: unknown[]) => registerUpsert(...a) }) });
-  
+
   mockPrisma.$transaction = async (cb: any) => {
     return cb(mockPrisma);
   };
@@ -68,10 +69,17 @@ beforeEach(() => {
   for (const m of [authMock, userFindUnique, slotFindUnique, calendarFindUnique, registerUpsert, logAudit]) {
     m.mockReset();
   }
-  
+
   slotFindUnique.mockResolvedValue({ id: SLOT });
   calendarFindUnique.mockResolvedValue({ dayType: 'school_day', timetableType: 'normal' });
   registerUpsert.mockResolvedValue({ id: 'reg-1', isLocked: false });
+  calendarFindUnique.mockReset();
+  calendarFindUnique.mockResolvedValue({
+    id: 'cal-1',
+    date: new Date('2026-10-26T00:00:00.000Z'), // Must match the date in the test
+    dayType: 'school_day',
+    timetableType: 'normal',
+  });
 });
 
 describe('POST /api/attendance/unlock (ATT-08)', () => {
@@ -105,21 +113,21 @@ describe('POST /api/attendance/unlock (ATT-08)', () => {
 
   it('200 success: unlocks register and logs audit transactionally', async () => {
     signedInAs('deputy');
-    
+
     const res = await post({ slotId: SLOT, date: TODAY });
-    
+
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.success).toBe(true);
-    
+
     // ✅ FIX: Use nested expect.objectContaining so it passes even if unlockedAt/unlockedBy are present
     expect(registerUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
         update: expect.objectContaining({ isLocked: false }),
-        create: expect.objectContaining({ 
-          isLocked: false, 
-          schoolId: 'school-A', 
-          slotId: SLOT 
+        create: expect.objectContaining({
+          isLocked: false,
+          schoolId: 'school-A',
+          slotId: SLOT
         }),
       })
     );

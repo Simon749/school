@@ -4,6 +4,7 @@ const authMock = vi.fn();
 const userFindUnique = vi.fn();
 const studentFindUnique = vi.fn();
 const termFindUnique = vi.fn();
+const termFindFirst = vi.fn();
 const feePaymentFindFirst = vi.fn();
 const feePaymentCreate = vi.fn();
 const schoolFindUnique = vi.fn();
@@ -19,17 +20,17 @@ vi.mock('@/lib/audit', () => ({
 vi.mock('@/lib/db', () => {
   const mockPrisma: any = {};
   Object.defineProperty(mockPrisma, 'user', { get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'student', { get: () => ({ findUnique: (...a: unknown[]) => studentFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'term', { get: () => ({ findUnique: (...a: unknown[]) => termFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'feePayment', { 
-    get: () => ({ 
+  Object.defineProperty(mockPrisma, 'student', { get: () => ({ findUnique: (...a: unknown[]) => studentFindUnique(...a), findFirst: (...a: unknown[]) => studentFindUnique(...a) }) });
+  Object.defineProperty(mockPrisma, 'term', { get: () => ({ findFirst: (...a: unknown[]) => termFindFirst(...a) }) });
+  Object.defineProperty(mockPrisma, 'feePayment', {
+    get: () => ({
       findFirst: (...a: unknown[]) => feePaymentFindFirst(...a),
       create: (...a: unknown[]) => feePaymentCreate(...a)
-    }) 
+    })
   });
   Object.defineProperty(mockPrisma, 'school', { get: () => ({ findUnique: (...a: unknown[]) => schoolFindUnique(...a) }) });
   Object.defineProperty(mockPrisma, 'receiptSequence', { get: () => ({ upsert: (...a: unknown[]) => receiptSequenceUpsert(...a) }) });
-  
+
   mockPrisma.$transaction = async (cb: any) => {
     return cb(mockPrisma);
   };
@@ -65,12 +66,13 @@ beforeEach(() => {
   for (const m of [authMock, userFindUnique, studentFindUnique, termFindUnique, feePaymentFindFirst, feePaymentCreate, schoolFindUnique, receiptSequenceUpsert, logAudit]) {
     m.mockReset();
   }
-  
+
   studentFindUnique.mockResolvedValue({ id: 's-1', firstName: 'John', lastName: 'Doe' });
   termFindUnique.mockResolvedValue({ id: 't-1' });
   schoolFindUnique.mockResolvedValue({ name: 'Nairobi Academy', knecCode: 'NKA123' });
   receiptSequenceUpsert.mockResolvedValue({ lastNumber: 42 });
   feePaymentCreate.mockResolvedValue({ id: 'p-1', receiptNumber: 'NKA1-2026-000042' });
+  
 });
 
 describe('POST /api/fees/payments (PAY-06, PAY-09, PAY-10)', () => {
@@ -107,15 +109,15 @@ describe('POST /api/fees/payments (PAY-06, PAY-09, PAY-10)', () => {
   it('409 for duplicate mpesaCode (PAY-10)', async () => {
     signedInAs('bursar');
     feePaymentFindFirst.mockResolvedValue({ id: 'p-existing' });
-    const res = await post({ 
-      studentId: 's-1', termId: 't-1', amount: '1000', paymentMethod: 'mpesa', mpesaCode: 'QKH123' 
+    const res = await post({
+      studentId: 's-1', termId: 't-1', amount: '1000', paymentMethod: 'mpesa', mpesaCode: 'QKH123'
     });
     expect(res.status).toBe(409);
   });
 
   it('201 success: validates, scopes, generates atomic receipt, and audits (PAY-09)', async () => {
     signedInAs('bursar');
-    
+
     const res = await post({
       studentId: 's-1',
       termId: 't-1',
@@ -124,12 +126,12 @@ describe('POST /api/fees/payments (PAY-06, PAY-09, PAY-10)', () => {
       bankReference: 'REF-999',
       notes: 'Term 1 fees'
     });
-    
+
     expect(res.status).toBe(201);
     const json = await res.json();
     expect(json.success).toBe(true);
     expect(json.receiptNumber).toBe('NKA1-2026-000042');
-    
+
     // Verify atomic sequence upsert was called
     expect(receiptSequenceUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -148,3 +150,4 @@ describe('POST /api/fees/payments (PAY-06, PAY-09, PAY-10)', () => {
     );
   });
 });
+

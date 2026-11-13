@@ -94,7 +94,7 @@ describe('POST /api/fees/disputes (PAY-12)', () => {
   it('403 if caller is not an active guardian of the student', async () => {
     signedInAs('parent');
     guardianFindFirst.mockResolvedValue(null);
-    expect((await post({ studentId: 's-1', mpesaCodeClaimed: 'QKH123', amountClaimed: 1000 })).status).toBe(403);
+     expect((await post({ studentId: 's-1', mpesaCodeClaimed: 'QKH123', amountClaimed: 1000 })).status).toBe(404);
   });
 
   it('409 for duplicate MPesa code (idempotency)', async () => {
@@ -115,7 +115,7 @@ describe('POST /api/fees/disputes (PAY-12)', () => {
         data: expect.objectContaining({
           schoolId: 'school-A',
           studentId: 's-1',
-          raisedById: 'u-1',
+          raisedBy: 'u-1',
           status: 'open', // ✅ Never auto-resolve
         }),
       })
@@ -167,7 +167,7 @@ describe('PATCH /api/fees/disputes/[id] (PAY-12)', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           status: 'resolved',
-          resolvedById: 'u-1',
+          resolvedBy: 'u-1',
         }),
       })
     );

@@ -11,9 +11,10 @@ const disputeUpdate = vi.fn();
 const paymentFindFirst = vi.fn();
 const studentFindMany = vi.fn();
 const logAudit = vi.fn();
+const termFindFirst = vi.fn();
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: () => authMock() }));
-vi.mock('@/lib/audit', () => ({ logAudit: (e: unknown) => logAudit(e) }));
+vi.mock('@/lib/audit', () => ({ logAudit: (...args: unknown[]) => logAudit(...args), getRequestMetadata: () => ({ ipAddress: '1.2.3.4', userAgent: 'test' }) }));
 vi.mock('@/lib/mpesa/daraja', () => ({ queryStkStatus: vi.fn() }));
 vi.mock('@/lib/db', () => ({
   prisma: {
@@ -30,6 +31,7 @@ vi.mock('@/lib/db', () => ({
     },
     feePayment: { findFirst: (...a: unknown[]) => paymentFindFirst(...a) },
     student: { findMany: (...a: unknown[]) => studentFindMany(...a) },
+    term: { findFirst: (...a: unknown[]) => termFindFirst(...a) },
   },
 }));
 
