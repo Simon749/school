@@ -16,8 +16,8 @@ const termFindFirst = vi.fn();
 vi.mock('@clerk/nextjs/server', () => ({ auth: () => authMock() }));
 vi.mock('@/lib/audit', () => ({ logAudit: (...args: unknown[]) => logAudit(...args), getRequestMetadata: () => ({ ipAddress: '1.2.3.4', userAgent: 'test' }) }));
 vi.mock('@/lib/mpesa/daraja', () => ({ queryStkStatus: vi.fn() }));
-vi.mock('@/lib/db', () => ({
-  prisma: {
+vi.mock('@/lib/db', () => {
+  const prisma: any = {
     user: {
       findUnique: (...a: unknown[]) => userFindUnique(...a),
       findMany: (...a: unknown[]) => userFindMany(...a),
@@ -32,8 +32,11 @@ vi.mock('@/lib/db', () => ({
     feePayment: { findFirst: (...a: unknown[]) => paymentFindFirst(...a) },
     student: { findMany: (...a: unknown[]) => studentFindMany(...a) },
     term: { findFirst: (...a: unknown[]) => termFindFirst(...a) },
-  },
-}));
+  };
+  // The route writes the dispute and its audit row inside one transaction (AUD-02)
+  prisma.$transaction = async (cb: (tx: unknown) => unknown) => cb(prisma);
+  return { prisma };
+});
 
 import { GET, POST } from '@/app/api/fees/disputes/route';
 import { PATCH } from '@/app/api/fees/disputes/[id]/route';
@@ -110,6 +113,10 @@ beforeEach(() => {
 });
 
 describe('POST /api/fees/disputes (raise a dispute) (PAY-12)', () => {
+  beforeEach(() => {
+    disputeFindFirst.mockResolvedValue(null); // no existing dispute for this code
+  });
+
   it('401 anonymous; 403 deactivated', async () => {
     authMock.mockResolvedValue({ userId: null });
     expect((await post(claim())).status).toBe(401);
@@ -151,7 +158,7 @@ describe('POST /api/fees/disputes (raise a dispute) (PAY-12)', () => {
       mpesaCodeClaimed: 'RKT84H29L1',
       amountClaimed: 2000,
     });
-    expect(data.status).toBeUndefined(); // database default 'open'
+    expect(data.status).toBe('open'); // explicit, never auto-resolved
     expect(disputeUpdate).not.toHaveBeenCalled();
     expect(paymentFindFirst).not.toHaveBeenCalled(); // no look-up of the claimed code
   });
@@ -187,15 +194,16 @@ describe('POST /api/fees/disputes (raise a dispute) (PAY-12)', () => {
 });
 
 describe('GET /api/fees/disputes', () => {
-  it('admin/bursar only; school-scoped, including the student and raiser look-ups', async () => {
+  it('admin/bursar only; school-scoped; student and raiser limited to names', async () => {
     signedInAs('parent');
     expect((await GET()).status).toBe(403);
     signedInAs('bursar');
     disputeFindMany.mockResolvedValue([{ id: 'd-1', studentId: 'stu-1', raisedBy: 'u-9' }]);
     await GET();
-    expect(disputeFindMany.mock.calls[0]![0]!.where).toEqual({ schoolId: 'school-A' });
-    expect(studentFindMany.mock.calls[0]![0]!.where).toMatchObject({ schoolId: 'school-A' });
-    expect(userFindMany.mock.calls[0]![0]!.where).toMatchObject({ schoolId: 'school-A' });
+    const arg = disputeFindMany.mock.calls[0]![0]!;
+    expect(arg.where).toEqual({ schoolId: 'school-A' });
+    expect(arg.include.student.select).toEqual({ firstName: true, lastName: true });
+    expect(arg.include.raiser.select).toEqual({ firstName: true, lastName: true });
   });
 });
 
@@ -255,11 +263,12 @@ describe('PATCH /api/fees/disputes/[id] (PAY-12, SEC-11)', () => {
       expect.objectContaining({
         schoolId: 'school-A',
         actorId: 'u-1',
-        action: 'dispute.updated',
+        action: 'PAYMENT_DISPUTE_UPDATED',
         recordId: 'd-1',
         oldData: { status: 'open' },
         newData: expect.objectContaining({ status: 'resolved' }),
-      })
+      }),
+      expect.anything() // the transaction client
     );
   });
 

@@ -31,7 +31,13 @@ const disputeSchema = z.object({
     .max(20)
     .regex(/^[A-Z0-9]+$/, 'M-Pesa code must contain only uppercase letters and numbers'),
   amountClaimed: z.number().positive('Amount must be positive'),
-  screenshotUrl: z.string().url('Invalid screenshot URL').optional().nullable(),
+  screenshotUrl: z
+    .string()
+    .max(500, 'Screenshot link is too long')
+    .url('Invalid screenshot URL')
+    .refine((u) => u.startsWith('https://'), 'Screenshot link must start with https://')
+    .optional()
+    .nullable(),
 });
 
 export async function POST(req: NextRequest) {
@@ -73,7 +79,8 @@ export async function POST(req: NextRequest) {
   });
 
   if (!guardianship) {
-    return NextResponse.json({ error: 'You are not an active guardian of this student' }, { status: 403 });
+    // 404 (not 403): do not reveal whether a student ID exists outside the caller's own children
+    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
   }
 
   // 3. ✅ PAY-12: Idempotency check — prevent duplicate active disputes for the same MPesa code

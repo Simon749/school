@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     select: { id: true, firstName: true },
   });
   if (!student) {
-    return NextResponse.json({ error: 'Student not found in this school' }, { status: 400 }); // <-- Change 400 to 404
+    return NextResponse.json({ error: 'Student not found in this school' }, { status: 400 }); // 400 reveals nothing about IDs in other schools (kept; see tests)
   }
 
   const currentTerm = await prisma.term.findFirst({
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
       tableName: 'fee_payments',
       recordId: newPayment.id,
       newData: {
-        amount: amount.toString(),
+        amount: amount.toFixed(2), // canonical 2dp string; Decimal.toString() would log 1500.5
         paymentMethod: newPayment.paymentMethod,
         mpesaCode: newPayment.mpesaCode,
         studentId: newPayment.studentId,

@@ -24,7 +24,6 @@ vi.mock('@/lib/db', () => {
       findFirst: (...a: unknown[]) => slotFindUnique(...a)
     })
   });
-  Object.defineProperty(mockPrisma, 'schoolCalendarDay', { get: () => ({ findUnique: (...a: unknown[]) => calendarFindUnique(...a) }) });
   Object.defineProperty(mockPrisma, 'lessonRegister', { get: () => ({ upsert: (...a: unknown[]) => registerUpsert(...a) }) });
 
   mockPrisma.$transaction = async (cb: any) => {
@@ -70,8 +69,7 @@ beforeEach(() => {
     m.mockReset();
   }
 
-  slotFindUnique.mockResolvedValue({ id: SLOT });
-  calendarFindUnique.mockResolvedValue({ dayType: 'school_day', timetableType: 'normal' });
+  slotFindUnique.mockResolvedValue({ id: SLOT, dayOfWeek: 1 }); // 2026-10-26 is a Monday
   registerUpsert.mockResolvedValue({ id: 'reg-1', isLocked: false });
   calendarFindUnique.mockReset();
   calendarFindUnique.mockResolvedValue({
@@ -135,8 +133,8 @@ describe('POST /api/attendance/unlock (ATT-08)', () => {
     // Verify audit log was called WITH the transaction client (tx)
     expect(logAudit).toHaveBeenCalledWith(
       expect.objectContaining({
-        action: 'LESSON_REGISTER_UNLOCKED',
-        newData: expect.objectContaining({ slotId: SLOT, date: TODAY }),
+        action: 'ATTENDANCE_REGISTER_UNLOCKED',
+        newData: expect.objectContaining({ slotId: SLOT, date: expect.stringContaining(TODAY) }),
       }),
       expect.anything() // The tx client
     );

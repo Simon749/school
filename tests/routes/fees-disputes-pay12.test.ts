@@ -91,10 +91,11 @@ describe('POST /api/fees/disputes (PAY-12)', () => {
     expect((await post({ studentId: 's-1', mpesaCodeClaimed: 'QKH123', amountClaimed: 1000 })).status).toBe(403);
   });
 
-  it('403 if caller is not an active guardian of the student', async () => {
+  it('404 if caller is not an active guardian of the student (no existence oracle)', async () => {
     signedInAs('parent');
     guardianFindFirst.mockResolvedValue(null);
-     expect((await post({ studentId: 's-1', mpesaCodeClaimed: 'QKH123', amountClaimed: 1000 })).status).toBe(404);
+    expect((await post({ studentId: 's-1', mpesaCodeClaimed: 'QKH123', amountClaimed: 1000 })).status).toBe(404);
+    expect(disputeCreate).not.toHaveBeenCalled();
   });
 
   it('409 for duplicate MPesa code (idempotency)', async () => {

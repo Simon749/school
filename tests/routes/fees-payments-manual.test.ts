@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const authMock = vi.fn();
 const userFindUnique = vi.fn();
 const studentFindUnique = vi.fn();
-const termFindUnique = vi.fn();
 const termFindFirst = vi.fn();
+const userFindFirst = vi.fn();
 const feePaymentFindFirst = vi.fn();
 const feePaymentCreate = vi.fn();
 const schoolFindUnique = vi.fn();
@@ -12,6 +12,12 @@ const receiptSequenceUpsert = vi.fn();
 const logAudit = vi.fn();
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: () => authMock() }));
+// Never open a real BullMQ/Redis connection from a route test
+vi.mock('@/lib/queue', () => ({ notificationQueue: { add: vi.fn() } }));
+// Allocation maths is covered elsewhere; here we exercise the REAL receipt generator (PAY-09)
+vi.mock('@/lib/fees/allocation', () => ({
+  allocatePayment: async () => ({ allocations: [], overpayment: 0, fullyCoveredItemIds: [] }),
+}));
 vi.mock('@/lib/audit', () => ({
   logAudit: (...args: unknown[]) => logAudit(...args),
   getRequestMetadata: () => ({ ipAddress: '1.2.3.4', userAgent: 'test' }),
@@ -19,7 +25,7 @@ vi.mock('@/lib/audit', () => ({
 
 vi.mock('@/lib/db', () => {
   const mockPrisma: any = {};
-  Object.defineProperty(mockPrisma, 'user', { get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }) });
+  Object.defineProperty(mockPrisma, 'user', { get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a), findFirst: (...a: unknown[]) => userFindFirst(...a) }) });
   Object.defineProperty(mockPrisma, 'student', { get: () => ({ findUnique: (...a: unknown[]) => studentFindUnique(...a), findFirst: (...a: unknown[]) => studentFindUnique(...a) }) });
   Object.defineProperty(mockPrisma, 'term', { get: () => ({ findFirst: (...a: unknown[]) => termFindFirst(...a) }) });
   Object.defineProperty(mockPrisma, 'feePayment', {
@@ -63,15 +69,19 @@ const signedInAs = (role: string, over: Record<string, unknown> = {}) => {
 };
 
 beforeEach(() => {
-  for (const m of [authMock, userFindUnique, studentFindUnique, termFindUnique, feePaymentFindFirst, feePaymentCreate, schoolFindUnique, receiptSequenceUpsert, logAudit]) {
+  for (const m of [authMock, userFindUnique, userFindFirst, studentFindUnique, termFindFirst, feePaymentFindFirst, feePaymentCreate, schoolFindUnique, receiptSequenceUpsert, logAudit]) {
     m.mockReset();
   }
 
-  studentFindUnique.mockResolvedValue({ id: 's-1', firstName: 'John', lastName: 'Doe' });
-  termFindUnique.mockResolvedValue({ id: 't-1' });
+  studentFindUnique.mockResolvedValue({ id: 's-1', firstName: 'John' });
+  termFindFirst.mockResolvedValue({ id: 't-1' });
+  userFindFirst.mockResolvedValue(null); // no primary guardian to notify
   schoolFindUnique.mockResolvedValue({ name: 'Nairobi Academy', knecCode: 'NKA123' });
   receiptSequenceUpsert.mockResolvedValue({ lastNumber: 42 });
-  feePaymentCreate.mockResolvedValue({ id: 'p-1', receiptNumber: 'NKA1-2026-000042' });
+  feePaymentCreate.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({
+    id: 'p-1',
+    ...data,
+  }));
   
 });
 
@@ -100,10 +110,11 @@ describe('POST /api/fees/payments (PAY-06, PAY-09, PAY-10)', () => {
     expect(res.status).toBe(400);
   });
 
-  it('404 for student not in caller school (PAY-10)', async () => {
+  it('400 for student not in caller school; nothing is created (PAY-10)', async () => {
     signedInAs('bursar');
     studentFindUnique.mockResolvedValue(null);
-    expect((await post({ studentId: 's-99', termId: 't-1', amount: '1000', paymentMethod: 'cash' })).status).toBe(404);
+    expect((await post({ studentId: 's-99', termId: 't-1', amount: '1000', paymentMethod: 'cash' })).status).toBe(400);
+    expect(feePaymentCreate).not.toHaveBeenCalled();
   });
 
   it('409 for duplicate mpesaCode (PAY-10)', async () => {
@@ -113,6 +124,7 @@ describe('POST /api/fees/payments (PAY-06, PAY-09, PAY-10)', () => {
       studentId: 's-1', termId: 't-1', amount: '1000', paymentMethod: 'mpesa', mpesaCode: 'QKH123'
     });
     expect(res.status).toBe(409);
+    expect(feePaymentCreate).not.toHaveBeenCalled();
   });
 
   it('201 success: validates, scopes, generates atomic receipt, and audits (PAY-09)', async () => {
@@ -123,14 +135,14 @@ describe('POST /api/fees/payments (PAY-06, PAY-09, PAY-10)', () => {
       termId: 't-1',
       amount: '1500.50',
       paymentMethod: 'bank',
-      bankReference: 'REF-999',
+      reference: 'REF-999',
       notes: 'Term 1 fees'
     });
 
     expect(res.status).toBe(201);
     const json = await res.json();
     expect(json.success).toBe(true);
-    expect(json.receiptNumber).toBe('NKA1-2026-000042');
+    expect(json.payment.receiptNumber).toBe('NKA1-2026-000042');
 
     // Verify atomic sequence upsert was called
     expect(receiptSequenceUpsert).toHaveBeenCalledWith(
@@ -144,10 +156,9 @@ describe('POST /api/fees/payments (PAY-06, PAY-09, PAY-10)', () => {
     expect(logAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'MANUAL_PAYMENT_RECORDED',
-        newData: expect.objectContaining({ amount: '1500.50' }),
+        newData: expect.objectContaining({ amount: '1500.50', studentId: 's-1', paymentMethod: 'bank' }),
       }),
       expect.anything() // The tx client
     );
   });
 });
-
