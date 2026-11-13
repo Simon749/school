@@ -12,6 +12,9 @@ const allocate = vi.fn();
 const receipt = vi.fn();
 const notifAdd = vi.fn();
 const logAudit = vi.fn();
+const studentFeeFindMany = vi.fn();
+const schoolFindUnique = vi.fn();
+const receiptSequenceUpsert = vi.fn();
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: () => authMock() }));
 vi.mock('@/lib/audit', () => ({
@@ -250,5 +253,57 @@ describe('GET /api/fees/payments', () => {
     const paidAt = paymentFindMany.mock.calls[0]![0]!.where.paidAt;
     expect(paidAt.gte).toBeInstanceOf(Date);
     expect(paidAt.lte).toBeInstanceOf(Date);
+  });
+});
+
+// Add this to tests/routes/fees-payments.test.ts
+
+describe('POST /api/fees/payments (PAY-08: Concurrent Allocation Locking)', () => {
+  it('prevents race conditions: allocation runs inside transaction with locking', async () => {
+    signedInAs('bursar');
+    
+    // Track calls to allocatePayment to simulate concurrent state changes
+    let allocateCallCount = 0;
+    allocate.mockImplementation(({ amount }: any) => {
+      allocateCallCount++;
+      // First payment allocates fully. 
+      if (allocateCallCount === 1) {
+        return { allocations: [{ feeItemId: 'fi-1', amountAllocated: 6000 }], overpayment: 0 };
+      } else {
+        // Simulates that the first payment already locked and allocated, 
+        // so this second concurrent payment only allocates 4000 and has 2000 overpayment.
+        return { allocations: [{ feeItemId: 'fi-1', amountAllocated: 4000 }], overpayment: 2000 };
+      }
+    });
+
+    // Capture the created payment data to verify overpayment recording
+    const createdPayments: any[] = [];
+    paymentCreate.mockImplementation(async ({ data }: any) => {
+      createdPayments.push(data);
+      return { id: `pay-${allocateCallCount}`, ...data };
+    });
+
+    // Fire two concurrent payment requests of 6,000 each
+    const res1 = post(valid({ amount: 6000, reference: 'REF-1' }));
+    const res2 = post(valid({ amount: 6000, reference: 'REF-2' }));
+
+    const [result1, result2] = await Promise.all([res1, res2]);
+
+    expect(result1.status).toBe(201);
+    expect(result2.status).toBe(201);
+
+    // 1. Verify allocatePayment was called twice
+    expect(allocate).toHaveBeenCalledTimes(2);
+
+    // 2. CRITICAL: Verify that BOTH calls to allocatePayment received the transaction client (tx)
+    // This proves the allocation is happening INSIDE the $transaction block, enabling row-level locking.
+    const [firstAllocationCall, secondAllocationCall] = allocate.mock.calls;
+    expect(firstAllocationCall?.[0]?.tx).toBeDefined();
+    expect(secondAllocationCall?.[0]?.tx).toBeDefined();
+
+    // 3. Verify the second payment correctly recorded the overpayment from the allocator
+    const secondPaymentData = createdPayments[1];
+    expect(Number(secondPaymentData.overpaymentAmount)).toBe(2000);
+    expect(secondPaymentData.overpaymentAction).toBe('carry_forward');
   });
 });

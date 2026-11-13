@@ -91,6 +91,13 @@ export async function POST(req: NextRequest) {
 
   // ✅ PAY-09 & PAY-10: Atomic DB update + Audit + Receipt Generation
   const payment = await prisma.$transaction(async (tx) => {
+
+    const allocation = await allocatePayment({
+      studentId: student.id,
+      termId: currentTerm.id,
+      amount: amount, // Pass the Prisma.Decimal directly
+      tx, // ✅ Pass the transaction client for locking
+    });
     // Generate receipt number atomically within the transaction
     const receiptNumber = await generateReceiptNumber(user.schoolId, tx);
 

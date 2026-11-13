@@ -24,6 +24,19 @@ export async function allocatePayment(input: AllocationInput): Promise<Allocatio
   const { studentId, termId, amount, existingPaymentId } = input;
   const db = input.tx ?? prisma;
 
+  if (input.tx) {
+    await db.$executeRaw`
+      SELECT 1 FROM "StudentFee" 
+      WHERE "studentId" = ${studentId} AND "termId" = ${termId} 
+      FOR UPDATE
+    `;
+    await db.$executeRaw`
+      SELECT 1 FROM "FeePayment" 
+      WHERE "studentId" = ${studentId} AND "termId" = ${termId} AND "isReversed" = false 
+      FOR UPDATE
+    `;
+  }
+
   const studentFees = await db.studentFee.findMany({
     where: { studentId, termId },
     include: { feeItem: true },

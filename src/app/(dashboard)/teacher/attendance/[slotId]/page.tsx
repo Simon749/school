@@ -33,7 +33,7 @@ export default function AttendanceRegisterPage() {
       .then((r) => r.json())
       .then((d) => {
         setSlot(d.slot);
-        setRegister(d.register);
+        setRegister(Array.isArray(d.register) ? d.register : []);
         setIsLocked(d.isLocked ?? false);
         setLoading(false);
       });
@@ -87,8 +87,9 @@ export default function AttendanceRegisterPage() {
 
   if (loading) return <div className="p-6">Loading register...</div>;
 
-  const presentCount = register.filter((e) => e.status === 'present').length;
-  const absentCount = register.filter((e) => e.status === 'absent').length;
+  const safeRegister = register ?? [];
+  const presentCount = safeRegister.filter((e) => e.status === 'present').length;
+  const absentCount = safeRegister.filter((e) => e.status === 'absent').length;
 
   return (
     <div className="p-4 max-w-3xl mx-auto space-y-4">
