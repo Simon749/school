@@ -88,17 +88,20 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         },
       });
 
-      await logAudit({
-        schoolId: user.schoolId,
-        actorId: user.id,
-        action: 'PAYMENT_DISPUTE_UPDATED',
-        tableName: 'payment_disputes',
-        recordId: dispute.id,
-        oldData: { status: dispute.status },
-        newData: { status, paymentId: paymentId || null, resolutionNote },
-        ipAddress: auditMeta.ipAddress,
-        userAgent: auditMeta.userAgent,
-      }, tx); // ✅ Pass tx client
+      await logAudit(
+        {
+          schoolId: user.schoolId,
+          actorId: user.id,
+          action: 'PAYMENT_DISPUTE_UPDATED',
+          tableName: 'payment_disputes',
+          recordId: dispute.id,
+          oldData: { status: dispute.status },
+          newData: { status, paymentId: paymentId || null, resolutionNote },
+          ipAddress: auditMeta.ipAddress,
+          userAgent: auditMeta.userAgent,
+        },
+        tx
+      ); // ✅ Pass tx client
 
       return result;
     });

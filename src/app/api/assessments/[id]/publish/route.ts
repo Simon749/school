@@ -36,15 +36,18 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
         data: { status: 'published', publishedAt: new Date() },
       });
 
-      await logAudit({
-        schoolId: user.schoolId,
-        actorId: user.id,
-        action: 'ASSESSMENT_PUBLISHED',
-        tableName: 'assessments',
-        recordId: assessment.id,
-        oldData: { status: assessment.status },
-        newData: { status: 'published' },
-      }, tx);
+      await logAudit(
+        {
+          schoolId: user.schoolId,
+          actorId: user.id,
+          action: 'ASSESSMENT_PUBLISHED',
+          tableName: 'assessments',
+          recordId: assessment.id,
+          oldData: { status: assessment.status },
+          newData: { status: 'published' },
+        },
+        tx
+      );
 
       return result;
     });
@@ -77,7 +80,7 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
     for (const { student } of results) {
       const parent = student.guardians[0];
       if (!parent) continue;
-      
+
       await notificationQueue.add('notification-queue', {
         schoolId: user.schoolId, // ➕ R5-04: Required by hardened notification worker
         userId: parent.userId,

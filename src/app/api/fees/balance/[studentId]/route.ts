@@ -3,10 +3,7 @@ import { requireUser } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db';
 import { calculateBalance } from '@/lib/fees/balance';
 
-export async function GET(
-  req: Request,
-  { params }: { params: { studentId: string } }
-) {
+export async function GET(req: Request, { params }: { params: { studentId: string } }) {
   const guard = await requireUser(['admin', 'bursar', 'parent']);
   if (!guard.ok) return guard.response;
   const { user } = guard;
@@ -39,7 +36,7 @@ export async function GET(
       where: { schoolId: user.schoolId, isCurrent: true },
       select: { id: true },
     });
-    
+
     if (currentTerm) {
       termId = currentTerm.id;
     } else {

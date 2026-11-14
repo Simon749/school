@@ -33,7 +33,11 @@ export default function TeacherAttendanceHubPage() {
   const formatTime = (t?: string) => {
     if (!t) return '—';
     if (t.includes('T')) {
-      return new Date(t).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true });
+      return new Date(t).toLocaleTimeString('en-KE', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
     }
     const [h = '0', m = '0'] = t.split(':');
     const d = new Date();
@@ -80,9 +84,12 @@ export default function TeacherAttendanceHubPage() {
                   <div className="flex items-center gap-3 min-w-0">
                     <ClipboardList className="h-5 w-5 text-emerald-600 shrink-0" />
                     <div className="min-w-0">
-                      <p className="font-semibold text-slate-900 truncate">{slot.learningArea.name}</p>
+                      <p className="font-semibold text-slate-900 truncate">
+                        {slot.learningArea.name}
+                      </p>
                       <p className="text-xs text-slate-500">
-                        {slot.stream.grade.name} {slot.stream.name} · {formatTime(slot.period.startTime)} – {formatTime(slot.period.endTime)}
+                        {slot.stream.grade.name} {slot.stream.name} ·{' '}
+                        {formatTime(slot.period.startTime)} – {formatTime(slot.period.endTime)}
                       </p>
                     </div>
                   </div>

@@ -57,7 +57,10 @@ async function previewImport(schoolId: string, file: File) {
     return NextResponse.json({ error: 'CSV file is empty' }, { status: 400 });
   }
   if (rows.length > MAX_ROWS) {
-    return NextResponse.json({ error: `File too large. Maximum ${MAX_ROWS} rows allowed per import.` }, { status: 400 });
+    return NextResponse.json(
+      { error: `File too large. Maximum ${MAX_ROWS} rows allowed per import.` },
+      { status: 400 }
+    );
   }
 
   const streams = await prisma.stream.findMany({ where: { schoolId }, include: { grade: true } });
@@ -90,17 +93,23 @@ async function previewImport(schoolId: string, file: File) {
     const streamId = streamMap.get(`${data.grade_name}-${data.stream_name}`.toLowerCase());
 
     if (!streamId) {
-      errors.push({ row: rowNum, message: `Grade/Stream '${data.grade_name}-${data.stream_name}' not found` });
+      errors.push({
+        row: rowNum,
+        message: `Grade/Stream '${data.grade_name}-${data.stream_name}' not found`,
+      });
       continue;
     }
 
     if (existingNemisSet.has(data.nemis_number) || seenNemisInCsv.has(data.nemis_number)) {
-      errors.push({ row: rowNum, message: 'Duplicate NEMIS number (exists in DB or earlier in CSV)' });
+      errors.push({
+        row: rowNum,
+        message: 'Duplicate NEMIS number (exists in DB or earlier in CSV)',
+      });
       continue;
     }
 
     seenNemisInCsv.add(data.nemis_number);
-    
+
     validRows.push({
       ...data,
       streamId,
@@ -120,7 +129,7 @@ async function previewImport(schoolId: string, file: File) {
 
   const previewToken = uuidv4();
   const redisKey = `import:preview:${schoolId}:${previewToken}`;
-  
+
   // Store valid rows in Redis for 15 minutes
   await redis.setex(redisKey, PREVIEW_TTL_SECONDS, JSON.stringify(validRows));
 
@@ -134,7 +143,12 @@ async function previewImport(schoolId: string, file: File) {
   });
 }
 
-async function executeImport(schoolId: string, actorId: string, previewToken: string, req: NextRequest) {
+async function executeImport(
+  schoolId: string,
+  actorId: string,
+  previewToken: string,
+  req: NextRequest
+) {
   const redisKey = `import:preview:${schoolId}:${previewToken}`;
   const cachedData = await redis.get(redisKey);
 
@@ -146,7 +160,7 @@ async function executeImport(schoolId: string, actorId: string, previewToken: st
   }
 
   const validRows = JSON.parse(cachedData) as any[];
-  
+
   // Fetch existing users by phone to reuse them (Parent Dedupe)
   const phones = [...new Set(validRows.map((r) => r.cleanPhone))];
   const existingUsers = await prisma.user.findMany({
@@ -160,7 +174,10 @@ async function executeImport(schoolId: string, actorId: string, previewToken: st
 
   let successCount = 0;
   const errors: { row: number; message: string }[] = [];
-  const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { name: true } });
+  const school = await prisma.school.findUnique({
+    where: { id: schoolId },
+    select: { name: true },
+  });
 
   for (let i = 0; i < validRows.length; i++) {
     const data = validRows[i];
@@ -234,7 +251,8 @@ async function executeImport(schoolId: string, actorId: string, previewToken: st
       console.error(`DB Error on row ${rowNum}:`, dbError);
       errors.push({
         row: rowNum,
-        message: dbError.code === 'P2002' ? 'Duplicate record in database' : 'Database error occurred',
+        message:
+          dbError.code === 'P2002' ? 'Duplicate record in database' : 'Database error occurred',
       });
     }
   }

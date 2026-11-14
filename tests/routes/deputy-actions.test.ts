@@ -102,7 +102,10 @@ describe('assignSubstituteAction (SEC-09): was an unauthenticated inline server 
     signedInAs('deputy');
     await assignSubstituteAction('slot-1', 't-sub');
     expect(slotFindFirst.mock.calls[0]![0]!.where).toEqual({ id: 'slot-1', schoolId: 'school-A' });
-    expect(teacherFindFirst.mock.calls[0]![0]!.where).toEqual({ id: 't-sub', schoolId: 'school-A' });
+    expect(teacherFindFirst.mock.calls[0]![0]!.where).toEqual({
+      id: 't-sub',
+      schoolId: 'school-A',
+    });
   });
 
   it('rejects a slot from another school', async () => {

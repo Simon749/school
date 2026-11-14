@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
   const headersList = headers();
   const forwarded = headersList.get('x-forwarded-for');
-  const ip = forwarded ? forwarded.split(',')[0]?.trim() ?? 'unknown-ip' : 'unknown-ip';
+  const ip = forwarded ? (forwarded.split(',')[0]?.trim() ?? 'unknown-ip') : 'unknown-ip';
 
   const rateLimit = await checkRateLimit({
     uniqueKey: `stk-push:${ip}`,

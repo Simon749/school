@@ -17,17 +17,23 @@ vi.mock('@/lib/audit', () => ({
 
 vi.mock('@/lib/db', () => {
   const mockPrisma: any = {};
-  Object.defineProperty(mockPrisma, 'user', { get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'guardian', { get: () => ({ findFirst: (...a: unknown[]) => guardianFindFirst(...a) }) });
-  Object.defineProperty(mockPrisma, 'feePayment', { get: () => ({ findFirst: (...a: unknown[]) => feePaymentFindFirst(...a) }) });
-  Object.defineProperty(mockPrisma, 'paymentDispute', { 
-    get: () => ({ 
+  Object.defineProperty(mockPrisma, 'user', {
+    get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'guardian', {
+    get: () => ({ findFirst: (...a: unknown[]) => guardianFindFirst(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'feePayment', {
+    get: () => ({ findFirst: (...a: unknown[]) => feePaymentFindFirst(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'paymentDispute', {
+    get: () => ({
       findFirst: (...a: unknown[]) => disputeFindFirst(...a),
       create: (...a: unknown[]) => disputeCreate(...a),
       update: (...a: unknown[]) => disputeUpdate(...a),
-    }) 
+    }),
   });
-  
+
   mockPrisma.$transaction = async (cb: any) => cb(mockPrisma);
   return { prisma: mockPrisma };
 });
@@ -75,10 +81,19 @@ const signedInAs = (role: string, over: Record<string, unknown> = {}) => {
 };
 
 beforeEach(() => {
-  for (const m of [authMock, userFindUnique, guardianFindFirst, disputeFindFirst, disputeCreate, disputeUpdate, feePaymentFindFirst, logAudit]) {
+  for (const m of [
+    authMock,
+    userFindUnique,
+    guardianFindFirst,
+    disputeFindFirst,
+    disputeCreate,
+    disputeUpdate,
+    feePaymentFindFirst,
+    logAudit,
+  ]) {
     m.mockReset();
   }
-  
+
   guardianFindFirst.mockResolvedValue({ id: 'g-1' });
   disputeFindFirst.mockResolvedValue(null); // Default: no duplicate
   disputeCreate.mockResolvedValue({ id: 'd-1', status: 'open' });
@@ -88,13 +103,17 @@ beforeEach(() => {
 describe('POST /api/fees/disputes (PAY-12)', () => {
   it('403 for non-parent roles', async () => {
     signedInAs('bursar');
-    expect((await post({ studentId: 's-1', mpesaCodeClaimed: 'QKH123', amountClaimed: 1000 })).status).toBe(403);
+    expect(
+      (await post({ studentId: 's-1', mpesaCodeClaimed: 'QKH123', amountClaimed: 1000 })).status
+    ).toBe(403);
   });
 
   it('404 if caller is not an active guardian of the student (no existence oracle)', async () => {
     signedInAs('parent');
     guardianFindFirst.mockResolvedValue(null);
-    expect((await post({ studentId: 's-1', mpesaCodeClaimed: 'QKH123', amountClaimed: 1000 })).status).toBe(404);
+    expect(
+      (await post({ studentId: 's-1', mpesaCodeClaimed: 'QKH123', amountClaimed: 1000 })).status
+    ).toBe(404);
     expect(disputeCreate).not.toHaveBeenCalled();
   });
 
@@ -109,7 +128,7 @@ describe('POST /api/fees/disputes (PAY-12)', () => {
   it('201 creates dispute as "open" (no auto-resolve), scoped to school, audited', async () => {
     signedInAs('parent');
     const res = await post({ studentId: 's-1', mpesaCodeClaimed: 'QKH123', amountClaimed: 1000 });
-    
+
     expect(res.status).toBe(201);
     expect(disputeCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -134,7 +153,7 @@ describe('PATCH /api/fees/disputes/[id] (PAY-12)', () => {
     expect((await patch('d-1', { status: 'resolved' })).status).toBe(403);
   });
 
-  it('404 if dispute is not in caller\'s school', async () => {
+  it("404 if dispute is not in caller's school", async () => {
     signedInAs('bursar');
     disputeFindFirst.mockResolvedValue(null);
     expect((await patch('d-1', { status: 'resolved' })).status).toBe(404);
@@ -160,9 +179,13 @@ describe('PATCH /api/fees/disputes/[id] (PAY-12)', () => {
     signedInAs('bursar');
     disputeFindFirst.mockResolvedValue({ id: 'd-1', status: 'investigating', studentId: 's-1' });
     feePaymentFindFirst.mockResolvedValue({ id: 'p-1' });
-    
-    const res = await patch('d-1', { status: 'resolved', resolutionNote: 'Verified via Daraja', paymentId: 'p-1' });
-    
+
+    const res = await patch('d-1', {
+      status: 'resolved',
+      resolutionNote: 'Verified via Daraja',
+      paymentId: 'p-1',
+    });
+
     expect(res.status).toBe(200);
     expect(disputeUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -185,7 +208,7 @@ describe('POST /api/fees/disputes/[id]/lookup (PAY-12)', () => {
     expect((await lookup('d-1')).status).toBe(403);
   });
 
-  it('404 if dispute is not in caller\'s school', async () => {
+  it("404 if dispute is not in caller's school", async () => {
     signedInAs('bursar');
     disputeFindFirst.mockResolvedValue(null);
     expect((await lookup('d-1')).status).toBe(404);
@@ -193,17 +216,21 @@ describe('POST /api/fees/disputes/[id]/lookup (PAY-12)', () => {
 
   it('400 if dispute is already closed', async () => {
     signedInAs('bursar');
-    disputeFindFirst.mockResolvedValue({ id: 'd-1', status: 'resolved', mpesaCodeClaimed: 'QKH123' });
+    disputeFindFirst.mockResolvedValue({
+      id: 'd-1',
+      status: 'resolved',
+      mpesaCodeClaimed: 'QKH123',
+    });
     expect((await lookup('d-1')).status).toBe(400);
   });
 
   it('200 performs lookup, updates dispute, transitions open → investigating', async () => {
     signedInAs('bursar');
     disputeFindFirst.mockResolvedValue({ id: 'd-1', status: 'open', mpesaCodeClaimed: 'QKH123' });
-    
+
     const res = await lookup('d-1');
     expect(res.status).toBe(200);
-    
+
     expect(disputeUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

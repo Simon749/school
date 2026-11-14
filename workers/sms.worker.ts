@@ -52,7 +52,9 @@ export const smsWorker = new Worker<SMSJobData>(
       for (const message of schoolMessages) {
         // Check if recipient has app installed (skip SMS unless high priority)
         if (message.recipient?.hasAppInstalled && priority !== 'high') {
-          console.log(`[SMS Worker] Skipping SMS for ${message.recipient?.phone ?? 'unknown'} - has app`);
+          console.log(
+            `[SMS Worker] Skipping SMS for ${message.recipient?.phone ?? 'unknown'} - has app`
+          );
           await prisma.message.update({
             where: { id: message.id },
             data: {

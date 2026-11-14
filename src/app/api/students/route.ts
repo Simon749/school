@@ -97,10 +97,10 @@ export async function POST(req: NextRequest) {
 
   // Check NEMIS uniqueness within the school (ignoring soft-deleted records)
   const existing = await prisma.student.findFirst({
-    where: { 
-      nemisNumber: parsed.data.nemisNumber, 
+    where: {
+      nemisNumber: parsed.data.nemisNumber,
       schoolId: user.schoolId,
-      deletedAt: null 
+      deletedAt: null,
     },
   });
   if (existing) {

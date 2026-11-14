@@ -16,14 +16,16 @@ vi.mock('@/lib/audit', () => ({
 
 vi.mock('@/lib/db', () => {
   const mockPrisma: any = {};
-  Object.defineProperty(mockPrisma, 'user', { get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'school', { 
-    get: () => ({ 
+  Object.defineProperty(mockPrisma, 'user', {
+    get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'school', {
+    get: () => ({
       findUnique: (...a: unknown[]) => schoolFindUnique(...a),
       update: (...a: unknown[]) => schoolUpdate(...a),
-    }) 
+    }),
   });
-  
+
   // Mock $transaction to execute the callback with the mockPrisma object
   mockPrisma.$transaction = async (cb: any) => {
     return cb(mockPrisma);
@@ -55,7 +57,7 @@ const signedInAs = (role: string, over: Record<string, unknown> = {}) => {
     deletedAt: null,
     ...over,
   });
-  
+
   schoolFindUnique.mockResolvedValue({
     id: 'school-A',
     name: 'Test School',
@@ -69,7 +71,14 @@ const signedInAs = (role: string, over: Record<string, unknown> = {}) => {
 };
 
 beforeEach(() => {
-  for (const m of [authMock, userFindUnique, schoolFindUnique, schoolUpdate, logAudit, getRequestMetadata]) {
+  for (const m of [
+    authMock,
+    userFindUnique,
+    schoolFindUnique,
+    schoolUpdate,
+    logAudit,
+    getRequestMetadata,
+  ]) {
     m.mockReset();
   }
   getRequestMetadata.mockReturnValue({ ipAddress: '1.2.3.4', userAgent: 'test-ua' });
@@ -94,14 +103,14 @@ describe('GET /api/school/settings (SEC-13)', () => {
     signedInAs('teacher');
     const res = await get();
     expect(res.status).toBe(200);
-    
+
     // ✅ PROOF: Verify the route constructed the correct Prisma select argument
     const callArgs = schoolFindUnique.mock.calls[0]![0]!;
     expect(callArgs.select.latitude).toBeUndefined();
     expect(callArgs.select.longitude).toBeUndefined();
     expect(callArgs.select.geofenceRadius).toBeUndefined();
     expect(callArgs.select.name).toBe(true);
-    
+
     const data = await res.json();
     expect(data.school.name).toBe('Test School');
     expect(data.school.phone).toBe('0712345678');
@@ -111,13 +120,13 @@ describe('GET /api/school/settings (SEC-13)', () => {
     signedInAs('admin');
     const res = await get();
     expect(res.status).toBe(200);
-    
+
     // ✅ PROOF: Verify the route included geofence fields in the select argument
     const callArgs = schoolFindUnique.mock.calls[0]![0]!;
     expect(callArgs.select.latitude).toBe(true);
     expect(callArgs.select.longitude).toBe(true);
     expect(callArgs.select.geofenceRadius).toBe(true);
-    
+
     const data = await res.json();
     expect(data.school.latitude).toBe(-1.2921);
   });
@@ -126,7 +135,7 @@ describe('GET /api/school/settings (SEC-13)', () => {
     signedInAs('it_admin');
     const res = await get();
     expect(res.status).toBe(200);
-    
+
     const callArgs = schoolFindUnique.mock.calls[0]![0]!;
     expect(callArgs.select.latitude).toBe(true);
   });

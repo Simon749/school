@@ -16,20 +16,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
   }
 
-  const { studentId, activityId, termId } = body as { studentId?: string; activityId?: string; termId?: string };
+  const { studentId, activityId, termId } = body as {
+    studentId?: string;
+    activityId?: string;
+    termId?: string;
+  };
   if (!studentId || !activityId || !termId) {
-    return NextResponse.json({ error: 'studentId, activityId, and termId are required' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'studentId, activityId, and termId are required' },
+      { status: 400 }
+    );
   }
 
   // 2. Verify all entities belong to the caller's school (SEC-11)
   const [student, activity, term] = await Promise.all([
-    prisma.student.findUnique({ where: { id: studentId, schoolId: user.schoolId, status: 'active' } }),
+    prisma.student.findUnique({
+      where: { id: studentId, schoolId: user.schoolId, status: 'active' },
+    }),
     prisma.activity.findUnique({ where: { id: activityId, schoolId: user.schoolId } }),
     prisma.term.findUnique({ where: { id: termId, schoolId: user.schoolId } }),
   ]);
 
   if (!student || !activity || !term) {
-    return NextResponse.json({ error: 'Invalid student, activity, or term for your school' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid student, activity, or term for your school' },
+      { status: 400 }
+    );
   }
 
   const { ipAddress, userAgent } = getRequestMetadata(req);
@@ -48,16 +60,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await logAudit({
-      schoolId: user.schoolId,
-      actorId: user.id,
-      action: 'STUDENT_ACTIVITY_ENROLLED',
-      tableName: 'student_activities',
-      recordId: record.id,
-      newData: { studentId, activityId, termId },
-      ipAddress,
-      userAgent,
-    }, tx);
+    await logAudit(
+      {
+        schoolId: user.schoolId,
+        actorId: user.id,
+        action: 'STUDENT_ACTIVITY_ENROLLED',
+        tableName: 'student_activities',
+        recordId: record.id,
+        newData: { studentId, activityId, termId },
+        ipAddress,
+        userAgent,
+      },
+      tx
+    );
 
     return record;
   });

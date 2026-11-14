@@ -56,7 +56,7 @@ function pct(numerator: number, denominator: number): number | null {
 }
 
 export async function GET() {
-    // R1-13: Central guard migration (Admin dashboard is strictly admin-only)
+  // R1-13: Central guard migration (Admin dashboard is strictly admin-only)
   const guard = await requireUser(['admin']);
   if (!guard.ok) return guard.response;
   const { user } = guard;

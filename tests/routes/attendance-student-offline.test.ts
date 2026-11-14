@@ -20,30 +20,38 @@ vi.mock('@/lib/audit', () => ({
 
 vi.mock('@/lib/db', () => {
   const mockPrisma: any = {};
-  Object.defineProperty(mockPrisma, 'user', { get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'teacher', { get: () => ({ findFirst: (...a: unknown[]) => teacherFindFirst(...a) }) });
-  Object.defineProperty(mockPrisma, 'timetableSlot', { get: () => ({ findFirst: (...a: unknown[]) => slotFindFirst(...a) }) });
-  
-  Object.defineProperty(mockPrisma, 'teacherAttendance', { 
-    get: () => ({ findFirst: (...a: unknown[]) => teacherAttendanceFindFirst(...a) }) 
+  Object.defineProperty(mockPrisma, 'user', {
+    get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }),
   });
-  
-  Object.defineProperty(mockPrisma, 'lessonRegister', { 
-    get: () => ({ 
+  Object.defineProperty(mockPrisma, 'teacher', {
+    get: () => ({ findFirst: (...a: unknown[]) => teacherFindFirst(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'timetableSlot', {
+    get: () => ({ findFirst: (...a: unknown[]) => slotFindFirst(...a) }),
+  });
+
+  Object.defineProperty(mockPrisma, 'teacherAttendance', {
+    get: () => ({ findFirst: (...a: unknown[]) => teacherAttendanceFindFirst(...a) }),
+  });
+
+  Object.defineProperty(mockPrisma, 'lessonRegister', {
+    get: () => ({
       findUnique: (...a: unknown[]) => lessonRegisterFindUnique(...a),
-      upsert: (...a: unknown[]) => lessonRegisterUpsert(...a)
-    }) 
+      upsert: (...a: unknown[]) => lessonRegisterUpsert(...a),
+    }),
   });
-  
-  Object.defineProperty(mockPrisma, 'studentLessonAttendance', { 
-    get: () => ({ 
+
+  Object.defineProperty(mockPrisma, 'studentLessonAttendance', {
+    get: () => ({
       upsert: (...a: unknown[]) => lessonAttUpsert(...a),
-      findMany: (...a: unknown[]) => lessonAttFindMany(...a)
-    }) 
+      findMany: (...a: unknown[]) => lessonAttFindMany(...a),
+    }),
   });
-  
-  Object.defineProperty(mockPrisma, 'schoolCalendarDay', { get: () => ({ findUnique: (...a: unknown[]) => schoolCalendarDayFindUnique(...a) }) });
-  
+
+  Object.defineProperty(mockPrisma, 'schoolCalendarDay', {
+    get: () => ({ findUnique: (...a: unknown[]) => schoolCalendarDayFindUnique(...a) }),
+  });
+
   mockPrisma.$transaction = async (cb: any) => {
     return cb(mockPrisma);
   };
@@ -80,26 +88,34 @@ const signedInAs = (role: string, over: Record<string, unknown> = {}) => {
 
 beforeEach(() => {
   for (const m of [
-    authMock, userFindUnique, teacherFindFirst, slotFindFirst, 
-    teacherAttendanceFindFirst, lessonAttFindMany, lessonRegisterFindUnique, 
-    lessonRegisterUpsert, lessonAttUpsert, schoolCalendarDayFindUnique, logAudit
+    authMock,
+    userFindUnique,
+    teacherFindFirst,
+    slotFindFirst,
+    teacherAttendanceFindFirst,
+    lessonAttFindMany,
+    lessonRegisterFindUnique,
+    lessonRegisterUpsert,
+    lessonAttUpsert,
+    schoolCalendarDayFindUnique,
+    logAudit,
   ]) {
     m.mockReset();
   }
-  
+
   teacherFindFirst.mockResolvedValue({ id: 't-1', schoolId: 'school-A' });
-  
-  slotFindFirst.mockResolvedValue({ 
-    id: SLOT, 
-    schoolId: 'school-A', 
-    isPublished: true, 
-    dayOfWeek: 1, 
+
+  slotFindFirst.mockResolvedValue({
+    id: SLOT,
+    schoolId: 'school-A',
+    isPublished: true,
+    dayOfWeek: 1,
     teacherId: 't-1',
     stream: {
-      students: [{ id: 's-1' }]
-    }
+      students: [{ id: 's-1' }],
+    },
   });
-  
+
   teacherAttendanceFindFirst.mockResolvedValue(null);
   schoolCalendarDayFindUnique.mockResolvedValue({ dayType: 'school_day', timetableType: 'normal' });
   lessonRegisterFindUnique.mockResolvedValue(null);
@@ -112,7 +128,7 @@ describe('POST /api/attendance/student (ATT-11 Offline Idempotency)', () => {
   it('423 Locked: rejects sync if register is already locked', async () => {
     signedInAs('teacher');
     lessonRegisterFindUnique.mockResolvedValue({ id: 'reg-1', isLocked: true });
-    
+
     const res = await post(
       {
         slotId: SLOT,
@@ -122,7 +138,7 @@ describe('POST /api/attendance/student (ATT-11 Offline Idempotency)', () => {
       },
       { 'Idempotency-Key': 'op-123-uuid' }
     );
-    
+
     expect(res.status).toBe(423);
     const json = await res.json();
     expect(json.error).toContain('locked');
@@ -131,7 +147,7 @@ describe('POST /api/attendance/student (ATT-11 Offline Idempotency)', () => {
 
   it('200 Success: accepts valid payload with Idempotency-Key', async () => {
     signedInAs('teacher');
-    
+
     const res = await post(
       {
         slotId: SLOT,
@@ -141,7 +157,7 @@ describe('POST /api/attendance/student (ATT-11 Offline Idempotency)', () => {
       },
       { 'Idempotency-Key': 'op-123-uuid' }
     );
-    
+
     // ✅ FIX: Route returns 200 on success, not 202
     expect(res.status).toBe(200);
     expect(lessonAttUpsert).toHaveBeenCalled();

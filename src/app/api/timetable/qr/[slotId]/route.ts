@@ -14,7 +14,12 @@ export async function GET(_req: NextRequest, { params }: { params: { slotId: str
 
   // ATT-01: Only admin or deputy can fetch/generate classroom QR tokens.
   // Teachers must NOT be able to fetch the token for their own slot.
-  if (!user?.schoolId || (user.role !== 'admin' && user.role !== 'deputy') || !user.isActive || user.deletedAt) {
+  if (
+    !user?.schoolId ||
+    (user.role !== 'admin' && user.role !== 'deputy') ||
+    !user.isActive ||
+    user.deletedAt
+  ) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -43,14 +48,14 @@ export async function GET(_req: NextRequest, { params }: { params: { slotId: str
     const getTimeStr = (t: any) => {
       if (typeof t === 'string') return t.substring(0, 5); // "HH:MM"
       if (t instanceof Date) return t.toISOString().substring(11, 16);
-      return "00:00";
+      return '00:00';
     };
-    
+
     const startTimeStr = getTimeStr(slot.period.startTime);
-    
+
     // Nairobi is UTC+3. We append +03:00 to ensure correct absolute time comparison
     const periodStart = new Date(`${nairobiTodayStr}T${startTimeStr}+03:00`);
-    
+
     const validFrom = new Date(periodStart.getTime() - 5 * 60 * 1000); // 5 min before
     const validUntil = new Date(periodStart.getTime() + 10 * 60 * 1000); // 10 min after
 

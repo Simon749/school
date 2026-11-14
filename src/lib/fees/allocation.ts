@@ -59,7 +59,7 @@ export async function allocatePayment(input: AllocationInput): Promise<Allocatio
     for (const allocation of allocations) {
       const feeItemId = allocation.feeItemId;
       const allocatedAmount = new Prisma.Decimal(allocation.amountAllocated || 0);
-      
+
       if (paidPerItem[feeItemId]) {
         paidPerItem[feeItemId] = add(paidPerItem[feeItemId], allocatedAmount);
       } else {

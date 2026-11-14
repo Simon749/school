@@ -48,10 +48,14 @@ export async function GET(req: NextRequest, { params }: { params: { studentId: s
     }),
   ]);
 
-  const sanitizedStudent = student ? sanitizeForRestrictedGuardian(guardian, student as Record<string, any>) : null;
-  const sanitizedDaily = daily ? sanitizeForRestrictedGuardian(guardian, daily as Record<string, any>) : null;
+  const sanitizedStudent = student
+    ? sanitizeForRestrictedGuardian(guardian, student as Record<string, any>)
+    : null;
+  const sanitizedDaily = daily
+    ? sanitizeForRestrictedGuardian(guardian, daily as Record<string, any>)
+    : null;
   const sanitizedLessons = lessons.map((lesson) =>
-    sanitizeForRestrictedGuardian(guardian, lesson as Record<string, any>),
+    sanitizeForRestrictedGuardian(guardian, lesson as Record<string, any>)
   );
 
   return NextResponse.json({

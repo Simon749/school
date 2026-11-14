@@ -163,7 +163,8 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Create teacher error:', error);
     // SEC-19: Safe error wrapper, no raw stack traces or DB errors leaked to client
-    const message = error.code === 'P2002' ? 'Duplicate record in database' : 'Failed to create teacher';
+    const message =
+      error.code === 'P2002' ? 'Duplicate record in database' : 'Failed to create teacher';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

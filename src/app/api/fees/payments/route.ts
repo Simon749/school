@@ -11,10 +11,16 @@ import { Prisma } from '@prisma/client';
 // ✅ PAY-06 & PAY-10: amount accepts number or string, validates max limit and 2 decimals, then transforms to string for Decimal
 const paymentSchema = z.object({
   studentId: z.string().min(1).max(64),
-  amount: z.union([
-    z.string().regex(/^\d+(\.\d{1,2})?$/, 'Amount must be a valid decimal string'),
-    z.number().positive().max(100_000_000, 'Amount is too large').refine((n) => Math.round(n * 100) / 100 === n, 'At most 2 decimal places')
-  ]).transform(val => String(val)),
+  amount: z
+    .union([
+      z.string().regex(/^\d+(\.\d{1,2})?$/, 'Amount must be a valid decimal string'),
+      z
+        .number()
+        .positive()
+        .max(100_000_000, 'Amount is too large')
+        .refine((n) => Math.round(n * 100) / 100 === n, 'At most 2 decimal places'),
+    ])
+    .transform((val) => String(val)),
   paymentMethod: z.enum(['cash', 'bank', 'cheque', 'mpesa']),
   mpesaCode: z.string().trim().max(20).optional().nullable(),
   reference: z.string().trim().max(100).optional().nullable(),
@@ -35,10 +41,7 @@ export async function POST(req: NextRequest) {
   const parsed = paymentSchema.safeParse(body);
   if (!parsed.success) {
     const firstIssue = parsed.error.issues[0];
-    return NextResponse.json(
-      { error: firstIssue?.message || 'Invalid payment' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: firstIssue?.message || 'Invalid payment' }, { status: 400 });
   }
   const { studentId, amount: amountStr, paymentMethod, reference, notes, mpesaCode } = parsed.data;
   const actualReference = reference || mpesaCode;
@@ -70,14 +73,14 @@ export async function POST(req: NextRequest) {
     const existing = await prisma.feePayment.findFirst({
       where: {
         schoolId: user.schoolId,
-        OR: [
-          { mpesaCode: actualReference },
-          { bankReference: actualReference }
-        ]
+        OR: [{ mpesaCode: actualReference }, { bankReference: actualReference }],
       },
     });
     if (existing) {
-      return NextResponse.json({ error: 'A payment with this reference code already exists' }, { status: 409 });
+      return NextResponse.json(
+        { error: 'A payment with this reference code already exists' },
+        { status: 409 }
+      );
     }
   }
 
@@ -91,7 +94,6 @@ export async function POST(req: NextRequest) {
 
   // ✅ PAY-09 & PAY-10: Atomic DB update + Audit + Receipt Generation
   const payment = await prisma.$transaction(async (tx) => {
-
     const allocation = await allocatePayment({
       studentId: student.id,
       termId: currentTerm.id,
@@ -109,8 +111,8 @@ export async function POST(req: NextRequest) {
         receiptNumber,
         amount, // ✅ PAY-06: Prisma.Decimal
         paymentMethod,
-        mpesaCode: paymentMethod === 'mpesa' ? (actualReference || null) : null,
-        bankReference: paymentMethod !== 'mpesa' ? (actualReference || null) : null,
+        mpesaCode: paymentMethod === 'mpesa' ? actualReference || null : null,
+        bankReference: paymentMethod !== 'mpesa' ? actualReference || null : null,
         paidAt: new Date(),
         recordedBy: user.id, // ✅ FIXED: Schema uses 'recordedBy', not 'recordedById'
         notes: notes || null,
@@ -120,21 +122,24 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await logAudit({
-      schoolId: user.schoolId,
-      actorId: user.id,
-      action: 'MANUAL_PAYMENT_RECORDED', // ✅ FIXED: Matches test expectation
-      tableName: 'fee_payments',
-      recordId: newPayment.id,
-      newData: {
-        amount: amount.toFixed(2), // canonical 2dp string; Decimal.toString() would log 1500.5
-        paymentMethod: newPayment.paymentMethod,
-        mpesaCode: newPayment.mpesaCode,
-        studentId: newPayment.studentId,
+    await logAudit(
+      {
+        schoolId: user.schoolId,
+        actorId: user.id,
+        action: 'MANUAL_PAYMENT_RECORDED',
+        tableName: 'fee_payments',
+        recordId: newPayment.id,
+        newData: {
+          amount: amount.toFixed(2), // canonical 2dp string; Decimal.toString() would log 1500.5
+          paymentMethod: newPayment.paymentMethod,
+          mpesaCode: newPayment.mpesaCode,
+          studentId: newPayment.studentId,
+        },
+        ipAddress,
+        userAgent,
       },
-      ipAddress,
-      userAgent,
-    }, tx);
+      tx
+    );
 
     return newPayment;
   });

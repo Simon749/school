@@ -360,16 +360,16 @@ describe('POST /api/assessments/[id]/publish', () => {
     expect(notifAdd).not.toHaveBeenCalled();
   });
 
-    it('publishes, notifies only guardians of students who HAVE a result, and audits', async () => {
+  it('publishes, notifies only guardians of students who HAVE a result, and audits', async () => {
     signedInAs('teacher');
     resultFindMany.mockResolvedValue([
       { student: { id: S1, firstName: 'Amara', guardians: [{ userId: 'p-1' }] } },
       { student: { id: S2, firstName: 'Baraka', guardians: [] } }, // no active primary guardian
     ]);
-    
+
     const res = await run();
     expect(res.status).toBe(200);
-    
+
     // 1. Assessment update is called correctly
     expect(assessmentUpdate.mock.calls[0]![0]!.data).toMatchObject({ status: 'published' });
     expect(assessmentUpdate.mock.calls[0]![0]!.data.publishedAt).toBeInstanceOf(Date);
@@ -385,11 +385,11 @@ describe('POST /api/assessments/[id]/publish', () => {
 
     // 3. Notifications are sent correctly
     expect(notifAdd).toHaveBeenCalledTimes(1);
-    expect(notifAdd.mock.calls[0]![1]!).toMatchObject({ 
-      userId: 'p-1', 
-      type: 'result-published' // ➕ FIXED: Route sends 'result-published', test expected 'results'
+    expect(notifAdd.mock.calls[0]![1]!).toMatchObject({
+      userId: 'p-1',
+      type: 'result-published', // ➕ FIXED: Route sends 'result-published', test expected 'results'
     });
-    
+
     // 4. Audit log is recorded correctly
     expect(logAudit).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -485,7 +485,10 @@ describe('POST /api/assessments/[id]/results', () => {
     expect(res.status).toBe(200);
     expect((await res.json()).saved).toBe(1);
     expect(txDeleteMany).toHaveBeenCalledTimes(1);
-    expect(txCreateMany.mock.calls[0]![0]!.data[0]).toMatchObject({ subStrandId: SUB, score: 'EE' });
+    expect(txCreateMany.mock.calls[0]![0]!.data[0]).toMatchObject({
+      subStrandId: SUB,
+      score: 'EE',
+    });
     const audit = logAudit.mock.calls[0]![0]!;
     expect(audit).toMatchObject({
       schoolId: 'school-A',

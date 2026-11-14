@@ -10,7 +10,7 @@ export const QUEUE_NAMES = {
   EXPORT: 'export-queue',
 } as const;
 
-export type QueueName = typeof QUEUE_NAMES[keyof typeof QUEUE_NAMES];
+export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
 
 /**
  * Default job options for all queues.

@@ -76,7 +76,11 @@ export default function AdminAttendancePage() {
 
   const formatTime = (t: string) =>
     t.includes('T')
-      ? new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
+      ? new Date(t).toLocaleTimeString('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        })
       : t.slice(0, 5);
 
   return (
@@ -193,8 +197,12 @@ export default function AdminAttendancePage() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${statusColors[slot.status].split(' ')[0]}`}>
-                        <StatusIcon className={`w-5 h-5 ${statusColors[slot.status].split(' ')[2]}`} />
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center ${statusColors[slot.status].split(' ')[0]}`}
+                      >
+                        <StatusIcon
+                          className={`w-5 h-5 ${statusColors[slot.status].split(' ')[2]}`}
+                        />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -211,7 +219,9 @@ export default function AdminAttendancePage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${statusColors[slot.status]}`}>
+                      <span
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${statusColors[slot.status]}`}
+                      >
                         {slot.status.charAt(0).toUpperCase() + slot.status.slice(1)}
                       </span>
                       {slot.attendance?.minutesLate && (

@@ -130,7 +130,10 @@ describe('POST /api/fees/assign (SEC-11)', () => {
     signedInAs('bursar');
     structureFindFirst.mockResolvedValue(null);
     expect((await doAssign({ structureId: 'fs-B', studentIds: ['s1'] })).status).toBe(404);
-    expect(structureFindFirst.mock.calls[0]![0]!.where).toEqual({ id: 'fs-B', schoolId: 'school-A' });
+    expect(structureFindFirst.mock.calls[0]![0]!.where).toEqual({
+      id: 'fs-B',
+      schoolId: 'school-A',
+    });
     expect(feeUpsert).not.toHaveBeenCalled();
   });
 

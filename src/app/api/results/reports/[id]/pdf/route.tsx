@@ -18,7 +18,9 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     where: { id: params.id, schoolId: user.schoolId },
     include: {
       school: { select: { name: true, county: true } },
-      student: { select: { firstName: true, lastName: true, admissionNumber: true, nemisNumber: true } },
+      student: {
+        select: { firstName: true, lastName: true, admissionNumber: true, nemisNumber: true },
+      },
       term: { select: { name: true, academicYear: { select: { name: true } } } },
       stream: { include: { grade: { select: { name: true } } } },
     },
@@ -114,11 +116,14 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     }
     const buffer = Buffer.concat(chunks);
 
-    const filename = [
-      safeFilenamePart(report.student.firstName),
-      safeFilenamePart(report.student.lastName),
-      safeFilenamePart(report.term.name ?? 'Report'),
-    ].filter(Boolean).join('-') || 'term-report';
+    const filename =
+      [
+        safeFilenamePart(report.student.firstName),
+        safeFilenamePart(report.student.lastName),
+        safeFilenamePart(report.term.name ?? 'Report'),
+      ]
+        .filter(Boolean)
+        .join('-') || 'term-report';
 
     return new NextResponse(buffer, {
       headers: {

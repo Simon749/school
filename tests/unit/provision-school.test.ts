@@ -58,7 +58,9 @@ describe('provisionSchool (D15/D16: only a platform super admin creates schools)
     expect(userCreate).not.toHaveBeenCalled();
     // it looks for the Clerk id OR the e-mail (both are unique)
     expect(JSON.stringify(userFindFirst.mock.calls[0]![0]!.where)).toContain('user_2abcDEF');
-    expect(JSON.stringify(userFindFirst.mock.calls[0]![0]!.where)).toContain('director@kilimani.ke');
+    expect(JSON.stringify(userFindFirst.mock.calls[0]![0]!.where)).toContain(
+      'director@kilimani.ke'
+    );
   });
 
   it.each([

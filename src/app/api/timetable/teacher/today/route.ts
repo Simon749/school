@@ -53,9 +53,9 @@ export async function GET() {
 
       const attendanceRecords = studentIds.length
         ? await prisma.studentDailyAttendance.findMany({
-          where: { studentId: { in: studentIds }, date: { gte: windowStart } },
-          select: { studentId: true, date: true, status: true },
-        })
+            where: { studentId: { in: studentIds }, date: { gte: windowStart } },
+            select: { studentId: true, date: true, status: true },
+          })
         : [];
 
       // Daily attendance %, last 5 dates that have any records

@@ -57,10 +57,15 @@ const report = (over: Record<string, unknown> = {}) => ({
   totalLessons: 10,
   lessonsAttended: 9,
   school: { name: 'Test School', county: 'Nairobi' }, // Added county just in case
-  student: { firstName: 'Amara', lastName: 'Otieno', admissionNumber: 'A1', nemisNumber: '123456789' }, // Added nemisNumber
+  student: {
+    firstName: 'Amara',
+    lastName: 'Otieno',
+    admissionNumber: 'A1',
+    nemisNumber: '123456789',
+  }, // Added nemisNumber
   term: {
     name: 'Term 1',
-    academicYear: { name: '2026' } 
+    academicYear: { name: '2026' },
   },
   stream: { name: 'A', grade: { name: 'Grade 7' } },
   ...over,
@@ -73,7 +78,7 @@ beforeEach(() => {
     reportFindFirst,
     teacherFindFirst,
     guardianFindFirst,
-    assessmentResultFindMany // ✅ Add to reset list
+    assessmentResultFindMany, // ✅ Add to reset list
   ]) {
     m.mockReset();
   }

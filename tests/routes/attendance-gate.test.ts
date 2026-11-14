@@ -15,11 +15,19 @@ vi.mock('@/lib/audit', () => ({
 
 vi.mock('@/lib/db', () => {
   const mockPrisma: any = {};
-  Object.defineProperty(mockPrisma, 'user', { get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'student', { get: () => ({ findUnique: (...a: unknown[]) => studentFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'schoolCalendarDay', { get: () => ({ findUnique: (...a: unknown[]) => calendarFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'studentDailyAttendance', { get: () => ({ upsert: (...a: unknown[]) => attendanceUpsert(...a) }) });
-  
+  Object.defineProperty(mockPrisma, 'user', {
+    get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'student', {
+    get: () => ({ findUnique: (...a: unknown[]) => studentFindUnique(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'schoolCalendarDay', {
+    get: () => ({ findUnique: (...a: unknown[]) => calendarFindUnique(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'studentDailyAttendance', {
+    get: () => ({ upsert: (...a: unknown[]) => attendanceUpsert(...a) }),
+  });
+
   mockPrisma.$transaction = async (cb: any) => {
     return cb(mockPrisma);
   };
@@ -60,12 +68,19 @@ const signedInAs = (role: string, over: Record<string, unknown> = {}) => {
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   // ✅ 07:30 AM Nairobi is 04:30 AM UTC (Nairobi is UTC+3)
-  vi.setSystemTime(new Date('2026-10-26T04:30:00Z')); 
-  
-  for (const m of [authMock, userFindUnique, studentFindUnique, calendarFindUnique, attendanceUpsert, logAudit]) {
+  vi.setSystemTime(new Date('2026-10-26T04:30:00Z'));
+
+  for (const m of [
+    authMock,
+    userFindUnique,
+    studentFindUnique,
+    calendarFindUnique,
+    attendanceUpsert,
+    logAudit,
+  ]) {
     m.mockReset();
   }
-  
+
   studentFindUnique.mockResolvedValue({
     id: 's-1',
     firstName: 'John',
@@ -73,7 +88,12 @@ beforeEach(() => {
     admissionNumber: 'ADM001',
   });
   calendarFindUnique.mockResolvedValue({ dayType: 'school_day', timetableType: 'normal' });
-  attendanceUpsert.mockResolvedValue({ id: 'att-1', studentId: 's-1', arrivedAt: new Date(), status: 'present' });
+  attendanceUpsert.mockResolvedValue({
+    id: 'att-1',
+    studentId: 's-1',
+    arrivedAt: new Date(),
+    status: 'present',
+  });
 });
 
 afterEach(() => vi.useRealTimers());
@@ -108,18 +128,18 @@ describe('POST /api/attendance/gate (ATT-07)', () => {
 
   it('201 success: ignores client arrivedAt, uses server time, logs audit transactionally', async () => {
     signedInAs('deputy');
-    
+
     // Client tries to backdate the arrival
-    const res = await post({ 
-      studentId: 's-1', 
-      arrivedAt: '2026-10-25T07:00:00Z' // Should be completely ignored
+    const res = await post({
+      studentId: 's-1',
+      arrivedAt: '2026-10-25T07:00:00Z', // Should be completely ignored
     });
-    
+
     expect(res.status).toBe(201);
     const json = await res.json();
     expect(json.success).toBe(true);
     expect(json.message).toContain('marked present at');
-    
+
     // Verify upsert used SERVER time (04:30 UTC), not client time
     expect(attendanceUpsert).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -18,7 +18,7 @@ export function getNairobiDateString(date: Date = new Date()): string {
 }
 
 /**
- * Returns the current absolute time. 
+ * Returns the current absolute time.
  * WARNING: JavaScript Date objects always store UTC internally.
  * For accurate time comparisons (e.g., period start/end), construct
  * the Date with an explicit +03:00 offset:

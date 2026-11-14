@@ -7,8 +7,10 @@ const guardianUpdate = vi.fn();
 const logAudit = vi.fn();
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: () => authMock() }));
-vi.mock('@/lib/audit', () => ({ logAudit: (...args: unknown[]) => logAudit(...args), 
-  getRequestMetadata: () => ({ ipAddress: '1.2.3.4', userAgent: 'test' })}));
+vi.mock('@/lib/audit', () => ({
+  logAudit: (...args: unknown[]) => logAudit(...args),
+  getRequestMetadata: () => ({ ipAddress: '1.2.3.4', userAgent: 'test' }),
+}));
 vi.mock('@/lib/db', () => ({
   prisma: {
     user: { findUnique: (...a: unknown[]) => userFindUnique(...a) },
@@ -60,7 +62,7 @@ describe('POST /api/guardians/[id]/deactivate (R1-25)', () => {
   it('401 anonymous; 403 for non-admin roles', async () => {
     authMock.mockResolvedValue({ userId: null });
     expect((await post({ reason: 'test' })).status).toBe(401);
-    
+
     signedInAs('teacher');
     expect((await post({ reason: 'test' })).status).toBe(403);
   });
@@ -71,7 +73,7 @@ describe('POST /api/guardians/[id]/deactivate (R1-25)', () => {
     expect((await post({})).status).toBe(400);
   });
 
-  it('404 if guardian is not in the admin\'s school', async () => {
+  it("404 if guardian is not in the admin's school", async () => {
     signedInAs('admin');
     guardianFindFirst.mockResolvedValue(null);
     expect((await post({ reason: 'Student transferred schools' })).status).toBe(404);
@@ -81,7 +83,7 @@ describe('POST /api/guardians/[id]/deactivate (R1-25)', () => {
     signedInAs('admin');
     const res = await post({ reason: 'Student transferred schools' });
     expect(res.status).toBe(200);
-    
+
     const data = await res.json();
     expect(data.success).toBe(true);
     expect(data.clerkId).toBe('clerk_parent_1');

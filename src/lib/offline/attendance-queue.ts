@@ -42,7 +42,7 @@ export async function queueOfflineAttendance(payload: {
 }): Promise<string> {
   const db = await openDb();
   const operationId = crypto.randomUUID();
-  
+
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
     const record: OfflineAttendanceRecord = {
@@ -57,7 +57,9 @@ export async function queueOfflineAttendance(payload: {
   });
 }
 
-async function getRecordsByStatus(status: OfflineAttendanceStatus): Promise<OfflineAttendanceRecord[]> {
+async function getRecordsByStatus(
+  status: OfflineAttendanceStatus
+): Promise<OfflineAttendanceRecord[]> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readonly');
@@ -68,7 +70,11 @@ async function getRecordsByStatus(status: OfflineAttendanceStatus): Promise<Offl
   });
 }
 
-async function updateRecordStatus(id: number, status: OfflineAttendanceStatus, conflictReason?: string) {
+async function updateRecordStatus(
+  id: number,
+  status: OfflineAttendanceStatus,
+  conflictReason?: string
+) {
   const db = await openDb();
   return new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
@@ -104,16 +110,16 @@ export async function flushOfflineAttendance(): Promise<{ synced: number; confli
 
   for (const item of pending) {
     if (!item.id) continue;
-    
+
     // Mark as syncing to prevent double-flush if called concurrently
     await updateRecordStatus(item.id, 'syncing');
 
     try {
       const res = await fetch('/api/attendance/student', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Idempotency-Key': item.operationId // ✅ ATT-11: Send Operation ID
+          'Idempotency-Key': item.operationId, // ✅ ATT-11: Send Operation ID
         },
         body: JSON.stringify({
           slotId: item.slotId,
@@ -130,12 +136,20 @@ export async function flushOfflineAttendance(): Promise<{ synced: number; confli
       } else if (res.status === 423 || res.status === 409) {
         // Register was locked or conflict occurred while offline
         const errData = await res.json().catch(() => ({}));
-        await updateRecordStatus(item.id, 'conflict', errData.error || 'Register was modified or locked while offline.');
+        await updateRecordStatus(
+          item.id,
+          'conflict',
+          errData.error || 'Register was modified or locked while offline.'
+        );
         conflicts++;
       } else if (res.status === 400) {
         // Validation error (e.g., date is now in the future, student removed)
         const errData = await res.json().catch(() => ({}));
-        await updateRecordStatus(item.id, 'conflict', errData.error || 'Invalid data. Please re-mark attendance.');
+        await updateRecordStatus(
+          item.id,
+          'conflict',
+          errData.error || 'Invalid data. Please re-mark attendance.'
+        );
         conflicts++;
       } else {
         // Server error (500) or network failure - revert to pending for retry

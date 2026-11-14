@@ -17,32 +17,19 @@ import Link from 'next/link';
 
 export default async function TeacherClassroomPage() {
   const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
+  if (!userId) redirect('/login'); // FIX: /sign-in does not exist; canonical page is /login
 
   const user = await prisma.user.findUnique({
     where: { clerkId: userId },
-    include: {
-      teacher: {
-        include: {
-          school: true,
-        },
-      },
-    },
+    include: { teacher: { include: { school: true } } },
   });
 
-  if (!user || !user.teacher) {
-    return (
-      <div className="p-8 text-center">
-        <h2 className="text-xl font-semibold text-red-500">Teacher profile not found</h2>
-        <p className="text-muted-foreground mt-2">Please contact your school administrator.</p>
-      </div>
-    );
-  }
+  if (!user || !user.isActive || user.deletedAt) redirect('/unauthorized'); // SEC-21
+  if (user.role !== 'teacher') redirect('/unauthorized'); // R1-14: explicit role check
 
   const teacher = user.teacher;
 
-  // Guard: Not a class teacher
-  if (!teacher.isClassTeacher || !teacher.classTeacherStreamId) {
+  if (!teacher?.isClassTeacher || !teacher.classTeacherStreamId) {
     return (
       <div className="p-8 text-center max-w-md mx-auto">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
@@ -50,7 +37,8 @@ export default async function TeacherClassroomPage() {
         </div>
         <h2 className="text-xl font-semibold text-slate-900">Not a Class Teacher</h2>
         <p className="text-muted-foreground mt-2 mb-6">
-          You are not currently assigned as a class teacher. Please contact your school administrator if you believe this is an error.
+          You are not currently assigned as a class teacher. Contact your school administrator if
+          this is an error.
         </p>
         <Link href="/teacher">
           <Button variant="outline">Back to Dashboard</Button>
@@ -59,9 +47,9 @@ export default async function TeacherClassroomPage() {
     );
   }
 
-  // Fetch stream details (scoped to school implicitly via teacher relation)
-  const stream = await prisma.stream.findUnique({
-    where: { id: teacher.classTeacherStreamId },
+  // SEC-11: stream lookup scoped to caller's school
+  const stream = await prisma.stream.findFirst({
+    where: { id: teacher.classTeacherStreamId, schoolId: teacher.schoolId },
     include: { grade: { select: { name: true } } },
   });
 
@@ -69,7 +57,6 @@ export default async function TeacherClassroomPage() {
     return (
       <div className="p-8 text-center">
         <h2 className="text-xl font-semibold text-red-500">Class stream not found</h2>
-        <p className="text-muted-foreground mt-2">The assigned class stream could not be found.</p>
       </div>
     );
   }
@@ -77,32 +64,26 @@ export default async function TeacherClassroomPage() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Fetch active students in this stream
   const students = await prisma.student.findMany({
     where: {
       streamId: stream.id,
-      schoolId: teacher.schoolId, // SEC-11: Strict school isolation
+      schoolId: teacher.schoolId,
       status: 'active',
       deletedAt: null,
     },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      admissionNumber: true,
-    },
+    select: { id: true, firstName: true, lastName: true, admissionNumber: true },
     orderBy: { lastName: 'asc' },
   });
 
   const studentIds = students.map((s) => s.id);
 
-  // Fetch today's attendance for these students
   const todayAttendance =
     studentIds.length > 0
       ? await prisma.studentDailyAttendance.findMany({
           where: {
             studentId: { in: studentIds },
             date: today,
+            schoolId: teacher.schoolId, // SEC-11: was missing
           },
           select: { studentId: true, status: true },
         })
@@ -110,10 +91,9 @@ export default async function TeacherClassroomPage() {
 
   const attendanceMap = new Map(todayAttendance.map((a) => [a.studentId, a.status]));
 
-  let presentCount = 0;
-  let absentCount = 0;
-  let lateCount = 0;
-
+  let presentCount = 0,
+    absentCount = 0,
+    lateCount = 0;
   students.forEach((s) => {
     const status = attendanceMap.get(s.id) || 'absent';
     if (status === 'present') presentCount++;
@@ -137,7 +117,9 @@ export default async function TeacherClassroomPage() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             {stream.grade.name} {stream.name}
           </h1>
-          <p className="text-muted-foreground mt-1">Class overview and daily attendance snapshot.</p>
+          <p className="text-muted-foreground mt-1">
+            Class overview and daily attendance snapshot.
+          </p>
         </div>
         <div className="flex gap-2">
           <Link href="/teacher/attendance">
@@ -190,7 +172,9 @@ export default async function TeacherClassroomPage() {
         </CardHeader>
         <CardContent>
           {students.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No active students in this class.</p>
+            <p className="text-muted-foreground text-center py-8">
+              No active students in this class.
+            </p>
           ) : (
             <div className="rounded-md border">
               <Table>
@@ -198,33 +182,30 @@ export default async function TeacherClassroomPage() {
                   <TableRow>
                     <TableHead>Admission No.</TableHead>
                     <TableHead>Student Name</TableHead>
-                    <TableHead>Today's Status</TableHead>
+                    <TableHead>Today&apos;s Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {students.map((student) => {
-                    const status = attendanceMap.get(student.id);
-                    return (
-                      <TableRow key={student.id}>
-                        <TableCell className="font-mono text-sm text-muted-foreground">
-                          {student.admissionNumber || '—'}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {student.firstName} {student.lastName}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(status)}</TableCell>
-                        <TableCell className="text-right">
-                          <Link
-                            href={`/teacher/reports/${student.id}`}
-                            className="text-sm text-blue-600 hover:underline font-medium"
-                          >
-                            View Report
-                          </Link>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {students.map((student) => (
+                    <TableRow key={student.id}>
+                      <TableCell className="font-mono text-sm text-muted-foreground">
+                        {student.admissionNumber || '—'}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {student.firstName} {student.lastName}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(attendanceMap.get(student.id))}</TableCell>
+                      <TableCell className="text-right">
+                        <Link
+                          href={`/teacher/reports/${student.id}`}
+                          className="text-sm text-blue-600 hover:underline font-medium"
+                        >
+                          View Report
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>

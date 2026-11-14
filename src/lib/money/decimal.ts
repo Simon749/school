@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 /**
  * Safe decimal math operations for money calculations.
  * Prevents floating-point errors that occur with Number arithmetic.
- * 
+ *
  * Usage:
  *   const total = add(amount1, amount2);
  *   const balance = subtract(total, payment);

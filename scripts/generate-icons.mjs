@@ -21,13 +21,9 @@ async function generateIcons() {
 
   const buffer = Buffer.from(svg);
 
-  await sharp(buffer)
-    .resize(192, 192)
-    .toFile(join(iconsDir, 'icon-192.png'));
-    
-  await sharp(buffer)
-    .resize(512, 512)
-    .toFile(join(iconsDir, 'icon-512.png'));
+  await sharp(buffer).resize(192, 192).toFile(join(iconsDir, 'icon-192.png'));
+
+  await sharp(buffer).resize(512, 512).toFile(join(iconsDir, 'icon-512.png'));
 
   console.log('✅ PWA icons generated successfully in public/icons/');
 }

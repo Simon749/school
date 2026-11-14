@@ -108,9 +108,9 @@ export function MarksEntryTable({
           teacherComment: state.teacherComment || null,
           rubricScores: hasRubric
             ? Object.entries(state.rubricScores).map(([subStrandId, score]) => ({
-              subStrandId,
-              score,
-            }))
+                subStrandId,
+                score,
+              }))
             : undefined,
         }));
 
@@ -137,7 +137,11 @@ export function MarksEntryTable({
 
   const updateStudentState = (studentId: string, field: keyof StudentState, value: any) => {
     setStudentStates((prev) => {
-      const current = prev[studentId] ?? { marksObtained: '', teacherComment: '', rubricScores: {} };
+      const current = prev[studentId] ?? {
+        marksObtained: '',
+        teacherComment: '',
+        rubricScores: {},
+      };
       return { ...prev, [studentId]: { ...current, [field]: value } };
     });
     triggerSave();

@@ -111,7 +111,10 @@ describe('POST /api/results/reports/generate (SEC-26)', () => {
   it("finds the term and the student INSIDE the caller's school", async () => {
     signedInAs('admin');
     await post({ studentId: STUDENT, termId: TERM });
-    expect(termFindFirst.mock.calls[0]![0]!.where).toMatchObject({ id: TERM, schoolId: 'school-A' });
+    expect(termFindFirst.mock.calls[0]![0]!.where).toMatchObject({
+      id: TERM,
+      schoolId: 'school-A',
+    });
     expect(studentFindFirst.mock.calls[0]![0]!.where).toMatchObject({
       id: STUDENT,
       schoolId: 'school-A',

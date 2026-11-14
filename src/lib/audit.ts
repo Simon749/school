@@ -16,15 +16,18 @@ export interface AuditLogData {
 
 /**
  * R5-01: Transactional audit helper.
- * 
+ *
  * @param data - The audit log payload
- * @param tx - (Optional) The Prisma transaction client. If provided, the audit 
- *             log is written atomically with the main DB operation. If the audit 
+ * @param tx - (Optional) The Prisma transaction client. If provided, the audit
+ *             log is written atomically with the main DB operation. If the audit
  *             write fails, the entire transaction rolls back.
  */
 export async function logAudit(
   data: AuditLogData,
-  tx?: Omit<Prisma.TransactionClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
+  tx?: Omit<
+    Prisma.TransactionClient,
+    '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+  >
 ) {
   // 1. Resolve IP and User Agent (fallback to headers if not explicitly provided)
   let ipAddress = data.ipAddress || 'unknown';
@@ -48,8 +51,8 @@ export async function logAudit(
   // 2. Resolve the database client (use transaction if provided, otherwise global prisma)
   const client = tx || prisma;
 
-  // 3. Execute the audit write. 
-  // R5-01: We do NOT wrap this in a try/catch that swallows the error. 
+  // 3. Execute the audit write.
+  // R5-01: We do NOT wrap this in a try/catch that swallows the error.
   // If this throws, the calling transaction will roll back, ensuring no "ghost" actions.
   await client.auditLog.create({
     data: {

@@ -25,17 +25,33 @@ vi.mock('@/lib/audit', () => ({
 
 vi.mock('@/lib/db', () => {
   const mockPrisma: any = {};
-  Object.defineProperty(mockPrisma, 'user', { get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a), findFirst: (...a: unknown[]) => userFindFirst(...a) }) });
-  Object.defineProperty(mockPrisma, 'student', { get: () => ({ findUnique: (...a: unknown[]) => studentFindUnique(...a), findFirst: (...a: unknown[]) => studentFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'term', { get: () => ({ findFirst: (...a: unknown[]) => termFindFirst(...a) }) });
+  Object.defineProperty(mockPrisma, 'user', {
+    get: () => ({
+      findUnique: (...a: unknown[]) => userFindUnique(...a),
+      findFirst: (...a: unknown[]) => userFindFirst(...a),
+    }),
+  });
+  Object.defineProperty(mockPrisma, 'student', {
+    get: () => ({
+      findUnique: (...a: unknown[]) => studentFindUnique(...a),
+      findFirst: (...a: unknown[]) => studentFindUnique(...a),
+    }),
+  });
+  Object.defineProperty(mockPrisma, 'term', {
+    get: () => ({ findFirst: (...a: unknown[]) => termFindFirst(...a) }),
+  });
   Object.defineProperty(mockPrisma, 'feePayment', {
     get: () => ({
       findFirst: (...a: unknown[]) => feePaymentFindFirst(...a),
-      create: (...a: unknown[]) => feePaymentCreate(...a)
-    })
+      create: (...a: unknown[]) => feePaymentCreate(...a),
+    }),
   });
-  Object.defineProperty(mockPrisma, 'school', { get: () => ({ findUnique: (...a: unknown[]) => schoolFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'receiptSequence', { get: () => ({ upsert: (...a: unknown[]) => receiptSequenceUpsert(...a) }) });
+  Object.defineProperty(mockPrisma, 'school', {
+    get: () => ({ findUnique: (...a: unknown[]) => schoolFindUnique(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'receiptSequence', {
+    get: () => ({ upsert: (...a: unknown[]) => receiptSequenceUpsert(...a) }),
+  });
 
   mockPrisma.$transaction = async (cb: any) => {
     return cb(mockPrisma);
@@ -69,7 +85,18 @@ const signedInAs = (role: string, over: Record<string, unknown> = {}) => {
 };
 
 beforeEach(() => {
-  for (const m of [authMock, userFindUnique, userFindFirst, studentFindUnique, termFindFirst, feePaymentFindFirst, feePaymentCreate, schoolFindUnique, receiptSequenceUpsert, logAudit]) {
+  for (const m of [
+    authMock,
+    userFindUnique,
+    userFindFirst,
+    studentFindUnique,
+    termFindFirst,
+    feePaymentFindFirst,
+    feePaymentCreate,
+    schoolFindUnique,
+    receiptSequenceUpsert,
+    logAudit,
+  ]) {
     m.mockReset();
   }
 
@@ -82,23 +109,33 @@ beforeEach(() => {
     id: 'p-1',
     ...data,
   }));
-  
 });
 
 describe('POST /api/fees/payments (PAY-06, PAY-09, PAY-10)', () => {
   it('401 anonymous', async () => {
     authMock.mockResolvedValue({ userId: null });
-    expect((await post({ studentId: 's-1', termId: 't-1', amount: '1000', paymentMethod: 'cash' })).status).toBe(401);
+    expect(
+      (await post({ studentId: 's-1', termId: 't-1', amount: '1000', paymentMethod: 'cash' }))
+        .status
+    ).toBe(401);
   });
 
   it('403 for non-admin/bursar roles', async () => {
     signedInAs('teacher');
-    expect((await post({ studentId: 's-1', termId: 't-1', amount: '1000', paymentMethod: 'cash' })).status).toBe(403);
+    expect(
+      (await post({ studentId: 's-1', termId: 't-1', amount: '1000', paymentMethod: 'cash' }))
+        .status
+    ).toBe(403);
   });
 
   it('400 for invalid amount format (PAY-06)', async () => {
     signedInAs('bursar');
-    const res = await post({ studentId: 's-1', termId: 't-1', amount: '1000.555', paymentMethod: 'cash' });
+    const res = await post({
+      studentId: 's-1',
+      termId: 't-1',
+      amount: '1000.555',
+      paymentMethod: 'cash',
+    });
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toContain('valid decimal string');
@@ -113,7 +150,10 @@ describe('POST /api/fees/payments (PAY-06, PAY-09, PAY-10)', () => {
   it('400 for student not in caller school; nothing is created (PAY-10)', async () => {
     signedInAs('bursar');
     studentFindUnique.mockResolvedValue(null);
-    expect((await post({ studentId: 's-99', termId: 't-1', amount: '1000', paymentMethod: 'cash' })).status).toBe(400);
+    expect(
+      (await post({ studentId: 's-99', termId: 't-1', amount: '1000', paymentMethod: 'cash' }))
+        .status
+    ).toBe(400);
     expect(feePaymentCreate).not.toHaveBeenCalled();
   });
 
@@ -121,7 +161,11 @@ describe('POST /api/fees/payments (PAY-06, PAY-09, PAY-10)', () => {
     signedInAs('bursar');
     feePaymentFindFirst.mockResolvedValue({ id: 'p-existing' });
     const res = await post({
-      studentId: 's-1', termId: 't-1', amount: '1000', paymentMethod: 'mpesa', mpesaCode: 'QKH123'
+      studentId: 's-1',
+      termId: 't-1',
+      amount: '1000',
+      paymentMethod: 'mpesa',
+      mpesaCode: 'QKH123',
     });
     expect(res.status).toBe(409);
     expect(feePaymentCreate).not.toHaveBeenCalled();
@@ -136,7 +180,7 @@ describe('POST /api/fees/payments (PAY-06, PAY-09, PAY-10)', () => {
       amount: '1500.50',
       paymentMethod: 'bank',
       reference: 'REF-999',
-      notes: 'Term 1 fees'
+      notes: 'Term 1 fees',
     });
 
     expect(res.status).toBe(201);
@@ -156,7 +200,11 @@ describe('POST /api/fees/payments (PAY-06, PAY-09, PAY-10)', () => {
     expect(logAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'MANUAL_PAYMENT_RECORDED',
-        newData: expect.objectContaining({ amount: '1500.50', studentId: 's-1', paymentMethod: 'bank' }),
+        newData: expect.objectContaining({
+          amount: '1500.50',
+          studentId: 's-1',
+          paymentMethod: 'bank',
+        }),
       }),
       expect.anything() // The tx client
     );

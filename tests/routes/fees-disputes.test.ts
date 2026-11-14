@@ -14,7 +14,10 @@ const logAudit = vi.fn();
 const termFindFirst = vi.fn();
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: () => authMock() }));
-vi.mock('@/lib/audit', () => ({ logAudit: (...args: unknown[]) => logAudit(...args), getRequestMetadata: () => ({ ipAddress: '1.2.3.4', userAgent: 'test' }) }));
+vi.mock('@/lib/audit', () => ({
+  logAudit: (...args: unknown[]) => logAudit(...args),
+  getRequestMetadata: () => ({ ipAddress: '1.2.3.4', userAgent: 'test' }),
+}));
 vi.mock('@/lib/mpesa/daraja', () => ({ queryStkStatus: vi.fn() }));
 vi.mock('@/lib/db', () => {
   const prisma: any = {

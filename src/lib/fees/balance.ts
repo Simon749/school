@@ -82,8 +82,11 @@ export async function calculateBalance(
 
     // Calculate what has been paid towards this specific fee item
     let itemPaid = new Prisma.Decimal(0);
-    const allocations = (payments as Array<{ id: string; amount: Prisma.Decimal; allocations: unknown }>)
-      .flatMap((p) => (p.allocations as Array<{ feeItemId: string; amountAllocated: number }>) || []);
+    const allocations = (
+      payments as Array<{ id: string; amount: Prisma.Decimal; allocations: unknown }>
+    ).flatMap(
+      (p) => (p.allocations as Array<{ feeItemId: string; amountAllocated: number }>) || []
+    );
 
     for (const allocation of allocations) {
       if (allocation.feeItemId === sf.feeItemId) {

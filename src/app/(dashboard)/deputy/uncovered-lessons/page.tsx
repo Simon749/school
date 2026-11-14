@@ -62,11 +62,7 @@ export default async function UncoveredLessonsPage() {
   });
 
   const uncovered = slotsToday.filter((slot) => {
-    const [h = 0, m = 0] = slot.period.startTime
-      .toISOString()
-      .slice(11, 16)
-      .split(':')
-      .map(Number);
+    const [h = 0, m = 0] = slot.period.startTime.toISOString().slice(11, 16).split(':').map(Number);
     const slotStart = new Date(today);
     slotStart.setHours(h, m, 0, 0);
     const windowStart = new Date(slotStart.getTime() - 30 * 60 * 1000);

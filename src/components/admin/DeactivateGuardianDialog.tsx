@@ -69,10 +69,7 @@ export function DeactivateGuardianDialog({
         </p>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label
-              htmlFor="reason"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="reason" className="mb-1 block text-sm font-medium text-gray-700">
               Reason for deactivation (required)
             </label>
             <textarea

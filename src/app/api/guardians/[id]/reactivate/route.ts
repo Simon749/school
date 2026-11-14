@@ -3,10 +3,7 @@ import { prisma } from '@/lib/db';
 import { requireUser } from '@/lib/auth/current-user';
 import { logAudit } from '@/lib/audit';
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const guard = await requireUser(['admin']);
   if (!guard.ok) return guard.response;
   const user = guard.user;

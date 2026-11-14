@@ -13,7 +13,10 @@ type ReceiptSequenceTx = Prisma.TransactionClient & {
  * ✅ PAY-09: Generates a unique, sequential receipt number per school and year.
  * Eliminates Redis INCR collisions, provisional receipt sequence burning, and cross-school prefix clashes.
  */
-export async function generateReceiptNumber(schoolId: string, tx: Prisma.TransactionClient): Promise<string> {
+export async function generateReceiptNumber(
+  schoolId: string,
+  tx: Prisma.TransactionClient
+): Promise<string> {
   const school = await tx.school.findUnique({
     where: { id: schoolId },
     select: { name: true, knecCode: true },
@@ -25,7 +28,10 @@ export async function generateReceiptNumber(schoolId: string, tx: Prisma.Transac
 
   // Use KNEC code if available, otherwise first 4 alphanumeric chars of name
   const rawPrefix = school.knecCode || school.name;
-  const prefix = rawPrefix.substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, 'X');
+  const prefix = rawPrefix
+    .substring(0, 4)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, 'X');
   const year = new Date().getFullYear();
 
   const receiptSequenceTx = tx as ReceiptSequenceTx;

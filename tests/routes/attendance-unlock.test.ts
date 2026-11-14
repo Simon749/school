@@ -15,16 +15,22 @@ vi.mock('@/lib/audit', () => ({
 
 vi.mock('@/lib/db', () => {
   const mockPrisma: any = {};
-  Object.defineProperty(mockPrisma, 'schoolCalendarDay', { get: () => ({ findUnique: (...a: unknown[]) => calendarFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'user', { get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }) });
+  Object.defineProperty(mockPrisma, 'schoolCalendarDay', {
+    get: () => ({ findUnique: (...a: unknown[]) => calendarFindUnique(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'user', {
+    get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a) }),
+  });
   // ✅ Added both findUnique and findFirst to be bulletproof
   Object.defineProperty(mockPrisma, 'timetableSlot', {
     get: () => ({
       findUnique: (...a: unknown[]) => slotFindUnique(...a),
-      findFirst: (...a: unknown[]) => slotFindUnique(...a)
-    })
+      findFirst: (...a: unknown[]) => slotFindUnique(...a),
+    }),
   });
-  Object.defineProperty(mockPrisma, 'lessonRegister', { get: () => ({ upsert: (...a: unknown[]) => registerUpsert(...a) }) });
+  Object.defineProperty(mockPrisma, 'lessonRegister', {
+    get: () => ({ upsert: (...a: unknown[]) => registerUpsert(...a) }),
+  });
 
   mockPrisma.$transaction = async (cb: any) => {
     return cb(mockPrisma);
@@ -65,7 +71,14 @@ const signedInAs = (role: string, over: Record<string, unknown> = {}) => {
 };
 
 beforeEach(() => {
-  for (const m of [authMock, userFindUnique, slotFindUnique, calendarFindUnique, registerUpsert, logAudit]) {
+  for (const m of [
+    authMock,
+    userFindUnique,
+    slotFindUnique,
+    calendarFindUnique,
+    registerUpsert,
+    logAudit,
+  ]) {
     m.mockReset();
   }
 
@@ -125,7 +138,7 @@ describe('POST /api/attendance/unlock (ATT-08)', () => {
         create: expect.objectContaining({
           isLocked: false,
           schoolId: 'school-A',
-          slotId: SLOT
+          slotId: SLOT,
         }),
       })
     );

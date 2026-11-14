@@ -11,10 +11,7 @@ const connection = new IORedis(redisUrl, {
 /**
  * Base worker processor with structured logging and error handling.
  */
-export function createWorker<T>(
-  queueName: string,
-  processor: (job: Job<T>) => Promise<void>
-) {
+export function createWorker<T>(queueName: string, processor: (job: Job<T>) => Promise<void>) {
   const worker = new Worker<T>(
     queueName,
     async (job) => {

@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const dateParam = searchParams.get('date');
   const targetDateStr = dateParam || getNairobiDateString();
-  
+
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!dateRegex.test(targetDateStr)) {
     return NextResponse.json({ error: 'Invalid date format. Use YYYY-MM-DD' }, { status: 400 });
@@ -30,10 +30,13 @@ export async function GET(req: NextRequest) {
 
   const currentTerm = await prisma.term.findFirst({
     where: { schoolId: user.schoolId, isCurrent: true },
-    select: { id: true }
+    select: { id: true },
   });
   if (!currentTerm) {
-    return NextResponse.json({ error: 'No current term configured for this school' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'No current term configured for this school' },
+      { status: 400 }
+    );
   }
 
   // 3. Fetch data strictly scoped to schoolId (SEC-11)
@@ -65,7 +68,7 @@ export async function GET(req: NextRequest) {
         status: true,
         checkedInAt: true,
         minutesLate: true,
-      }
+      },
     }),
   ]);
 
@@ -89,11 +92,13 @@ export async function GET(req: NextRequest) {
       // Rely on persisted state. If no record, it's 'pending', not 'absent'.
       status: att ? att.status : 'pending',
       needsAlert,
-      attendance: att ? {
-        checkedInAt: att.checkedInAt,
-        status: att.status,
-        minutesLate: att.minutesLate,
-      } : null,
+      attendance: att
+        ? {
+            checkedInAt: att.checkedInAt,
+            status: att.status,
+            minutesLate: att.minutesLate,
+          }
+        : null,
     };
   });
 
@@ -119,16 +124,24 @@ export async function POST(req: NextRequest) {
   }
 
   // ✅ ATT-05: Extract accuracy and timestamp
-  const { slotId, latitude, longitude, qrToken, lessonNotes, locationAccuracy, locationTimestamp } = body;
+  const { slotId, latitude, longitude, qrToken, lessonNotes, locationAccuracy, locationTimestamp } =
+    body;
   if (!slotId || latitude == null || longitude == null || !qrToken) {
-    return NextResponse.json({ error: 'slotId, latitude, longitude, and qrToken are required' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'slotId, latitude, longitude, and qrToken are required' },
+      { status: 400 }
+    );
   }
 
   // ✅ ATT-05: Geofence Integrity - Reject stale or inaccurate GPS data early
   if (locationTimestamp) {
-    const ts = typeof locationTimestamp === 'number' ? locationTimestamp : new Date(locationTimestamp).getTime();
+    const ts =
+      typeof locationTimestamp === 'number'
+        ? locationTimestamp
+        : new Date(locationTimestamp).getTime();
     const ageMs = Date.now() - ts;
-    if (ageMs > 5 * 60 * 1000) { // 5 minutes
+    if (ageMs > 5 * 60 * 1000) {
+      // 5 minutes
       return NextResponse.json(
         { error: 'Location data is too old. Please refresh your GPS and try again.' },
         { status: 400 }
@@ -138,7 +151,10 @@ export async function POST(req: NextRequest) {
 
   if (locationAccuracy !== undefined && Number(locationAccuracy) > 50) {
     return NextResponse.json(
-      { error: 'GPS accuracy is too low (>50m). Please ensure you have a clear view of the sky and try again.' },
+      {
+        error:
+          'GPS accuracy is too low (>50m). Please ensure you have a clear view of the sky and try again.',
+      },
       { status: 400 }
     );
   }
@@ -165,17 +181,26 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Geofence validation
-  if (slot.school.latitude == null || slot.school.longitude == null || slot.school.geofenceRadius == null) {
+  if (
+    slot.school.latitude == null ||
+    slot.school.longitude == null ||
+    slot.school.geofenceRadius == null
+  ) {
     return NextResponse.json({ error: 'School geofence not configured.' }, { status: 400 });
   }
 
   const geo = isInsideGeofence(
-    Number(latitude), Number(longitude),
-    Number(slot.school.latitude), Number(slot.school.longitude),
+    Number(latitude),
+    Number(longitude),
+    Number(slot.school.latitude),
+    Number(slot.school.longitude),
     slot.school.geofenceRadius
   );
   if (!geo.isInside) {
-    return NextResponse.json({ error: 'Outside school geofence', distance: Math.round(geo.distance) }, { status: 403 });
+    return NextResponse.json(
+      { error: 'Outside school geofence', distance: Math.round(geo.distance) },
+      { status: 403 }
+    );
   }
 
   // 3. QR token validation
@@ -188,25 +213,44 @@ export async function POST(req: NextRequest) {
   const nairobiTodayStr = getNairobiDateString(now);
 
   const tokenRecord = await prisma.classroomQrToken.findFirst({
-    where: { token: qrToken, slotId, usedAt: null, validFrom: { lte: now }, validUntil: { gte: now } },
+    where: {
+      token: qrToken,
+      slotId,
+      usedAt: null,
+      validFrom: { lte: now },
+      validUntil: { gte: now },
+    },
   });
   if (!tokenRecord) {
-    return NextResponse.json({ error: 'QR token already used, expired, or not yet valid' }, { status: 410 });
+    return NextResponse.json(
+      { error: 'QR token already used, expired, or not yet valid' },
+      { status: 410 }
+    );
   }
 
   // 4. Calendar validation (ATT-10)
-  const calendarDay = await getCalendarDay(user.schoolId, new Date(`${nairobiTodayStr}T00:00:00.000Z`));
+  const calendarDay = await getCalendarDay(
+    user.schoolId,
+    new Date(`${nairobiTodayStr}T00:00:00.000Z`)
+  );
   if (!calendarDay || calendarDay.dayType !== 'school_day') {
-    return NextResponse.json({ error: `Check-in not allowed on a ${calendarDay?.dayType || 'non-school'} day.` }, { status: 400 });
+    return NextResponse.json(
+      { error: `Check-in not allowed on a ${calendarDay?.dayType || 'non-school'} day.` },
+      { status: 400 }
+    );
   }
 
   // 5. Time window validation
-  const getTimeStr = (t: any) => (typeof t === 'string' ? t.substring(0, 5) : t.toISOString().substring(11, 16));
+  const getTimeStr = (t: any) =>
+    typeof t === 'string' ? t.substring(0, 5) : t.toISOString().substring(11, 16);
   const periodStartSafe = new Date(`${nairobiTodayStr}T${getTimeStr(slot.period.startTime)}+03:00`);
   const periodEndSafe = new Date(`${nairobiTodayStr}T${getTimeStr(slot.period.endTime)}+03:00`);
 
   if (now < new Date(periodStartSafe.getTime() - 10 * 60 * 1000)) {
-    return NextResponse.json({ error: 'Too early. Check-in opens 10 minutes before period start.' }, { status: 425 });
+    return NextResponse.json(
+      { error: 'Too early. Check-in opens 10 minutes before period start.' },
+      { status: 425 }
+    );
   }
   if (now > periodEndSafe) {
     return NextResponse.json({ error: 'Period has ended. Cannot check in.' }, { status: 410 });
@@ -225,45 +269,59 @@ export async function POST(req: NextRequest) {
       data: { usedAt: now },
     });
 
-    await logAudit({
-      schoolId: user.schoolId,
-      actorId: user.id,
-      action: 'TEACHER_CHECK_IN_INITIATED',
-      tableName: 'TeacherAttendance',
-      recordId: slot.id,
-      newData: { slotId, status, minutesLate, geofencePassed: true },
-      ipAddress: auditMeta.ipAddress,
-      userAgent: auditMeta.userAgent,
-    }, tx);
+    await logAudit(
+      {
+        schoolId: user.schoolId,
+        actorId: user.id,
+        action: 'TEACHER_CHECK_IN_INITIATED',
+        tableName: 'TeacherAttendance',
+        recordId: slot.id,
+        newData: { slotId, status, minutesLate, geofencePassed: true },
+        ipAddress: auditMeta.ipAddress,
+        userAgent: auditMeta.userAgent,
+      },
+      tx
+    );
   });
 
   // 7. Enqueue write (Queue-first for 8AM spike resilience)
-  const job = await attendanceQueue.add('teacher-check-in', {
-    type: 'teacher-check-in',
-    payload: { 
-      teacherId: teacher.id, 
-      schoolId: user.schoolId, 
-      slotId, 
-      date: nairobiTodayStr, 
-      checkedInAt: now.toISOString(), 
-      checkInLat: Number(latitude), 
-      checkInLng: Number(longitude), 
-      geofencePassed: true, 
-      qrScanned: true,  
-      status, 
-      minutesLate: minutesLate > 0 ? minutesLate : null, 
-      lessonNotes: lessonNotes || null,
-      // ✅ ATT-05: Pass accuracy and timestamp to the worker
-      locationAccuracy: locationAccuracy ? Number(locationAccuracy) : undefined,
-      locationTimestamp: locationTimestamp ? (typeof locationTimestamp === 'number' ? locationTimestamp : new Date(locationTimestamp).getTime()) : undefined,
+  const job = await attendanceQueue.add(
+    'teacher-check-in',
+    {
+      type: 'teacher-check-in',
+      payload: {
+        teacherId: teacher.id,
+        schoolId: user.schoolId,
+        slotId,
+        date: nairobiTodayStr,
+        checkedInAt: now.toISOString(),
+        checkInLat: Number(latitude),
+        checkInLng: Number(longitude),
+        geofencePassed: true,
+        qrScanned: true,
+        status,
+        minutesLate: minutesLate > 0 ? minutesLate : null,
+        lessonNotes: lessonNotes || null,
+        // ✅ ATT-05: Pass accuracy and timestamp to the worker
+        locationAccuracy: locationAccuracy ? Number(locationAccuracy) : undefined,
+        locationTimestamp: locationTimestamp
+          ? typeof locationTimestamp === 'number'
+            ? locationTimestamp
+            : new Date(locationTimestamp).getTime()
+          : undefined,
+      },
     },
-  }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
+    { attempts: 3, backoff: { type: 'exponential', delay: 2000 } }
+  );
 
-  return NextResponse.json({ 
-    success: true, 
-    message: `Checked in at ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`, 
-    status, 
-    minutesLate: minutesLate > 0 ? minutesLate : null, 
-    jobId: job.id 
-  }, { status: 202 });
+  return NextResponse.json(
+    {
+      success: true,
+      message: `Checked in at ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`,
+      status,
+      minutesLate: minutesLate > 0 ? minutesLate : null,
+      jobId: job.id,
+    },
+    { status: 202 }
+  );
 }

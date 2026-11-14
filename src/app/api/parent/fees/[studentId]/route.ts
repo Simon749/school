@@ -3,7 +3,7 @@ import { requireUser } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db';
 
 export async function GET(_req: Request, { params }: { params: { studentId: string } }) {
-    // R1-13: Central guard migration
+  // R1-13: Central guard migration
   const guard = await requireUser(['parent']);
   if (!guard.ok) return guard.response;
   const { user } = guard;
@@ -17,7 +17,7 @@ export async function GET(_req: Request, { params }: { params: { studentId: stri
     where: { schoolId: user.schoolId, isCurrent: true },
   });
 
-    const [studentFees, payments, activities] = await Promise.all([
+  const [studentFees, payments, activities] = await Promise.all([
     prisma.studentFee.findMany({
       where: { schoolId: user.schoolId, studentId: params.studentId, termId: currentTerm?.id }, // ➕ R5-04
       include: { feeItem: true },

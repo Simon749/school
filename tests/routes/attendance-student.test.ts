@@ -33,13 +33,36 @@ vi.mock('@/lib/db', () => {
   const mockPrisma: any = {};
 
   // Use lazy getters so functions resolve AFTER variable initialization
-  Object.defineProperty(mockPrisma, 'user', { get: () => ({ findUnique: (...a: unknown[]) => userFindUnique(...a), findFirst: (...a: unknown[]) => userFindFirst(...a) }) });
-  Object.defineProperty(mockPrisma, 'teacher', { get: () => ({ findFirst: (...a: unknown[]) => teacherFindFirst(...a) }) });
-  Object.defineProperty(mockPrisma, 'timetableSlot', { get: () => ({ findFirst: (...a: unknown[]) => slotFindFirst(...a) }) });
-  Object.defineProperty(mockPrisma, 'teacherAttendance', { get: () => ({ findFirst: (...a: unknown[]) => coverFindFirst(...a) }) });
-  Object.defineProperty(mockPrisma, 'studentLessonAttendance', { get: () => ({ findMany: (...a: unknown[]) => lessonAttFindMany(...a), upsert: (...a: unknown[]) => studentAttUpsert(...a) }) });
-  Object.defineProperty(mockPrisma, 'lessonRegister', { get: () => ({ findUnique: (...a: unknown[]) => registerFindUnique(...a), upsert: (...a: unknown[]) => lessonRegisterUpsert(...a) }) });
-  Object.defineProperty(mockPrisma, 'schoolCalendarDay', { get: () => ({ findUnique: (...a: unknown[]) => schoolCalendarDayFindUnique(...a) }) });
+  Object.defineProperty(mockPrisma, 'user', {
+    get: () => ({
+      findUnique: (...a: unknown[]) => userFindUnique(...a),
+      findFirst: (...a: unknown[]) => userFindFirst(...a),
+    }),
+  });
+  Object.defineProperty(mockPrisma, 'teacher', {
+    get: () => ({ findFirst: (...a: unknown[]) => teacherFindFirst(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'timetableSlot', {
+    get: () => ({ findFirst: (...a: unknown[]) => slotFindFirst(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'teacherAttendance', {
+    get: () => ({ findFirst: (...a: unknown[]) => coverFindFirst(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'studentLessonAttendance', {
+    get: () => ({
+      findMany: (...a: unknown[]) => lessonAttFindMany(...a),
+      upsert: (...a: unknown[]) => studentAttUpsert(...a),
+    }),
+  });
+  Object.defineProperty(mockPrisma, 'lessonRegister', {
+    get: () => ({
+      findUnique: (...a: unknown[]) => registerFindUnique(...a),
+      upsert: (...a: unknown[]) => lessonRegisterUpsert(...a),
+    }),
+  });
+  Object.defineProperty(mockPrisma, 'schoolCalendarDay', {
+    get: () => ({ findUnique: (...a: unknown[]) => schoolCalendarDayFindUnique(...a) }),
+  });
 
   mockPrisma.$transaction = async (cb: any) => {
     return cb(mockPrisma);
@@ -338,7 +361,7 @@ describe('POST: validation and behaviour', () => {
   it('cancels the notification job if a student is corrected from absent to present', async () => {
     signedInAs('teacher');
     lessonAttFindMany.mockResolvedValue([
-      { studentId: 's2', status: 'absent', notificationJobId: 'job-123' }
+      { studentId: 's2', status: 'absent', notificationJobId: 'job-123' },
     ]);
 
     const correctedBody = {

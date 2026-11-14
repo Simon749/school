@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const slotFindUnique = vi.fn();
 const calendarFindUnique = vi.fn();
 const teacherAttUpsert = vi.fn();
-const teacherAttFindUnique = vi.fn(); 
+const teacherAttFindUnique = vi.fn();
 const studentAttUpsert = vi.fn();
 const lessonRegisterUpsert = vi.fn();
 const userFindFirst = vi.fn();
@@ -11,18 +11,28 @@ const notifAdd = vi.fn().mockResolvedValue({ id: 'notif-1' });
 
 vi.mock('@/lib/db', () => {
   const mockPrisma: any = {};
-  Object.defineProperty(mockPrisma, 'timetableSlot', { get: () => ({ findUnique: (...a: unknown[]) => slotFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'schoolCalendarDay', { get: () => ({ findUnique: (...a: unknown[]) => calendarFindUnique(...a) }) });
-  Object.defineProperty(mockPrisma, 'teacherAttendance', { 
-    get: () => ({ 
-      upsert: (...a: unknown[]) => teacherAttUpsert(...a), 
-      findUnique: (...a: unknown[]) => teacherAttFindUnique(...a) 
-    }) 
+  Object.defineProperty(mockPrisma, 'timetableSlot', {
+    get: () => ({ findUnique: (...a: unknown[]) => slotFindUnique(...a) }),
   });
-  Object.defineProperty(mockPrisma, 'studentLessonAttendance', { get: () => ({ upsert: (...a: unknown[]) => studentAttUpsert(...a) }) });
-  Object.defineProperty(mockPrisma, 'lessonRegister', { get: () => ({ upsert: (...a: unknown[]) => lessonRegisterUpsert(...a) }) });
-  Object.defineProperty(mockPrisma, 'user', { get: () => ({ findFirst: (...a: unknown[]) => userFindFirst(...a) }) });
-  
+  Object.defineProperty(mockPrisma, 'schoolCalendarDay', {
+    get: () => ({ findUnique: (...a: unknown[]) => calendarFindUnique(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'teacherAttendance', {
+    get: () => ({
+      upsert: (...a: unknown[]) => teacherAttUpsert(...a),
+      findUnique: (...a: unknown[]) => teacherAttFindUnique(...a),
+    }),
+  });
+  Object.defineProperty(mockPrisma, 'studentLessonAttendance', {
+    get: () => ({ upsert: (...a: unknown[]) => studentAttUpsert(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'lessonRegister', {
+    get: () => ({ upsert: (...a: unknown[]) => lessonRegisterUpsert(...a) }),
+  });
+  Object.defineProperty(mockPrisma, 'user', {
+    get: () => ({ findFirst: (...a: unknown[]) => userFindFirst(...a) }),
+  });
+
   // ✅ FIX: Handle BOTH array and callback forms of Prisma $transaction
   mockPrisma.$transaction = async (arg: any) => {
     if (Array.isArray(arg)) {
@@ -33,7 +43,7 @@ vi.mock('@/lib/db', () => {
     }
     return arg;
   };
-  
+
   return { prisma: mockPrisma };
 });
 
@@ -53,15 +63,28 @@ const TODAY = '2026-10-26';
 
 beforeEach(() => {
   // ✅ ADDED teacherAttFindUnique to the reset array
-  for (const m of [slotFindUnique, calendarFindUnique, teacherAttUpsert, teacherAttFindUnique, studentAttUpsert, lessonRegisterUpsert, userFindFirst, notifAdd]) {
+  for (const m of [
+    slotFindUnique,
+    calendarFindUnique,
+    teacherAttUpsert,
+    teacherAttFindUnique,
+    studentAttUpsert,
+    lessonRegisterUpsert,
+    userFindFirst,
+    notifAdd,
+  ]) {
     m.mockReset();
   }
-  slotFindUnique.mockResolvedValue({ schoolId: 'school-A', isPublished: true, learningArea: { name: 'Math' } });
+  slotFindUnique.mockResolvedValue({
+    schoolId: 'school-A',
+    isPublished: true,
+    learningArea: { name: 'Math' },
+  });
   calendarFindUnique.mockResolvedValue({ dayType: 'school_day', timetableType: 'normal' });
   teacherAttUpsert.mockResolvedValue({ id: 'att-1' });
   studentAttUpsert.mockResolvedValue({ id: 's-att-1' });
   lessonRegisterUpsert.mockResolvedValue({ id: 'reg-1' });
-  teacherAttFindUnique.mockResolvedValue(null); 
+  teacherAttFindUnique.mockResolvedValue(null);
 });
 
 describe('Attendance Worker Processor (R2-05 / R4-11)', () => {
@@ -70,10 +93,23 @@ describe('Attendance Worker Processor (R2-05 / R4-11)', () => {
       const job = {
         data: {
           type: 'teacher-check-in',
-          payload: { teacherId: 't-1', schoolId: 'school-A', slotId: SLOT, date: TODAY, checkedInAt: new Date().toISOString(), checkInLat: 0, checkInLng: 0, geofencePassed: true, qrScanned: true, status: 'present', minutesLate: 0, lessonNotes: 'test' }
-        }
+          payload: {
+            teacherId: 't-1',
+            schoolId: 'school-A',
+            slotId: SLOT,
+            date: TODAY,
+            checkedInAt: new Date().toISOString(),
+            checkInLat: 0,
+            checkInLng: 0,
+            geofencePassed: true,
+            qrScanned: true,
+            status: 'present',
+            minutesLate: 0,
+            lessonNotes: 'test',
+          },
+        },
       };
-      
+
       const result = await processAttendanceJob(job);
       expect(result).toHaveProperty('id', 'att-1');
       expect(teacherAttUpsert).toHaveBeenCalled();
@@ -84,11 +120,26 @@ describe('Attendance Worker Processor (R2-05 / R4-11)', () => {
       const job = {
         data: {
           type: 'teacher-check-in',
-          payload: { teacherId: 't-1', schoolId: 'school-A', slotId: SLOT, date: TODAY, checkedInAt: new Date().toISOString(), checkInLat: 0, checkInLng: 0, geofencePassed: true, qrScanned: true, status: 'present', minutesLate: 0, lessonNotes: 'test' }
-        }
+          payload: {
+            teacherId: 't-1',
+            schoolId: 'school-A',
+            slotId: SLOT,
+            date: TODAY,
+            checkedInAt: new Date().toISOString(),
+            checkInLat: 0,
+            checkInLng: 0,
+            geofencePassed: true,
+            qrScanned: true,
+            status: 'present',
+            minutesLate: 0,
+            lessonNotes: 'test',
+          },
+        },
       };
-      
-      await expect(processAttendanceJob(job)).rejects.toThrow('Cannot process check-in: holiday day');
+
+      await expect(processAttendanceJob(job)).rejects.toThrow(
+        'Cannot process check-in: holiday day'
+      );
       expect(teacherAttUpsert).not.toHaveBeenCalled();
     });
 
@@ -97,37 +148,52 @@ describe('Attendance Worker Processor (R2-05 / R4-11)', () => {
       const job = {
         data: {
           type: 'teacher-check-in',
-          payload: { teacherId: 't-1', schoolId: 'school-A', slotId: SLOT, date: TODAY, checkedInAt: new Date().toISOString(), checkInLat: 0, checkInLng: 0, geofencePassed: true, qrScanned: true, status: 'present', minutesLate: 0, lessonNotes: 'test' }
-        }
+          payload: {
+            teacherId: 't-1',
+            schoolId: 'school-A',
+            slotId: SLOT,
+            date: TODAY,
+            checkedInAt: new Date().toISOString(),
+            checkInLat: 0,
+            checkInLng: 0,
+            geofencePassed: true,
+            qrScanned: true,
+            status: 'present',
+            minutesLate: 0,
+            lessonNotes: 'test',
+          },
+        },
       };
-      
-      await expect(processAttendanceJob(job)).rejects.toThrow('Invalid or unpublished slot at execution time');
+
+      await expect(processAttendanceJob(job)).rejects.toThrow(
+        'Invalid or unpublished slot at execution time'
+      );
     });
 
     // ✅ NEW TEST: Prevents silent overwrite (ATT-12)
     it('prevents silent overwrite if teacher already checked in (ATT-12)', async () => {
       // Simulate an existing record that already has a checkedInAt time
-      teacherAttFindUnique.mockResolvedValue({ 
-        id: 'att-existing', 
-        checkedInAt: new Date('2026-10-26T08:00:00Z') 
+      teacherAttFindUnique.mockResolvedValue({
+        id: 'att-existing',
+        checkedInAt: new Date('2026-10-26T08:00:00Z'),
       });
 
       const job = {
         data: {
           type: 'teacher-check-in',
-          payload: { 
-            teacherId: 't-1', 
-            schoolId: 'school-A', 
-            slotId: SLOT, 
-            date: TODAY, 
+          payload: {
+            teacherId: 't-1',
+            schoolId: 'school-A',
+            slotId: SLOT,
+            date: TODAY,
             checkedInAt: new Date('2026-10-26T09:00:00Z').toISOString(), // Attempting to check in later
-            status: 'present' 
+            status: 'present',
           },
         },
       } as any;
 
       await expect(processAttendanceJob(job)).rejects.toThrow('TEACHER_ALREADY_CHECKED_IN');
-      
+
       // Verify upsert was NEVER called, preventing the overwrite
       expect(teacherAttUpsert).not.toHaveBeenCalled();
     });
@@ -135,23 +201,23 @@ describe('Attendance Worker Processor (R2-05 / R4-11)', () => {
     // ✅ NEW TEST: Auto-covers the second period for a double lesson (ATT-12)
     it('auto-covers the second period for a double lesson (ATT-12)', async () => {
       const secondPeriodId = 'second-period-uuid';
-      slotFindUnique.mockResolvedValue({ 
-        schoolId: 'school-A', 
-        isPublished: true, 
+      slotFindUnique.mockResolvedValue({
+        schoolId: 'school-A',
+        isPublished: true,
         learningArea: { name: 'Math' },
-        secondPeriodId // <-- Slot is a double lesson
+        secondPeriodId, // <-- Slot is a double lesson
       });
 
       const job = {
         data: {
           type: 'teacher-check-in',
-          payload: { 
-            teacherId: 't-1', 
-            schoolId: 'school-A', 
-            slotId: SLOT, 
-            date: TODAY, 
-            checkedInAt: new Date().toISOString(), 
-            status: 'present' 
+          payload: {
+            teacherId: 't-1',
+            schoolId: 'school-A',
+            slotId: SLOT,
+            date: TODAY,
+            checkedInAt: new Date().toISOString(),
+            status: 'present',
           },
         },
       } as any;
@@ -181,15 +247,15 @@ describe('Attendance Worker Processor (R2-05 / R4-11)', () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2026-10-26T08:00:00Z'));
       const sixMinutesAgo = Date.now() - 6 * 60 * 1000;
-      
+
       const job = {
         data: {
           type: 'teacher-check-in',
-          payload: { 
-            teacherId: 't-1', 
-            schoolId: 'school-A', 
-            slotId: SLOT, 
-            date: TODAY, 
+          payload: {
+            teacherId: 't-1',
+            schoolId: 'school-A',
+            slotId: SLOT,
+            date: TODAY,
             checkedInAt: new Date().toISOString(),
             locationTimestamp: sixMinutesAgo,
             locationAccuracy: 10,
@@ -207,11 +273,11 @@ describe('Attendance Worker Processor (R2-05 / R4-11)', () => {
       const job = {
         data: {
           type: 'teacher-check-in',
-          payload: { 
-            teacherId: 't-1', 
-            schoolId: 'school-A', 
-            slotId: SLOT, 
-            date: TODAY, 
+          payload: {
+            teacherId: 't-1',
+            schoolId: 'school-A',
+            slotId: SLOT,
+            date: TODAY,
             checkedInAt: new Date().toISOString(),
             locationTimestamp: Date.now(),
             locationAccuracy: 75, // > 50m
@@ -237,18 +303,21 @@ describe('Attendance Worker Processor (R2-05 / R4-11)', () => {
             markedBy: 't-1',
             entries: [
               { studentId: 's1', status: 'present' },
-              { studentId: 's2', status: 'absent', absenceReason: 'unknown' }
-            ]
-          }
-        }
+              { studentId: 's2', status: 'absent', absenceReason: 'unknown' },
+            ],
+          },
+        },
       };
-      
+
       const result = await processAttendanceJob(job);
       // 2 student upserts + 1 register upsert = 3. The worker returns length - 1 (which is 2)
-      expect(result).toEqual({ ok: true, count: 2 }); 
-      
+      expect(result).toEqual({ ok: true, count: 2 });
+
       expect(lessonRegisterUpsert).toHaveBeenCalledWith(
-        expect.objectContaining({ update: { isLocked: true }, create: expect.objectContaining({ isLocked: true }) })
+        expect.objectContaining({
+          update: { isLocked: true },
+          create: expect.objectContaining({ isLocked: true }),
+        })
       );
       expect(notifAdd).toHaveBeenCalledWith(
         'absence-alert',
@@ -262,11 +331,19 @@ describe('Attendance Worker Processor (R2-05 / R4-11)', () => {
       const job = {
         data: {
           type: 'student-register',
-          payload: { schoolId: 'school-A', slotId: SLOT, date: TODAY, markedBy: 't-1', entries: [] }
-        }
+          payload: {
+            schoolId: 'school-A',
+            slotId: SLOT,
+            date: TODAY,
+            markedBy: 't-1',
+            entries: [],
+          },
+        },
       };
-      
-      await expect(processAttendanceJob(job)).rejects.toThrow('Cannot process register: exam_day day');
+
+      await expect(processAttendanceJob(job)).rejects.toThrow(
+        'Cannot process register: exam_day day'
+      );
       expect(studentAttUpsert).not.toHaveBeenCalled();
     });
   });

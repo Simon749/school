@@ -18,12 +18,14 @@ export const notificationWorker = new Worker<NotificationJobData>(
   async (job: Job<NotificationJobData>) => {
     const { schoolId, userId, type, title, body, data, priority } = job.data;
 
-    console.log(`[Notification Worker] Processing notification for user ${userId} in school ${schoolId}`);
+    console.log(
+      `[Notification Worker] Processing notification for user ${userId} in school ${schoolId}`
+    );
 
     // R2-05 / R5-04: Re-validate that the target user belongs to the school at execution time
     const user = await prisma.user.findUnique({
-      where: { 
-        id: userId, 
+      where: {
+        id: userId,
         schoolId, // ➕ Strict tenancy check
         isActive: true,
         deletedAt: null,
@@ -38,7 +40,9 @@ export const notificationWorker = new Worker<NotificationJobData>(
     });
 
     if (!user) {
-      console.log(`[Notification Worker] User ${userId} not found or does not belong to school ${schoolId}`);
+      console.log(
+        `[Notification Worker] User ${userId} not found or does not belong to school ${schoolId}`
+      );
       return;
     }
 

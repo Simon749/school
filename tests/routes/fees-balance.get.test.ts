@@ -131,7 +131,7 @@ describe('GET /api/fees/balance/[studentId] (SEC-05)', () => {
     noFinancialRead();
   });
 
-    it('keeps the existing response shape and arithmetic', async () => {
+  it('keeps the existing response shape and arithmetic', async () => {
     signedInAs('bursar');
     feesFindMany.mockResolvedValue([
       {
@@ -146,21 +146,21 @@ describe('GET /api/fees/balance/[studentId] (SEC-05)', () => {
       { amount: '4000', allocations: [{ feeItemId: 'f1', amountAllocated: 4000 }] },
     ]);
     const body = await (await call()).json();
-    
+
     // Updated to match the richer R3-07 response shape
     expect(body.totalDue).toBe(9500);
     expect(body.totalPaid).toBe(4000);
     expect(body.balance).toBe(5500);
     expect(body.items).toEqual([
-      { 
-        feeItemId: 'f1', 
-        feeName: 'Tuition', 
-        amountDue: 10000, 
-        discount: 1000, 
-        carryForward: 500, 
-        paid: 4000, 
-        balance: 5500 
-      }
+      {
+        feeItemId: 'f1',
+        feeName: 'Tuition',
+        amountDue: 10000,
+        discount: 1000,
+        carryForward: 500,
+        paid: 4000,
+        balance: 5500,
+      },
     ]);
   });
 });

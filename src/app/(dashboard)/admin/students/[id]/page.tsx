@@ -486,9 +486,7 @@ export default function StudentProfilePage() {
                     {g.isActive ? (
                       <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-200">
                         <button
-                          onClick={() =>
-                            handleToggleRestrictedAccess(g.id, g.hasRestrictedAccess)
-                          }
+                          onClick={() => handleToggleRestrictedAccess(g.id, g.hasRestrictedAccess)}
                           className="text-[11px] font-medium text-amber-700 hover:text-amber-900 flex items-center gap-1"
                           title={
                             g.hasRestrictedAccess

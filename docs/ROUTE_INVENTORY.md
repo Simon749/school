@@ -10,19 +10,19 @@
 
 | Metric | Count |
 |---|---|
-| API routes | 56 |
-| Dashboard pages/layouts (server) | 16 |
-| Dashboard pages/layouts (client) | 36 |
+| API routes | 63 |
+| Dashboard pages/layouts (server) | 17 |
+| Dashboard pages/layouts (client) | 37 |
 | Server-action files | 2 |
-| **Routes/pages on the shared guard (R1-14 progress)** | 33 / 74 |
+| **Routes/pages on the shared guard (R1-14 progress)** | 50 / 82 |
 | DB access without any auth call | 0 |
 | API route without auth call (non-public) | 0 |
 | Authenticated but no role check visible | 15 |
 | Prisma used without `schoolId` | 6 |
-| Writes without audit | 17 |
-| API writes without validation | 11 |
-| Uses Clerk session claims (second identity model) | 2 |
-| Possible Clerk-ID-vs-UUID lookup | 0 |
+| Writes without audit | 12 |
+| API writes without validation | 12 |
+| Uses Clerk session claims (second identity model) | 1 |
+| Possible Clerk-ID-vs-UUID lookup | 2 |
 
 Flags: `NO-AUTH-CALL` `DB-WITHOUT-AUTH` `NO-ROLE-CHECK` `NO-SCHOOL-SCOPE` `WRITE-NO-AUDIT`
 `WRITE-NO-VALIDATION` `USES-SESSION-CLAIMS` `CHECK-CLERKID-VS-UUID`. Public by design:
@@ -32,16 +32,16 @@ Flags: `NO-AUTH-CALL` `DB-WITHOUT-AUTH` `NO-ROLE-CHECK` `NO-SCHOOL-SCOPE` `WRITE
 
 | Route | Methods | Auth | Guard | Role | School | Guardian | Validate | Audit | RateLim | Writes | Flags |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `/api/activities/enrol` | GET,POST | ✓ | · | ✓ | ✓ | · | · | · | · | 1 | WRITE-NO-AUDIT WRITE-NO-VALIDATION |
+| `/api/activities/enrol` | POST | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | 1 | WRITE-NO-VALIDATION |
 | `/api/admin/audit-logs` | GET | ✓ | · | ✓ | ✓ | · | · | · | · | 0 |  |
-| `/api/admin/dashboard` | GET | ✓ | · | ✓ | ✓ | · | · | · | · | 0 |  |
+| `/api/admin/dashboard` | GET | ✓ | ✓ | ✓ | ✓ | · | · | · | · | 0 |  |
 | `/api/assessments` | GET,POST | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | 1 | WRITE-NO-AUDIT |
 | `/api/assessments/[id]/publish` | POST | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | 1 | WRITE-NO-VALIDATION |
 | `/api/assessments/[id]/results` | POST | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | 3 |  |
-| `/api/attendance/gate` | POST | ✓ | · | ✓ | ✓ | · | · | · | · | 1 | WRITE-NO-AUDIT WRITE-NO-VALIDATION |
+| `/api/attendance/gate` | POST | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | 1 | WRITE-NO-VALIDATION |
 | `/api/attendance/parent/[studentId]` | GET | ✓ | · | ✓ | ✓ | ✓ | · | · | · | 0 |  |
-| `/api/attendance/student` | GET,POST | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | 0 |  |
-| `/api/attendance/teacher` | GET,POST | ✓ | · | ✓ | ✓ | · | · | · | · | 1 | WRITE-NO-AUDIT WRITE-NO-VALIDATION |
+| `/api/attendance/student` | GET,POST | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | 2 |  |
+| `/api/attendance/teacher` | GET,POST | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | 1 | WRITE-NO-VALIDATION |
 | `/api/attendance/teacher/history` | GET | ✓ | · | · | ✓ | · | · | · | · | 0 | NO-ROLE-CHECK |
 | `/api/attendance/unlock` | POST | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | 1 | WRITE-NO-VALIDATION |
 | `/api/bursar/dashboard` | GET | ✓ | · | ✓ | ✓ | · | · | · | · | 0 |  |
@@ -50,15 +50,19 @@ Flags: `NO-AUTH-CALL` `DB-WITHOUT-AUTH` `NO-ROLE-CHECK` `NO-SCHOOL-SCOPE` `WRITE
 | `/api/export/status/[jobId]` | GET | ✓ | ✓ | · | · | · | · | · | · | 0 | NO-ROLE-CHECK |
 | `/api/fees/assign` | POST | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | 1 |  |
 | `/api/fees/balance/[studentId]` | GET | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | 0 |  |
-| `/api/fees/defaulters` | GET | ✓ | · | ✓ | ✓ | · | · | · | · | 0 |  |
-| `/api/fees/disputes` | POST,GET | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | 1 | WRITE-NO-AUDIT |
+| `/api/fees/defaulters` | GET | ✓ | ✓ | ✓ | ✓ | · | · | · | · | 0 |  |
+| `/api/fees/disputes` | GET,POST | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | 1 |  |
 | `/api/fees/disputes/[id]` | PATCH | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | 1 |  |
+| `/api/fees/disputes/[id]/lookup` | POST | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | 1 | WRITE-NO-VALIDATION |
 | `/api/fees/mpesa/stk-push` | POST | ✓ | · | · | ✓ | · | · | · | ✓ | 1 | NO-ROLE-CHECK WRITE-NO-AUDIT WRITE-NO-VALIDATION |
 | `/api/fees/payments` | POST,GET | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | 1 |  |
 | `/api/fees/structure` | POST,GET | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | 1 |  |
 | `/api/grades` | GET | ✓ | · | ✓ | ✓ | · | · | · | · | 0 |  |
+| `/api/guardians/[id]/deactivate` | POST | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | 1 |  |
+| `/api/guardians/[id]/reactivate` | POST | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | 1 | WRITE-NO-VALIDATION |
+| `/api/guardians/[id]/restrict` | POST | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | 1 |  |
 | `/api/health` | GET | · | · | · | · | · | · | · | · | 0 | NO-SCHOOL-SCOPE |
-| `/api/import/students` | POST | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 3 | USES-SESSION-CLAIMS |
+| `/api/import/students` | POST | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 3 | CHECK-CLERKID-VS-UUID |
 | `/api/import/validate` | POST | ✓ | · | ✓ | · | · | ✓ | · | · | 0 | NO-SCHOOL-SCOPE USES-SESSION-CLAIMS |
 | `/api/learning-areas` | GET | ✓ | · | ✓ | ✓ | · | · | · | · | 0 |  |
 | `/api/messages` | POST,GET | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | 1 |  |
@@ -67,26 +71,29 @@ Flags: `NO-AUTH-CALL` `DB-WITHOUT-AUTH` `NO-ROLE-CHECK` `NO-SCHOOL-SCOPE` `WRITE
 | `/api/onboarding/step-4` | POST | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | 3 |  |
 | `/api/parent/attendance` | GET | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | 0 |  |
 | `/api/parent/children` | GET | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | 0 |  |
-| `/api/parent/fees/[studentId]` | GET | ✓ | · | ✓ | ✓ | ✓ | · | · | · | 0 |  |
+| `/api/parent/fees/[studentId]` | GET | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | 0 |  |
 | `/api/parent/results` | GET | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | 0 |  |
+| `/api/portfolio` | POST | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | 1 |  |
+| `/api/results/marks` | POST | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | 1 |  |
+| `/api/results/parent/[studentId]` | GET | ✓ | · | · | ✓ | ✓ | · | · | · | 0 | NO-ROLE-CHECK CHECK-CLERKID-VS-UUID |
 | `/api/results/reports/generate` | POST | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | 1 |  |
-| `/api/school/settings` | GET,PUT | ✓ | · | ✓ | ✓ | · | · | · | · | 1 | WRITE-NO-AUDIT WRITE-NO-VALIDATION |
+| `/api/school/settings` | GET,PUT | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | 1 |  |
 | `/api/streams` | POST | ✓ | · | ✓ | ✓ | · | ✓ | · | · | 1 | WRITE-NO-AUDIT |
 | `/api/streams/[id]` | PATCH,DELETE | ✓ | · | ✓ | ✓ | · | ✓ | · | · | 2 | WRITE-NO-AUDIT |
-| `/api/students` | GET,POST | ✓ | · | ✓ | ✓ | ✓ | ✓ | · | · | 1 | WRITE-NO-AUDIT |
+| `/api/students` | GET,POST | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | 1 | WRITE-NO-AUDIT |
 | `/api/students/[id]` | GET,PUT,DELETE | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | 2 | WRITE-NO-AUDIT |
 | `/api/students/[id]/guardians` | POST | ✓ | · | ✓ | ✓ | ✓ | ✓ | · | · | 3 | WRITE-NO-AUDIT |
-| `/api/teachers` | GET,POST | ✓ | · | ✓ | ✓ | · | ✓ | · | · | 3 | WRITE-NO-AUDIT |
+| `/api/teachers` | GET,POST | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | 3 | WRITE-NO-AUDIT |
 | `/api/teachers/[id]` | GET,PUT,DELETE | ✓ | · | ✓ | ✓ | · | ✓ | · | · | 5 | WRITE-NO-AUDIT |
 | `/api/terms` | GET | ✓ | · | · | ✓ | · | · | · | · | 0 | NO-ROLE-CHECK |
 | `/api/timetable` | GET | ✓ | · | · | ✓ | · | · | · | · | 0 | NO-ROLE-CHECK |
 | `/api/timetable/publish` | POST | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | 1 | WRITE-NO-VALIDATION |
-| `/api/timetable/qr/[slotId]` | GET | ✓ | · | · | ✓ | · | · | · | · | 1 | NO-ROLE-CHECK WRITE-NO-AUDIT WRITE-NO-VALIDATION |
+| `/api/timetable/qr/[slotId]` | GET | ✓ | · | ✓ | ✓ | · | · | · | · | 1 | WRITE-NO-AUDIT WRITE-NO-VALIDATION |
 | `/api/timetable/slot` | POST | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | 2 |  |
 | `/api/timetable/slot/[id]` | DELETE | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | 1 | WRITE-NO-VALIDATION |
 | `/api/timetable/teacher/today` | GET | ✓ | · | · | ✓ | · | · | · | · | 0 | NO-ROLE-CHECK |
 | `/api/users/device-token` | POST,DELETE | ✓ | · | · | · | · | ✓ | · | · | 2 | NO-ROLE-CHECK NO-SCHOOL-SCOPE WRITE-NO-AUDIT |
-| `/api/users/search` | GET | ✓ | · | ✓ | ✓ | · | · | · | · | 0 |  |
+| `/api/users/search` | GET | ✓ | ✓ | ✓ | ✓ | · | · | · | · | 0 |  |
 | `/api/webhooks/mpesa` | POST | · | · | · | · | · | · | · | · | 0 |  |
 
 ## Dashboard pages and layouts (server-rendered)
@@ -105,6 +112,7 @@ Flags: `NO-AUTH-CALL` `DB-WITHOUT-AUTH` `NO-ROLE-CHECK` `NO-SCHOOL-SCOPE` `WRITE
 | `/parent/[studentId]/reports` | server | ✓ | ✓ | ✓ | ✓ | ✓ | 0 |  |
 | `/parent/[studentId]/results` | server | ✓ | · | · | ✓ | ✓ | 0 | NO-ROLE-CHECK |
 | `/parent/messages` | server | ✓ | · | · | ✓ | · | 0 | NO-ROLE-CHECK |
+| `/teacher/classroom` | server | ✓ | · | ✓ | ✓ | · | 0 |  |
 | `/teacher/markbook` | server | ✓ | · | · | ✓ | · | 0 | NO-ROLE-CHECK |
 | `/teacher/markbook/[assessmentId]` | server | ✓ | ✓ | ✓ | ✓ | · | 0 |  |
 | `/teacher/messages` | server | ✓ | · | · | · | · | 0 | NO-ROLE-CHECK NO-SCHOOL-SCOPE |

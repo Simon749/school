@@ -26,11 +26,13 @@ export async function GET(req: NextRequest) {
       phone: true,
       email: true,
       logoUrl: true,
-      ...(isPrivileged ? {
-        latitude: true,
-        longitude: true,
-        geofenceRadius: true,
-      } : {}),
+      ...(isPrivileged
+        ? {
+            latitude: true,
+            longitude: true,
+            geofenceRadius: true,
+          }
+        : {}),
     },
   });
 
@@ -58,7 +60,10 @@ export async function PUT(req: NextRequest) {
 
   const parsed = schoolSettingsSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid payload', details: parsed.error.errors }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid payload', details: parsed.error.errors },
+      { status: 400 }
+    );
   }
 
   const dataToUpdate = parsed.data;
@@ -90,17 +95,20 @@ export async function PUT(req: NextRequest) {
       data: dataToUpdate,
     });
 
-    await logAudit({
-      schoolId: user.schoolId,
-      actorId: user.id,
-      action: 'SCHOOL_SETTINGS_UPDATED', // As requested
-      tableName: 'schools',
-      recordId: user.schoolId,
-      oldData: oldSchool,
-      newData: dataToUpdate,
-      ipAddress,
-      userAgent,
-    }, tx);
+    await logAudit(
+      {
+        schoolId: user.schoolId,
+        actorId: user.id,
+        action: 'SCHOOL_SETTINGS_UPDATED', // As requested
+        tableName: 'schools',
+        recordId: user.schoolId,
+        oldData: oldSchool,
+        newData: dataToUpdate,
+        ipAddress,
+        userAgent,
+      },
+      tx
+    );
 
     return updated;
   });

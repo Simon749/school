@@ -32,10 +32,11 @@ export async function POST(req: NextRequest) {
   const forwarded = req.headers.get('x-forwarded-for') || '';
   const clientIp = forwarded.split(',')[0]?.trim() ?? 'unknown';
   const allowedRanges = ['196.201.214.', '196.201.215.', '196.201.213.']; // Update per latest Safaricom docs
-  
-  const isAllowed = process.env.MPESA_ENV === 'production' 
-    ? allowedRanges.some((r) => clientIp.startsWith(r))
-    : true; // Lenient in sandbox
+
+  const isAllowed =
+    process.env.MPESA_ENV === 'production'
+      ? allowedRanges.some((r) => clientIp.startsWith(r))
+      : true; // Lenient in sandbox
 
   if (!isAllowed) {
     console.warn(`MPesa callback from unauthorized IP: ${clientIp}`);

@@ -77,13 +77,26 @@ export async function GET(req: NextRequest) {
 
   const calendarDay = await getCalendarDay(user.schoolId, attendanceDate);
   if (!calendarDay) {
-    return NextResponse.json({ error: 'No calendar record found for this date. Please configure the school calendar.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'No calendar record found for this date. Please configure the school calendar.' },
+      { status: 400 }
+    );
   }
   if (calendarDay.dayType !== 'school_day') {
-    return NextResponse.json({ error: `Cannot take register: this date is marked as '${calendarDay.dayType.replace(/_/g, ' ')}' in the school calendar.` }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: `Cannot take register: this date is marked as '${calendarDay.dayType.replace(/_/g, ' ')}' in the school calendar.`,
+      },
+      { status: 400 }
+    );
   }
   if (calendarDay.timetableType !== 'normal') {
-    return NextResponse.json({ error: `Cannot take normal lesson register: timetable type for this date is '${calendarDay.timetableType}'.` }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: `Cannot take normal lesson register: timetable type for this date is '${calendarDay.timetableType}'.`,
+      },
+      { status: 400 }
+    );
   }
 
   if (!(await mayUseRegister(user, slot, attendanceDate))) {
@@ -140,7 +153,10 @@ export async function POST(req: NextRequest) {
 
   const parsed = submitRegisterSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid payload', details: parsed.error.errors }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid payload', details: parsed.error.errors },
+      { status: 400 }
+    );
   }
   const { slotId, date, entries, confirmed } = parsed.data;
 
@@ -176,10 +192,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No calendar record found for this date.' }, { status: 400 });
   }
   if (calendarDay.dayType !== 'school_day') {
-    return NextResponse.json({ error: `Cannot submit register: this date is marked as '${calendarDay.dayType.replace(/_/g, ' ')}'.` }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: `Cannot submit register: this date is marked as '${calendarDay.dayType.replace(/_/g, ' ')}'.`,
+      },
+      { status: 400 }
+    );
   }
   if (calendarDay.timetableType !== 'normal') {
-    return NextResponse.json({ error: `Cannot submit normal lesson register: timetable type is '${calendarDay.timetableType}'.` }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: `Cannot submit normal lesson register: timetable type is '${calendarDay.timetableType}'.`,
+      },
+      { status: 400 }
+    );
   }
 
   if (!(await mayUseRegister(user, slot, attendanceDate))) {
@@ -199,14 +225,8 @@ export async function POST(req: NextRequest) {
     idempotencyKey?: string | null;
   } | null;
 
-  if (
-    idempotencyKey &&
-    existingRegisterWithIdempotency?.idempotencyKey === idempotencyKey
-  ) {
-    return NextResponse.json(
-      { success: true, idempotent: true },
-      { status: 200 }
-    );
+  if (idempotencyKey && existingRegisterWithIdempotency?.idempotencyKey === idempotencyKey) {
+    return NextResponse.json({ success: true, idempotent: true }, { status: 200 });
   }
 
   // A locked register cannot be changed by another submission.
@@ -239,53 +259,64 @@ export async function POST(req: NextRequest) {
   const lessonName = slot.learningArea?.name || 'class';
 
   // 2. Process queue operations OUTSIDE the transaction to avoid holding DB locks
-  const processedEntries = await Promise.all(entries.map(async (entry) => {
-    const student = slot.stream.students.find((item) => item.id === entry.studentId);
-    if (!student) return null;
+  const processedEntries = await Promise.all(
+    entries.map(async (entry) => {
+      const student = slot.stream.students.find((item) => item.id === entry.studentId);
+      if (!student) return null;
 
-    const existing = existingAttendanceMap.get(entry.studentId);
-    if (existing && existing.status === 'absent' && existing.notificationJobId && entry.status !== 'absent') {
-      await notificationQueue.remove(existing.notificationJobId).catch(() => { });
-    }
-
-    let notificationJobId: string | null = null;
-    let notificationHeld = false;
-
-    if (entry.status === 'absent') {
-      const parent = await prisma.user.findFirst({
-        where: {
-          isActive: true,
-          deletedAt: null,
-          guardians: { some: { studentId: entry.studentId, isPrimary: true, isActive: true } },
-        },
-        select: { id: true },
-      });
-
-      if (parent) {
-        const job = await notificationQueue.add(
-          'absence-alert',
-          {
-            userId: parent.id,
-            type: 'attendance',
-            title: 'Absence Alert',
-            body: `${student.firstName} was absent from ${lessonName}.${entry.absenceReason ? ` Reason: ${entry.absenceReason}` : ''}`,
-            data: { studentId: entry.studentId, date: attendanceDate.toISOString(), url: `/parent/${entry.studentId}/attendance` },
-          },
-          { delay: 15 * 60 * 1000 }
-        );
-        notificationJobId = job.id ?? null;
-        notificationHeld = true;
+      const existing = existingAttendanceMap.get(entry.studentId);
+      if (
+        existing &&
+        existing.status === 'absent' &&
+        existing.notificationJobId &&
+        entry.status !== 'absent'
+      ) {
+        await notificationQueue.remove(existing.notificationJobId).catch(() => {});
       }
-    }
 
-    return {
-      studentId: entry.studentId,
-      status: entry.status,
-      absenceReason: entry.absenceReason || null,
-      notificationJobId,
-      notificationHeld,
-    };
-  }));
+      let notificationJobId: string | null = null;
+      let notificationHeld = false;
+
+      if (entry.status === 'absent') {
+        const parent = await prisma.user.findFirst({
+          where: {
+            isActive: true,
+            deletedAt: null,
+            guardians: { some: { studentId: entry.studentId, isPrimary: true, isActive: true } },
+          },
+          select: { id: true },
+        });
+
+        if (parent) {
+          const job = await notificationQueue.add(
+            'absence-alert',
+            {
+              userId: parent.id,
+              type: 'attendance',
+              title: 'Absence Alert',
+              body: `${student.firstName} was absent from ${lessonName}.${entry.absenceReason ? ` Reason: ${entry.absenceReason}` : ''}`,
+              data: {
+                studentId: entry.studentId,
+                date: attendanceDate.toISOString(),
+                url: `/parent/${entry.studentId}/attendance`,
+              },
+            },
+            { delay: 15 * 60 * 1000 }
+          );
+          notificationJobId = job.id ?? null;
+          notificationHeld = true;
+        }
+      }
+
+      return {
+        studentId: entry.studentId,
+        status: entry.status,
+        absenceReason: entry.absenceReason || null,
+        notificationJobId,
+        notificationHeld,
+      };
+    })
+  );
 
   const { ipAddress, userAgent } = getRequestMetadata(req);
 
@@ -294,7 +325,9 @@ export async function POST(req: NextRequest) {
     const upsertPromises = processedEntries.map((data) => {
       if (!data) return Promise.resolve();
       return tx.studentLessonAttendance.upsert({
-        where: { studentId_slotId_date: { studentId: data.studentId, slotId, date: attendanceDate } },
+        where: {
+          studentId_slotId_date: { studentId: data.studentId, slotId, date: attendanceDate },
+        },
         update: {
           status: data.status,
           absenceReason: data.absenceReason,
@@ -331,22 +364,25 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await logAudit({
-      schoolId: user.schoolId,
-      actorId: user.id,
-      action: 'ATTENDANCE_REGISTER_SUBMITTED',
-      tableName: 'lesson_registers',
-      recordId: slotId,
-      newData: {
-        slotId,
-        date: attendanceDate.toISOString(),
-        totalStudents: entries.length,
-        presentCount: entries.filter((e) => e.status === 'present').length,
-        absentCount,
+    await logAudit(
+      {
+        schoolId: user.schoolId,
+        actorId: user.id,
+        action: 'ATTENDANCE_REGISTER_SUBMITTED',
+        tableName: 'lesson_registers',
+        recordId: slotId,
+        newData: {
+          slotId,
+          date: attendanceDate.toISOString(),
+          totalStudents: entries.length,
+          presentCount: entries.filter((e) => e.status === 'present').length,
+          absentCount,
+        },
+        ipAddress,
+        userAgent,
       },
-      ipAddress,
-      userAgent,
-    }, tx);
+      tx
+    );
   });
 
   return NextResponse.json({ success: true }, { status: 200 });

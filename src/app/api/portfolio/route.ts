@@ -29,20 +29,29 @@ export async function POST(req: NextRequest) {
 
   const parsed = portfolioSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid payload', details: parsed.error.errors }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid payload', details: parsed.error.errors },
+      { status: 400 }
+    );
   }
 
-  const { studentId, termId, learningAreaId, title, description, artefactType, fileUrl } = parsed.data;
+  const { studentId, termId, learningAreaId, title, description, artefactType, fileUrl } =
+    parsed.data;
 
   // 2. Verify entities belong to caller's school
   const [student, term, learningArea] = await Promise.all([
-    prisma.student.findUnique({ where: { id: studentId, schoolId: user.schoolId, status: 'active' } }),
+    prisma.student.findUnique({
+      where: { id: studentId, schoolId: user.schoolId, status: 'active' },
+    }),
     prisma.term.findUnique({ where: { id: termId, schoolId: user.schoolId } }),
     prisma.learningArea.findUnique({ where: { id: learningAreaId, schoolId: user.schoolId } }),
   ]);
 
   if (!student || !term || !learningArea) {
-    return NextResponse.json({ error: 'Invalid student, term, or learning area for your school' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid student, term, or learning area for your school' },
+      { status: 400 }
+    );
   }
 
   const { ipAddress, userAgent } = getRequestMetadata(req);
@@ -63,16 +72,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await logAudit({
-      schoolId: user.schoolId,
-      actorId: user.id,
-      action: 'PORTFOLIO_ARTEFACT_UPLOADED',
-      tableName: 'portfolio_artefacts',
-      recordId: record.id,
-      newData: { studentId, artefactType, fileUrl },
-      ipAddress,
-      userAgent,
-    }, tx);
+    await logAudit(
+      {
+        schoolId: user.schoolId,
+        actorId: user.id,
+        action: 'PORTFOLIO_ARTEFACT_UPLOADED',
+        tableName: 'portfolio_artefacts',
+        recordId: record.id,
+        newData: { studentId, artefactType, fileUrl },
+        ipAddress,
+        userAgent,
+      },
+      tx
+    );
 
     return record;
   });

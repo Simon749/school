@@ -29,7 +29,14 @@ function getS3(): S3Client {
 function sanitizeCsvCell(value: unknown): string {
   if (value === null || value === undefined) return '';
   const str = String(value);
-  if (str.startsWith('=') || str.startsWith('+') || str.startsWith('-') || str.startsWith('@') || str.startsWith('\t') || str.startsWith('\r')) {
+  if (
+    str.startsWith('=') ||
+    str.startsWith('+') ||
+    str.startsWith('-') ||
+    str.startsWith('@') ||
+    str.startsWith('\t') ||
+    str.startsWith('\r')
+  ) {
     return `'${str}`; // Prefix with single quote to force text interpretation in Excel/Sheets
   }
   return str;

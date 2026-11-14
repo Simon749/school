@@ -90,8 +90,10 @@ export async function GET() {
             lessons: lessons.map((l) => {
               const startIso = l.slot?.period?.startTime.toISOString();
               const endIso = l.slot?.period?.endTime.toISOString();
-              const startTimeStr = startIso ? startIso.split('T')[1]?.slice(0, 5) ?? '00:00' : '00:00';
-              const endTimeStr = endIso ? endIso.split('T')[1]?.slice(0, 5) ?? '00:00' : '00:00';
+              const startTimeStr = startIso
+                ? (startIso.split('T')[1]?.slice(0, 5) ?? '00:00')
+                : '00:00';
+              const endTimeStr = endIso ? (endIso.split('T')[1]?.slice(0, 5) ?? '00:00') : '00:00';
 
               return {
                 id: l.id,

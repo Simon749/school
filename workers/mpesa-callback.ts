@@ -13,20 +13,16 @@ interface MpesaCallbackData {
 }
 
 export async function processMpesaCallback(data: MpesaCallbackData) {
-  const {
-    checkoutRequestId,
-    resultCode,
-    resultDesc,
-    callbackMetadata,
-    sourceIp,
-  } = data;
+  const { checkoutRequestId, resultCode, resultDesc, callbackMetadata, sourceIp } = data;
 
   const attempt = await prisma.paymentAttempt.findUnique({
     where: { checkoutRequestId },
   });
 
   if (!attempt) {
-    console.warn(`[MpesaWorker] Callback received for unknown checkoutRequestId: ${checkoutRequestId}`);
+    console.warn(
+      `[MpesaWorker] Callback received for unknown checkoutRequestId: ${checkoutRequestId}`
+    );
     return { missing: true };
   }
 
@@ -65,7 +61,11 @@ export async function processMpesaCallback(data: MpesaCallbackData) {
   const cleanAttemptPhone = String(attempt.phone).replace(/\D/g, '');
   const cleanCallbackPhone = callbackPhone.replace(/\D/g, '');
 
-  if (cleanAttemptPhone.length < 9 || cleanCallbackPhone.length < 9 || !cleanCallbackPhone.endsWith(cleanAttemptPhone.slice(-9))) {
+  if (
+    cleanAttemptPhone.length < 9 ||
+    cleanCallbackPhone.length < 9 ||
+    !cleanCallbackPhone.endsWith(cleanAttemptPhone.slice(-9))
+  ) {
     throw new Error(`Phone mismatch: expected ${cleanAttemptPhone}, got ${cleanCallbackPhone}`);
   }
 

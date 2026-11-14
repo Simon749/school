@@ -11,7 +11,7 @@ type RestrictedGuardianSensitiveData = Partial<{
 
 /**
  * Sanitizes student/attendance data based on guardian restrictions.
- * Per DESIGN §7 / D4: Restricted guardians cannot see arrival/departure times 
+ * Per DESIGN §7 / D4: Restricted guardians cannot see arrival/departure times
  * or precise location data, but can still see attendance status and results.
  */
 export function sanitizeForRestrictedGuardian<T extends Record<string, any>>(

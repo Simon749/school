@@ -8,10 +8,7 @@ const deactivateSchema = z.object({
   reason: z.string().min(5, 'Deactivation reason must be at least 5 characters'),
 });
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   // 1. Central guard: Admin only
   const guard = await requireUser(['admin']);
   if (!guard.ok) return guard.response;
@@ -41,7 +38,10 @@ export async function POST(
   });
 
   if (!guardian) {
-    return NextResponse.json({ error: 'Guardian not found or not in your school' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Guardian not found or not in your school' },
+      { status: 404 }
+    );
   }
 
   if (!guardian.isActive) {
@@ -75,9 +75,12 @@ export async function POST(
   });
 
   // 5. Return specific code so frontend can force a logout if the deactivated user is the current session
-  return NextResponse.json({ 
-    success: true, 
-    message: 'Guardian deactivated successfully',
-    clerkId: guardian.user.clerkId // Frontend can use this to target session revocation if needed
-  }, { status: 200 });
+  return NextResponse.json(
+    {
+      success: true,
+      message: 'Guardian deactivated successfully',
+      clerkId: guardian.user.clerkId, // Frontend can use this to target session revocation if needed
+    },
+    { status: 200 }
+  );
 }

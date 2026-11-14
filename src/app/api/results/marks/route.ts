@@ -6,11 +6,13 @@ import { z } from 'zod';
 
 const marksEntrySchema = z.object({
   assessmentId: z.string().uuid(),
-  results: z.array(z.object({
-    studentId: z.string().uuid(),
-    marksObtained: z.number().min(0).optional(),
-    teacherComment: z.string().max(500).optional(),
-  })),
+  results: z.array(
+    z.object({
+      studentId: z.string().uuid(),
+      marksObtained: z.number().min(0).optional(),
+      teacherComment: z.string().max(500).optional(),
+    })
+  ),
 });
 
 export async function POST(req: NextRequest) {
@@ -28,7 +30,10 @@ export async function POST(req: NextRequest) {
 
   const parsed = marksEntrySchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid payload', details: parsed.error.errors }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid payload', details: parsed.error.errors },
+      { status: 400 }
+    );
   }
 
   const { assessmentId, results } = parsed.data;
@@ -40,11 +45,17 @@ export async function POST(req: NextRequest) {
   });
 
   if (!assessment) {
-    return NextResponse.json({ error: 'Assessment not found or not in your school' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Assessment not found or not in your school' },
+      { status: 404 }
+    );
   }
 
   if (assessment.status === 'locked' || assessment.status === 'published') {
-    return NextResponse.json({ error: 'Cannot modify marks for a locked or published assessment' }, { status: 409 });
+    return NextResponse.json(
+      { error: 'Cannot modify marks for a locked or published assessment' },
+      { status: 409 }
+    );
   }
 
   // 3. Verify teacher owns this assessment (unless admin)
@@ -86,16 +97,19 @@ export async function POST(req: NextRequest) {
 
     await Promise.all(upsertPromises);
 
-    await logAudit({
-      schoolId: user.schoolId,
-      actorId: user.id,
-      action: 'ASSESSMENT_MARKS_ENTERED',
-      tableName: 'assessment_results',
-      recordId: assessmentId,
-      newData: { resultCount: results.length },
-      ipAddress,
-      userAgent,
-    }, tx);
+    await logAudit(
+      {
+        schoolId: user.schoolId,
+        actorId: user.id,
+        action: 'ASSESSMENT_MARKS_ENTERED',
+        tableName: 'assessment_results',
+        recordId: assessmentId,
+        newData: { resultCount: results.length },
+        ipAddress,
+        userAgent,
+      },
+      tx
+    );
   });
 
   return NextResponse.json({ success: true }, { status: 200 });

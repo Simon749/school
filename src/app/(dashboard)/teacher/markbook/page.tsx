@@ -30,7 +30,7 @@ const getStatusBadge = (status: string) => {
 };
 
 export default async function TeacherMarkbookPage() {
-  const { userId } =  auth();
+  const { userId } = auth();
   if (!userId) redirect('/sign-in');
 
   // FIX: First find the User by clerkId, then get the teacher

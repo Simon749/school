@@ -3,7 +3,7 @@ import { requireUser } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
-  // R1-14 / R1-22: Use central guard. Strictly limit directory search to admin and it_admin 
+  // R1-14 / R1-22: Use central guard. Strictly limit directory search to admin and it_admin
   // to prevent broad PII exposure (phone, email) to lower-tier roles.
   const guard = await requireUser(['admin', 'it_admin']);
   if (!guard.ok) return guard.response;
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const phone = searchParams.get('phone')?.trim();
   const email = searchParams.get('email')?.trim();
-  
+
   // Allow searching specific roles, defaulting to 'parent' for guardian linking workflows
   const role = searchParams.get('role')?.trim() || 'parent';
 
@@ -22,10 +22,10 @@ export async function GET(req: NextRequest) {
 
   // SEC-21: Strictly scope to the caller's school AND only return active, non-deleted users
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = { 
-    schoolId: user.schoolId, 
-    isActive: true, 
-    deletedAt: null 
+  const where: any = {
+    schoolId: user.schoolId,
+    isActive: true,
+    deletedAt: null,
   };
 
   if (role) {
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
       firstName: true,
       lastName: true,
       role: true,
-      // R1-22: PII (phone/email) is safely returned here ONLY because the central guard 
+      // R1-22: PII (phone/email) is safely returned here ONLY because the central guard
       // above strictly guarantees the caller is an admin or it_admin.
       phone: true,
       email: true,

@@ -8,10 +8,7 @@ const restrictSchema = z.object({
   hasRestrictedAccess: z.boolean(),
 });
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const guard = await requireUser(['admin']);
   if (!guard.ok) return guard.response;
   const user = guard.user;

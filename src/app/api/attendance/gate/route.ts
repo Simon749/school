@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ✅ ATT-07: IGNORE client-supplied arrivedAt to prevent backdating attacks
-  const { studentId } = body; 
+  const { studentId } = body;
 
   if (!studentId || typeof studentId !== 'string') {
     return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
@@ -38,10 +38,15 @@ export async function POST(req: NextRequest) {
   // 3. Server time & Calendar validation (ATT-07, ATT-10)
   const now = getNairobiNow();
   const todayStr = getNairobiDateString(now);
-  
+
   const calendarDay = await getCalendarDay(user.schoolId, new Date(`${todayStr}T00:00:00.000Z`));
   if (!calendarDay || calendarDay.dayType !== 'school_day') {
-    return NextResponse.json({ error: `Gate arrival cannot be recorded on a ${calendarDay?.dayType || 'non-school'} day.` }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: `Gate arrival cannot be recorded on a ${calendarDay?.dayType || 'non-school'} day.`,
+      },
+      { status: 400 }
+    );
   }
 
   const auditMeta = getRequestMetadata(req);
@@ -61,23 +66,34 @@ export async function POST(req: NextRequest) {
     });
 
     // ✅ ATT-07: Pass tx to logAudit to ensure it runs in the same transaction
-    await logAudit({
-      schoolId: user.schoolId,
-      actorId: user.id,
-      action: 'STUDENT_GATE_ARRIVAL',
-      tableName: 'StudentDailyAttendance',
-      recordId: attendance.id,
-      newData: { studentId, arrivedAt: now.toISOString(), status: 'present' },
-      ipAddress: auditMeta.ipAddress,
-      userAgent: auditMeta.userAgent,
-    }, tx);
+    await logAudit(
+      {
+        schoolId: user.schoolId,
+        actorId: user.id,
+        action: 'STUDENT_GATE_ARRIVAL',
+        tableName: 'StudentDailyAttendance',
+        recordId: attendance.id,
+        newData: { studentId, arrivedAt: now.toISOString(), status: 'present' },
+        ipAddress: auditMeta.ipAddress,
+        userAgent: auditMeta.userAgent,
+      },
+      tx
+    );
 
     return attendance;
   });
 
-  return NextResponse.json({ 
-    success: true, 
-    message: `${student.firstName} ${student.lastName} marked present at ${now.toLocaleTimeString('en-GB', { timeZone: 'Africa/Nairobi' })}`,
-    record: { id: record.id, studentId: record.studentId, arrivedAt: record.arrivedAt, status: record.status }
-  }, { status: 201 });
+  return NextResponse.json(
+    {
+      success: true,
+      message: `${student.firstName} ${student.lastName} marked present at ${now.toLocaleTimeString('en-GB', { timeZone: 'Africa/Nairobi' })}`,
+      record: {
+        id: record.id,
+        studentId: record.studentId,
+        arrivedAt: record.arrivedAt,
+        status: record.status,
+      },
+    },
+    { status: 201 }
+  );
 }
