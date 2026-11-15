@@ -1,7 +1,16 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, CheckCircle, Clock, MapPin, XCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  MapPin,
+  XCircle,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 
 // Helper to get YYYY-MM-DD in Africa/Nairobi (UTC+3) to prevent UTC skew on client init
 const getTodayNairobi = () => {
@@ -32,22 +41,28 @@ interface AttendanceSlot {
   } | null;
 }
 
+const PAGE_SIZE = 10;
+
 export default function AdminAttendancePage() {
   const [slots, setSlots] = useState<AttendanceSlot[]>([]);
   const [date, setDate] = useState(getTodayNairobi());
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [error, setError] = useState<string | null>(null); // R6-10: Explicit error state
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchAttendance = useCallback(async () => {
     setLoading(true);
     setError(null);
+
     try {
       const res = await fetch(`/api/attendance/teacher?date=${date}`);
+
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || 'Failed to load attendance data');
       }
+
       const data = await res.json();
       setSlots(data.slots || []);
     } catch (err) {
@@ -64,15 +79,34 @@ export default function AdminAttendancePage() {
 
   useEffect(() => {
     if (!autoRefresh) return;
+
     const id = setInterval(fetchAttendance, 30000);
     return () => clearInterval(id);
   }, [autoRefresh, fetchAttendance]);
 
+  // Reset pagination when the selected date changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [date]);
+
+  // Attendance statistics (calculated using ALL records)
   const alerts = slots.filter((s) => s.needsAlert);
   const present = slots.filter((s) => s.status === 'present').length;
   const late = slots.filter((s) => s.status === 'late').length;
   const absent = slots.filter((s) => s.status === 'absent').length;
   const pending = slots.filter((s) => s.status === 'pending').length;
+
+  // Pagination calculations
+  const totalPages = Math.ceil(slots.length / PAGE_SIZE);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+
+  const paginatedSlots = slots.slice(
+    startIndex,
+    startIndex + PAGE_SIZE
+  );
+
+  const startRecord = slots.length === 0 ? 0 : startIndex + 1;
+  const endRecord = Math.min(startIndex + PAGE_SIZE, slots.length);
 
   const formatTime = (t: string) =>
     t.includes('T')
@@ -88,8 +122,11 @@ export default function AdminAttendancePage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Teacher Attendance</h1>
-          <p className="text-sm text-gray-500 mt-1">Real-time check-in status for {date}</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Real-time check-in status for {date}
+          </p>
         </div>
+
         <div className="flex items-center gap-3">
           <input
             type="date"
@@ -97,6 +134,7 @@ export default function AdminAttendancePage() {
             onChange={(e) => setDate(e.target.value)}
             className="px-3 py-2 rounded-lg border border-gray-300 text-sm"
           />
+
           <label className="flex items-center gap-2 text-sm text-gray-600">
             <input
               type="checkbox"
@@ -126,6 +164,7 @@ export default function AdminAttendancePage() {
           </div>
           <p className="text-2xl font-bold text-gray-900">{present}</p>
         </div>
+
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center gap-2 mb-1">
             <Clock className="w-4 h-4 text-amber-600" />
@@ -133,6 +172,7 @@ export default function AdminAttendancePage() {
           </div>
           <p className="text-2xl font-bold text-gray-900">{late}</p>
         </div>
+
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center gap-2 mb-1">
             <XCircle className="w-4 h-4 text-red-600" />
@@ -140,6 +180,7 @@ export default function AdminAttendancePage() {
           </div>
           <p className="text-2xl font-bold text-gray-900">{absent}</p>
         </div>
+
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center gap-2 mb-1">
             <Clock className="w-4 h-4 text-gray-400" />
@@ -154,13 +195,17 @@ export default function AdminAttendancePage() {
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-red-600" />
-            <h3 className="text-sm font-bold text-red-800">Starting Soon — No Check-In</h3>
+            <h3 className="text-sm font-bold text-red-800">
+              Starting Soon — No Check-In
+            </h3>
           </div>
+
           <div className="space-y-1">
             {alerts.map((s) => (
               <p key={s.id} className="text-xs text-red-700">
-                {s.period.name} ({formatTime(s.period.startTime)}) — {s.teacher.user.firstName}{' '}
-                {s.teacher.user.lastName} · {s.stream.grade.name} {s.stream.name}
+                {s.period.name} ({formatTime(s.period.startTime)}) —{' '}
+                {s.teacher.user.firstName} {s.teacher.user.lastName} ·{' '}
+                {s.stream.grade.name} {s.stream.name}
               </p>
             ))}
           </div>
@@ -170,95 +215,184 @@ export default function AdminAttendancePage() {
       {/* Grid */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-gray-400">Loading...</div>
-        ) : slots.length === 0 ? (
-          <div className="p-12 text-center text-gray-400">No scheduled periods for this day.</div>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {slots.map((slot) => {
-              const statusColors = {
-                present: 'bg-green-50 border-green-200 text-green-800',
-                late: 'bg-amber-50 border-amber-200 text-amber-800',
-                absent: 'bg-red-50 border-red-200 text-red-800',
-                pending: 'bg-gray-50 border-gray-200 text-gray-600',
-              };
-
-              const StatusIcon = {
-                present: CheckCircle,
-                late: Clock,
-                absent: XCircle,
-                pending: Clock,
-              }[slot.status];
-
-              return (
-                <div
-                  key={slot.id}
-                  className={`p-4 border-l-4 ${statusColors[slot.status]?.split(' ')[2]?.replace('text-', 'border-') ?? 'border-gray-300'}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center ${statusColors[slot.status].split(' ')[0]}`}
-                      >
-                        <StatusIcon
-                          className={`w-5 h-5 ${statusColors[slot.status].split(' ')[2]}`}
-                        />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-900">{slot.period.name}</span>
-                          <span className="text-xs text-gray-500">
-                            {formatTime(slot.period.startTime)} – {formatTime(slot.period.endTime)}
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {slot.teacher.user.firstName} {slot.teacher.user.lastName} ·{' '}
-                          {slot.learningArea.name} · {slot.stream.grade.name} {slot.stream.name}
-                          {slot.room && <span className="text-gray-400"> · {slot.room}</span>}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span
-                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${statusColors[slot.status]}`}
-                      >
-                        {slot.status.charAt(0).toUpperCase() + slot.status.slice(1)}
-                      </span>
-                      {slot.attendance?.minutesLate && (
-                        <p className="text-[10px] text-gray-500 mt-1">
-                          +{slot.attendance.minutesLate} min late
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {slot.attendance && (
-                    <div className="mt-3 ml-14 text-xs text-gray-500 flex items-center gap-4">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        Checked in at{' '}
-                        {new Date(slot.attendance.checkedInAt).toLocaleTimeString('en-GB', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                      {slot.attendance.checkInLat && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          GPS verified
-                        </span>
-                      )}
-                      {slot.attendance.lessonNotes && (
-                        <span className="italic text-gray-400">
-                          "{slot.attendance.lessonNotes}"
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div className="p-12 text-center text-gray-400">
+            Loading...
           </div>
+        ) : slots.length === 0 ? (
+          <div className="p-12 text-center text-gray-400">
+            No scheduled periods for this day.
+          </div>
+        ) : (
+          <>
+            <div className="divide-y divide-gray-100">
+              {paginatedSlots.map((slot) => {
+                const statusColors = {
+                  present: 'bg-green-50 border-green-200 text-green-800',
+                  late: 'bg-amber-50 border-amber-200 text-amber-800',
+                  absent: 'bg-red-50 border-red-200 text-red-800',
+                  pending: 'bg-gray-50 border-gray-200 text-gray-600',
+                };
+
+                const StatusIcon = {
+                  present: CheckCircle,
+                  late: Clock,
+                  absent: XCircle,
+                  pending: Clock,
+                }[slot.status];
+
+                return (
+                  <div
+                    key={slot.id}
+                    className={`p-4 border-l-4 ${
+                      statusColors[slot.status]
+                        ?.split(' ')[2]
+                        ?.replace('text-', 'border-') ?? 'border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            statusColors[slot.status].split(' ')[0]
+                          }`}
+                        >
+                          <StatusIcon
+                            className={`w-5 h-5 ${
+                              statusColors[slot.status].split(' ')[2]
+                            }`}
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-gray-900">
+                              {slot.period.name}
+                            </span>
+
+                            <span className="text-xs text-gray-500">
+                              {formatTime(slot.period.startTime)} –{' '}
+                              {formatTime(slot.period.endTime)}
+                            </span>
+                          </div>
+
+                          <div className="text-sm text-gray-600">
+                            {slot.teacher.user.firstName}{' '}
+                            {slot.teacher.user.lastName} ·{' '}
+                            {slot.learningArea.name} ·{' '}
+                            {slot.stream.grade.name} {slot.stream.name}
+                            {slot.room && (
+                              <span className="text-gray-400"> · {slot.room}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${
+                            statusColors[slot.status]
+                          }`}
+                        >
+                          {slot.status.charAt(0).toUpperCase() +
+                            slot.status.slice(1)}
+                        </span>
+
+                        {slot.attendance?.minutesLate && (
+                          <p className="text-[10px] text-gray-500 mt-1">
+                            +{slot.attendance.minutesLate} min late
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {slot.attendance && (
+                      <div className="mt-3 ml-14 text-xs text-gray-500 flex items-center gap-4">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Checked in at{' '}
+                          {new Date(
+                            slot.attendance.checkedInAt
+                          ).toLocaleTimeString('en-GB', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+
+                        {slot.attendance.checkInLat && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            GPS verified
+                          </span>
+                        )}
+
+                        {slot.attendance.lessonNotes && (
+                          <span className="italic text-gray-400">
+                            "{slot.attendance.lessonNotes}"
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-gray-200">
+              <p className="text-sm text-gray-500">
+                Showing{' '}
+                <span className="font-medium text-gray-900">{startRecord}</span>
+                {' '}to{' '}
+                <span className="font-medium text-gray-900">{endRecord}</span>
+                {' '}of{' '}
+                <span className="font-medium text-gray-900">{slots.length}</span>
+                {' '}attendance records
+              </p>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
+                  disabled={currentPage === 1}
+                  className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-2 text-sm font-medium rounded-lg ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

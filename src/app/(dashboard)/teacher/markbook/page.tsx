@@ -83,10 +83,10 @@ export default async function TeacherMarkbookPage() {
         <CreateAssessmentDialog
           streams={teacher.school.streams}
           learningAreas={teacher.school.learningAreas}
-          terms={teacher.school.terms.map((t) => ({ id: t.id, name: t.name || 'Unnamed Term' }))}
-          onSuccess={function (): void {
-            throw new Error('Function not implemented.');
-          }}
+          terms={teacher.school.terms.map((t) => ({
+            id: t.id,
+            name: t.name || 'Unnamed Term',
+          }))}
         />
       </div>
 

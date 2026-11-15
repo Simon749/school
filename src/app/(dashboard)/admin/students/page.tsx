@@ -250,33 +250,80 @@ export default function StudentsPage() {
         </div>
 
         {/* Pagination */}
-        {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
-            <p className="text-xs text-gray-500">
-              Showing {(pagination.page - 1) * pagination.limit + 1}-
-              {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+
+        {/* Pagination */}
+        {!loading && pagination.total > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-gray-200">
+            <p className="text-sm text-gray-500">
+              Showing{' '}
+              <span className="font-medium text-gray-900">
+                {(pagination.page - 1) * pagination.limit + 1}
+              </span>
+              {' '}to{' '}
+              <span className="font-medium text-gray-900">
+                {Math.min(pagination.page * pagination.limit, pagination.total)}
+              </span>
+              {' '}of{' '}
+              <span className="font-medium text-gray-900">
+                {pagination.total}
+              </span>
+              {' '}students
             </p>
+
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
-                disabled={pagination.page <= 1}
-                className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
+                type="button"
+                onClick={() =>
+                  setPagination((p) => ({
+                    ...p,
+                    page: Math.max(1, p.page - 1),
+                  }))
+                }
+                disabled={pagination.page <= 1 || loading}
+                className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-4 h-4" />
+                Previous
               </button>
-              <span className="text-sm text-gray-600">
-                Page {pagination.page} of {pagination.totalPages}
-              </span>
+
+              {Array.from(
+                { length: pagination.totalPages },
+                (_, i) => i + 1
+              ).map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() =>
+                    setPagination((p) => ({ ...p, page }))
+                  }
+                  disabled={loading}
+                  className={`px-3 py-2 text-sm font-medium rounded-lg ${pagination.page === page
+                      ? 'bg-blue-600 text-white'
+                      : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                >
+                  {page}
+                </button>
+              ))}
+
               <button
-                onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
-                disabled={pagination.page >= pagination.totalPages}
-                className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
+                type="button"
+                onClick={() =>
+                  setPagination((p) => ({
+                    ...p,
+                    page: Math.min(p.totalPages, p.page + 1),
+                  }))
+                }
+                disabled={pagination.page >= pagination.totalPages || loading}
+                className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
               >
+                Next
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

@@ -84,12 +84,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const allocation = await allocatePayment({
-    studentId: student.id,
-    termId: currentTerm.id,
-    amount: amount.toNumber(), // allocatePayment expects a number
-  });
-
   const { ipAddress, userAgent } = getRequestMetadata(req);
 
   // ✅ PAY-09 & PAY-10: Atomic DB update + Audit + Receipt Generation

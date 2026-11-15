@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, Plus, GraduationCap, Users, ShieldCheck } from 'lucide-react';
+import { Search, Plus, GraduationCap, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Teacher {
   id: string;
@@ -22,21 +23,26 @@ interface Teacher {
   classTeacherStream: { name: string; grade: { name: string } } | null;
 }
 
+const PAGE_SIZE = 10;
+
 export default function TeachersPage() {
   const router = useRouter();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchTeachers = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
+
       const res = await fetch(`/api/teachers?${params}`);
       if (!res.ok) throw new Error('Failed to load');
+
       const data = await res.json();
-      setTeachers(data.teachers);
+      setTeachers(data.teachers || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -48,6 +54,22 @@ export default function TeachersPage() {
     fetchTeachers();
   }, [fetchTeachers]);
 
+  // Reset pagination when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(teachers.length / PAGE_SIZE);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const paginatedTeachers = teachers.slice(
+    startIndex,
+    startIndex + PAGE_SIZE
+  );
+
+  const startRecord = teachers.length === 0 ? 0 : startIndex + 1;
+  const endRecord = Math.min(startIndex + PAGE_SIZE, teachers.length);
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -57,6 +79,7 @@ export default function TeachersPage() {
             {teachers.length} teacher{teachers.length !== 1 ? 's' : ''} on staff
           </p>
         </div>
+
         <Link
           href="/admin/teachers/new"
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
@@ -92,6 +115,7 @@ export default function TeachersPage() {
                 <th className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
+
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
@@ -109,7 +133,7 @@ export default function TeachersPage() {
                   </td>
                 </tr>
               ) : (
-                teachers.map((t) => (
+                paginatedTeachers.map((t) => (
                   <tr
                     key={t.id}
                     className="hover:bg-gray-50 cursor-pointer"
@@ -123,6 +147,7 @@ export default function TeachersPage() {
                         {t.user.email || t.user.phone || 'No contact'}
                       </div>
                     </td>
+
                     <td className="px-6 py-4">
                       <div className="text-gray-900">{t.tscNumber || '—'}</div>
                       <span
@@ -135,6 +160,7 @@ export default function TeachersPage() {
                         {t.employmentType.toUpperCase()}
                       </span>
                     </td>
+
                     <td className="px-6 py-4">
                       {t.isClassTeacher && t.classTeacherStream ? (
                         <div className="flex items-center gap-1.5">
@@ -147,9 +173,11 @@ export default function TeachersPage() {
                         <span className="text-gray-400 text-sm">—</span>
                       )}
                     </td>
+
                     <td className="px-6 py-4 text-gray-600 max-w-xs truncate">
                       {t.specialisation || '—'}
                     </td>
+
                     <td className="px-6 py-4">
                       {t.user.isActive ? (
                         <span className="text-[10px] font-medium px-2 py-0.5 bg-green-50 text-green-700 rounded-full border border-green-100">
@@ -161,6 +189,7 @@ export default function TeachersPage() {
                         </span>
                       )}
                     </td>
+
                     <td className="px-6 py-4 text-right">
                       <Link
                         href={`/admin/teachers/${t.id}`}
@@ -176,6 +205,56 @@ export default function TeachersPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {!loading && teachers.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-gray-200">
+            <p className="text-sm text-gray-500">
+              Showing <span className="font-medium text-gray-900">{startRecord}</span>
+              {' '}to{' '}
+              <span className="font-medium text-gray-900">{endRecord}</span>
+              {' '}of{' '}
+              <span className="font-medium text-gray-900">{teachers.length}</span> teachers
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-2 text-sm font-medium rounded-lg ${
+                    currentPage === page
+                      ? 'bg-blue-600 text-white'
+                      : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

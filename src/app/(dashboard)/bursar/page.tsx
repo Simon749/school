@@ -17,20 +17,15 @@ import {
   ChevronRight,
   ArrowRight,
   AlertCircle,
-  Info,
-  Calendar,
   Clock,
 } from 'lucide-react';
 import {
   AreaChart,
   Area,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  CartesianGrid,
   PieChart,
   Pie,
   Cell,
@@ -97,7 +92,7 @@ interface DashboardData {
 }
 
 // ---------------------------------------------------------------------------
-// Shared Components (matching Admin dashboard)
+// Shared Components
 // ---------------------------------------------------------------------------
 
 function SectionHeader({ title, action, href }: { title: string; action?: string; href?: string }) {
@@ -180,122 +175,88 @@ function EmptyState({ children }: { children: React.ReactNode }) {
 function FinancialOverview({ data }: { data: DashboardData }) {
   const { summary, school } = data;
   const hasTerm = !!school.term;
-  const pct =
-    summary.targetAmount > 0
-      ? Math.round((summary.totalCollected / summary.targetAmount) * 100)
-      : 0;
+  const pct = summary.targetAmount > 0 ? Math.round((summary.totalCollected / summary.targetAmount) * 100) : 0;
 
   return (
-    <Card className="p-6">
-      <SectionHeader title="Financial Overview" action="Full report" href="/bursar/reports" />
+    <Card className="p-6 flex flex-col justify-between h-[440px]">
+      <div>
+        <SectionHeader title="Financial Overview" action="Full report" href="/bursar/reports" />
+        {!hasTerm ? (
+          <EmptyState>No current term is set up yet — fee figures will appear once one is.</EmptyState>
+        ) : summary.targetAmount === 0 ? (
+          <EmptyState>No fee structure has been set up for this term yet.</EmptyState>
+        ) : (
+          <>
+            <div className="mb-5">
+              <div className="mb-2 flex items-baseline justify-between">
+                <span className="text-xs uppercase tracking-wide text-slate-500">Collection Progress</span>
+                <span className="font-mono text-sm font-medium text-slate-800">{pct}% collected</span>
+              </div>
+              <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${Math.min(100, pct)}%` }} />
+              </div>
+              <div className="mt-1.5 flex justify-between font-mono text-xs text-slate-500">
+                <span>{formatKes(summary.totalCollected)} collected</span>
+                <span>{formatKes(summary.targetAmount)} target</span>
+              </div>
+            </div>
 
-      {!hasTerm ? (
-        <EmptyState>
-          No current term is set up yet — fee figures will appear once one is.
-        </EmptyState>
-      ) : summary.targetAmount === 0 ? (
-        <EmptyState>No fee structure has been set up for this term yet.</EmptyState>
-      ) : (
-        <>
-          <div className="mb-6">
-            <div className="mb-2 flex items-baseline justify-between">
-              <span className="text-xs uppercase tracking-wide text-slate-500">
-                Collection Progress
-              </span>
-              <span className="font-mono text-sm font-medium text-slate-800">{pct}% collected</span>
+            <div className="mb-5 grid grid-cols-3 gap-3">
+              <div className="rounded-lg bg-slate-50 p-3 text-center">
+                <p className="mb-1 text-xs text-slate-500">Outstanding</p>
+                <p className="font-mono text-sm font-semibold text-slate-900">{formatKes(summary.totalOutstanding)}</p>
+              </div>
+              <div className="rounded-lg bg-red-50 p-3 text-center">
+                <p className="mb-1 text-xs text-red-500">Defaulters</p>
+                <p className="font-mono text-sm font-semibold text-red-700">{summary.defaultersCount}</p>
+                <p className="mt-0.5 text-xs text-red-400">students</p>
+              </div>
+              <div className="rounded-lg bg-emerald-50 p-3 text-center">
+                <p className="mb-1 text-xs text-emerald-600">Today</p>
+                <p className="font-mono text-sm font-semibold text-emerald-800">{formatKes(summary.amountToday)}</p>
+                <p className="mt-0.5 text-xs text-emerald-500">{summary.paymentsToday} payments</p>
+              </div>
             </div>
-            <div className="h-3 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full bg-emerald-500 transition-all"
-                style={{ width: `${Math.min(100, pct)}%` }}
-              />
-            </div>
-            <div className="mt-1.5 flex justify-between font-mono text-xs text-slate-500">
-              <span>{formatKes(summary.totalCollected)} collected</span>
-              <span>{formatKes(summary.targetAmount)} target</span>
-            </div>
-          </div>
 
-          <div className="mb-6 grid grid-cols-3 gap-4">
-            <div className="rounded-lg bg-slate-50 p-3 text-center">
-              <p className="mb-1 text-xs text-slate-500">Outstanding</p>
-              <p className="font-mono text-sm font-semibold text-slate-900">
-                {formatKes(summary.totalOutstanding)}
-              </p>
-            </div>
-            <div className="rounded-lg bg-red-50 p-3 text-center">
-              <p className="mb-1 text-xs text-red-500">Defaulters</p>
-              <p className="font-mono text-sm font-semibold text-red-700">
-                {summary.defaultersCount}
-              </p>
-              <p className="mt-0.5 text-xs text-red-400">students</p>
-            </div>
-            <div className="rounded-lg bg-emerald-50 p-3 text-center">
-              <p className="mb-1 text-xs text-emerald-600">Today</p>
-              <p className="font-mono text-sm font-semibold text-emerald-800">
-                {formatKes(summary.amountToday)}
-              </p>
-              <p className="mt-0.5 text-xs text-emerald-500">{summary.paymentsToday} payments</p>
-            </div>
-          </div>
-
-          {data.dailyCollections.length > 0 && (
-            <div>
-              <p className="mb-3 text-xs uppercase tracking-wide text-slate-500">
-                7-Day Collection Trend
-              </p>
-              <ResponsiveContainer width="100%" height={120}>
-                <AreaChart
-                  data={data.dailyCollections}
-                  margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="feeGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="dayLabel"
-                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis hide />
-                  <Tooltip
-                    formatter={(v) => [formatKes(Number(v ?? 0)), 'Collected']}
-                    contentStyle={{ fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 6 }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="amount"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    fill="url(#feeGrad)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </>
-      )}
+            {data.dailyCollections.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs uppercase tracking-wide text-slate-500">7-Day Collection Trend</p>
+                <ResponsiveContainer width="100%" height={90}>
+                  <AreaChart data={data.dailyCollections} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="feeGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="dayLabel" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <YAxis hide />
+                    <Tooltip formatter={(v) => [formatKes(Number(v ?? 0)), 'Collected']} contentStyle={{ fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 6 }} />
+                    <Area type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={2} fill="url(#feeGrad)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </Card>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Section: Recent Payments
+// Section: Recent Payments (Height-constrained to prevent white-space mismatch)
 // ---------------------------------------------------------------------------
 
 function RecentPayments({ data }: { data: DashboardData }) {
   return (
-    <Card className="p-6">
+    <Card className="p-6 flex flex-col h-[440px]">
       <SectionHeader title="Recent Payments" action="View all" href="/bursar/fees/payments" />
 
       {data.recentPayments.length === 0 ? (
         <EmptyState>No payments recorded yet.</EmptyState>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-y-auto flex-1 pr-1">
           {data.recentPayments.map((payment) => (
             <div
               key={payment.id}
@@ -332,7 +293,7 @@ function RecentPayments({ data }: { data: DashboardData }) {
 }
 
 // ---------------------------------------------------------------------------
-// Section: Defaulters Alert
+// Section: Top Defaulters
 // ---------------------------------------------------------------------------
 
 function DefaultersAlert({ data }: { data: DashboardData }) {
@@ -344,7 +305,7 @@ function DefaultersAlert({ data }: { data: DashboardData }) {
         <EmptyState>No outstanding balances — great job!</EmptyState>
       ) : (
         <div className="space-y-3">
-          {data.topDefaulters.map((defaulter) => (
+          {data.topDefaulters.slice(0, 4).map((defaulter) => (
             <div
               key={defaulter.id}
               className="flex items-start justify-between rounded-lg border border-l-4 border-l-red-400 border-slate-100 bg-red-50 p-3"
@@ -389,63 +350,65 @@ function PaymentMethods({ data }: { data: DashboardData }) {
   const COLORS = ['#10b981', '#64748b', '#f59e0b', '#8b5cf6'];
 
   return (
-    <Card className="p-6">
-      <SectionHeader title="Payment Methods" />
+    <Card className="p-6 flex flex-col justify-between">
+      <div>
+        <SectionHeader title="Payment Methods" />
 
-      {data.paymentMethods.length === 0 ? (
-        <EmptyState>No payment data available yet.</EmptyState>
-      ) : (
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <div className="flex-1">
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie
-                  data={data.paymentMethods}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={70}
-                  paddingAngle={2}
-                  dataKey="amount"
-                >
-                  {data.paymentMethods.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(v) => formatKes(Number(v))}
-                  contentStyle={{ fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 6 }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex-1 space-y-2">
-            {data.paymentMethods.map((method, index) => (
-              <div key={method.method} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div
-                    className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+        {data.paymentMethods.length === 0 ? (
+          <EmptyState>No payment data available yet.</EmptyState>
+        ) : (
+          <div className="flex flex-col gap-6 lg:flex-row items-center">
+            <div className="flex-1 w-full">
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie
+                    data={data.paymentMethods}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={70}
+                    paddingAngle={2}
+                    dataKey="amount"
+                  >
+                    {data.paymentMethods.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(v) => formatKes(Number(v))}
+                    contentStyle={{ fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 6 }}
                   />
-                  <span className="text-sm capitalize text-slate-700">{method.method}</span>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex-1 w-full space-y-3">
+              {data.paymentMethods.map((method, index) => (
+                <div key={method.method} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="h-3 w-3 rounded-full"
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <span className="capitalize text-slate-700">{method.method}</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-mono text-xs font-semibold text-slate-800">
+                      {formatKes(method.amount)}
+                    </p>
+                    <p className="text-[11px] text-slate-500">{method.count} transactions</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-mono text-sm font-medium text-slate-800">
-                    {formatKes(method.amount)}
-                  </p>
-                  <p className="text-xs text-slate-500">{method.count} transactions</p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </Card>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Section: Fee Structure Summary
+// Section: Fee Structure + Disputes Footer Row
 // ---------------------------------------------------------------------------
 
 function FeeStructureSummary({ data }: { data: DashboardData }) {
@@ -483,9 +446,9 @@ function FeeStructureSummary({ data }: { data: DashboardData }) {
       </div>
 
       <div className="mt-4 rounded-lg border border-slate-100 p-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-slate-600">Total Fee Items</span>
-          <span className="font-mono text-sm font-semibold text-slate-900">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-slate-600">Total Fee Items</span>
+          <span className="font-mono font-semibold text-slate-900">
             {feeStructureSummary.itemsCount} items
           </span>
         </div>
@@ -494,39 +457,44 @@ function FeeStructureSummary({ data }: { data: DashboardData }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Section: Open Disputes
-// ---------------------------------------------------------------------------
-
 function OpenDisputes({ data }: { data: DashboardData }) {
   return (
-    <Card className="p-6">
-      <SectionHeader title="Payment Disputes" action="Resolve" href="/bursar/fees/disputes" />
+    <Card className="p-6 flex flex-col justify-between h-full">
+      <div>
+        <SectionHeader title="Payment Disputes" action="Resolve" href="/bursar/fees/disputes" />
 
-      {data.summary.disputesOpen === 0 ? (
-        <EmptyState>No open disputes — all clear!</EmptyState>
-      ) : (
-        <div className="rounded-lg border border-l-4 border-l-amber-400 border-slate-100 bg-amber-50 p-4">
-          <div className="flex items-start gap-3">
-            <ShieldAlert className="h-5 w-5 flex-shrink-0 text-amber-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-slate-800">
-                {data.summary.disputesOpen}{' '}
-                {data.summary.disputesOpen === 1 ? 'dispute' : 'disputes'} pending review
-              </p>
-              <p className="mt-0.5 text-xs text-slate-600">
-                Parents have raised payment discrepancies that need your attention.
-              </p>
+        {data.summary.disputesOpen === 0 ? (
+          <div className="flex items-center gap-3 py-6 px-4 rounded-lg bg-emerald-50/50 border border-emerald-100 mt-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 flex-shrink-0">
+              <ShieldAlert className="h-5 w-5" />
             </div>
-            <Link
-              href="/bursar/fees/disputes"
-              className="flex-shrink-0 rounded-md bg-white px-3 py-1.5 text-xs font-medium text-amber-700 shadow-sm hover:bg-amber-100"
-            >
-              Review
-            </Link>
+            <div>
+              <p className="text-sm font-medium text-slate-800">Everything is reconciled</p>
+              <p className="text-xs text-slate-500 mt-0.5">No open disputes — all clear!</p>
+            </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="rounded-lg border border-l-4 border-l-amber-400 border-slate-100 bg-amber-50 p-4">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="h-5 w-5 flex-shrink-0 text-amber-600" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-800">
+                  {data.summary.disputesOpen} pending review
+                </p>
+                <p className="mt-0.5 text-xs text-slate-600">
+                  Parents have raised payment discrepancies.
+                </p>
+              </div>
+              <Link
+                href="/bursar/fees/disputes"
+                className="rounded-md bg-white px-3 py-1.5 text-xs font-medium text-amber-700 shadow-sm hover:bg-amber-100"
+              >
+                Review
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
     </Card>
   );
 }
@@ -609,7 +577,7 @@ export default function BursarDashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Greeting */}
+      {/* Greeting Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
@@ -623,7 +591,7 @@ export default function BursarDashboardPage() {
         <p className="hidden text-xs text-slate-400 sm:block">{dateStr}</p>
       </div>
 
-      {/* School Pulse - Financial Metrics */}
+      {/* Financial Pulse KPI Cards */}
       <section>
         <SectionHeader title="Financial Pulse" />
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -662,20 +630,20 @@ export default function BursarDashboardPage() {
         </div>
       </section>
 
-      {/* Financial Overview + Recent Payments */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Row 1: Financial Overview & Recent Payments */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
         <FinancialOverview data={data} />
         <RecentPayments data={data} />
       </div>
 
-      {/* Defaulters + Payment Methods */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Row 2: Top Defaulters & Payment Methods */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
         <DefaultersAlert data={data} />
         <PaymentMethods data={data} />
       </div>
 
-      {/* Fee Structure + Disputes */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Row 3: Fee Structure & Disputes */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
         <FeeStructureSummary data={data} />
         <OpenDisputes data={data} />
       </div>

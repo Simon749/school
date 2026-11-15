@@ -30,7 +30,7 @@ interface CreateAssessmentDialogProps {
   streams: { id: string; name: string }[];
   learningAreas: { id: string; name: string }[];
   terms: { id: string; name: string }[];
-  onSuccess: () => void;
+  onSuccess?: () => void;
 }
 
 export function CreateAssessmentDialog({
@@ -70,7 +70,7 @@ export function CreateAssessmentDialog({
 
       toast.success('Assessment created successfully');
       setOpen(false);
-      onSuccess();
+      onSuccess?.();
     } catch (error: any) {
       toast.error(error.message);
     } finally {
