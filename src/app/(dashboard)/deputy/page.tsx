@@ -281,7 +281,8 @@ export default async function DeputyDashboardPage() {
       {/* Main Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Today's Lessons */}
-        <Card className="p-6">
+        {/* Today's Lessons */}
+        <Card className="p-6 flex flex-col">
           <SectionHeader
             title="Today's Timetable"
             action="Uncovered lessons"
@@ -290,7 +291,7 @@ export default async function DeputyDashboardPage() {
           {slotsToday.length === 0 ? (
             <EmptyState>No timetable slots scheduled for today.</EmptyState>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1 flex-1">
               {slotsToday.map((slot) => {
                 const att = slot.teacherAttendances[0];
                 const isUncovered = uncovered.some((u) => u.id === slot.id);

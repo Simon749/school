@@ -8,11 +8,11 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  Users,
-  Clock,
   CheckCircle2,
   AlertCircle,
-  BookOpen,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -60,7 +60,15 @@ function Stat({
   );
 }
 
-export default async function TeacherPerformancePage() {
+export default async function TeacherPerformancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const page = Math.max(1, parseInt(resolvedSearchParams.page ?? '1', 10));
+  const pageSize = 10;
+
   // SEC-09: deputy/admin only, and everything below is scoped to the caller's own school.
   const user = await requirePageUser(['deputy', 'admin']);
   const schoolId = user.schoolId;
@@ -127,6 +135,10 @@ export default async function TeacherPerformancePage() {
   });
 
   teacherStats.sort((a, b) => a.stats.reliabilityRate - b.stats.reliabilityRate);
+
+  const totalTeachers = teacherStats.length;
+  const totalPages = Math.ceil(totalTeachers / pageSize) || 1;
+  const paginatedTeachers = teacherStats.slice((page - 1) * pageSize, page * pageSize);
 
   const avgPunctuality =
     teacherStats.length > 0
@@ -214,11 +226,11 @@ export default async function TeacherPerformancePage() {
       {/* Teacher List */}
       <Card className="p-6">
         <SectionHeader title="Performance Breakdown" />
-        {teacherStats.length === 0 ? (
+        {paginatedTeachers.length === 0 ? (
           <EmptyState>No teacher data available for this term.</EmptyState>
         ) : (
           <div className="space-y-5">
-            {teacherStats.map((t) => (
+            {paginatedTeachers.map((t) => (
               <div key={t.id} className="rounded-xl border border-slate-100 p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -320,6 +332,46 @@ export default async function TeacherPerformancePage() {
                 </div>
               </div>
             ))}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+                <p className="text-xs text-slate-500">
+                  Showing <span className="font-medium">{(page - 1) * pageSize + 1}</span> to{' '}
+                  <span className="font-medium">
+                    {Math.min(page * pageSize, totalTeachers)}
+                  </span>{' '}
+                  of <span className="font-medium">{totalTeachers}</span> teachers
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled={page <= 1}>
+                    {page > 1 ? (
+                      <Link href={`?page=${page - 1}`} className="inline-flex items-center">
+                        <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                      </Link>
+                    ) : (
+                      <span className="inline-flex items-center">
+                        <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                      </span>
+                    )}
+                  </Button>
+                  <span className="text-xs font-medium text-slate-600 px-2">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button variant="outline" size="sm" disabled={page >= totalPages}>
+                    {page < totalPages ? (
+                      <Link href={`?page=${page + 1}`} className="inline-flex items-center">
+                        Next <ChevronRight className="ml-1 h-4 w-4" />
+                      </Link>
+                    ) : (
+                      <span className="inline-flex items-center">
+                        Next <ChevronRight className="ml-1 h-4 w-4" />
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Card>

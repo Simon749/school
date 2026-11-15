@@ -11,6 +11,7 @@ import {
   Clock,
   MapPin,
   BookOpen,
+  ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -33,7 +34,15 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   return <p className="py-6 text-center text-sm text-slate-400">{children}</p>;
 }
 
-export default async function UncoveredLessonsPage() {
+export default async function UncoveredLessonsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const page = Math.max(1, parseInt(resolvedSearchParams.page ?? '1', 10));
+  const pageSize = 5;
+
   // SEC-09: deputy/admin only, and everything below is scoped to the caller's own school.
   const user = await requirePageUser(['deputy', 'admin']);
   const schoolId = user.schoolId;
@@ -112,6 +121,10 @@ export default async function UncoveredLessonsPage() {
     return { ...slot, candidates };
   });
 
+  const totalLessons = uncoveredWithSubs.length;
+  const totalPages = Math.ceil(totalLessons / pageSize) || 1;
+  const paginatedLessons = uncoveredWithSubs.slice((page - 1) * pageSize, page * pageSize);
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -135,7 +148,7 @@ export default async function UncoveredLessonsPage() {
       </div>
 
       {/* Status Banner */}
-      {uncoveredWithSubs.length === 0 ? (
+      {totalLessons === 0 ? (
         <div className="rounded-lg border border-l-4 border-emerald-100 border-l-emerald-500 bg-emerald-50 p-4">
           <div className="flex items-center gap-3">
             <UserCheck className="h-5 w-5 text-emerald-600" />
@@ -153,8 +166,7 @@ export default async function UncoveredLessonsPage() {
             <AlertTriangle className="h-5 w-5 flex-shrink-0 text-red-500" />
             <div>
               <p className="text-sm font-semibold text-red-800">
-                {uncoveredWithSubs.length} Uncovered Lesson
-                {uncoveredWithSubs.length > 1 ? 's' : ''}
+                {totalLessons} Uncovered Lesson{totalLessons > 1 ? 's' : ''}
               </p>
               <p className="text-xs text-red-700">
                 Assign a substitute teacher to each period below.
@@ -166,7 +178,7 @@ export default async function UncoveredLessonsPage() {
 
       {/* Lesson Cards */}
       <div className="space-y-6">
-        {uncoveredWithSubs.map((slot) => (
+        {paginatedLessons.map((slot) => (
           <Card key={slot.id} className="overflow-hidden">
             <div className="border-b border-slate-100 bg-slate-50 p-5">
               <div className="flex items-start justify-between">
@@ -269,6 +281,50 @@ export default async function UncoveredLessonsPage() {
             </div>
           </Card>
         ))}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-500">
+                Showing <span className="font-medium">{(page - 1) * pageSize + 1}</span> to{' '}
+                <span className="font-medium">
+                  {Math.min(page * pageSize, totalLessons)}
+                </span>{' '}
+                of <span className="font-medium">{totalLessons}</span> uncovered lessons
+              </p>
+              <div className="flex items-center gap-2">
+                {page > 1 ? (
+                  <Link
+                    href={`?page=${page - 1}`}
+                    className="inline-flex h-8 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                  </Link>
+                ) : (
+                  <span className="inline-flex h-8 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-3 text-xs font-medium text-slate-400">
+                    <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                  </span>
+                )}
+                <span className="px-2 text-xs font-medium text-slate-600">
+                  Page {page} of {totalPages}
+                </span>
+                {page < totalPages ? (
+                  <Link
+                    href={`?page=${page + 1}`}
+                    className="inline-flex h-8 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    Next <ChevronRight className="ml-1 h-4 w-4" />
+                  </Link>
+                ) : (
+                  <span className="inline-flex h-8 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-3 text-xs font-medium text-slate-400">
+                    Next <ChevronRight className="ml-1 h-4 w-4" />
+                  </span>
+                )}
+              </div>
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );
