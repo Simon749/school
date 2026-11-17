@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { LeafletMap } from '@/components/ui/leaflet-map';
 
 interface SchoolSettings {
   id: string;
@@ -72,10 +73,10 @@ export default function SchoolSettingsPage() {
         setSettings((prev) =>
           prev
             ? {
-                ...prev,
-                latitude: pos.coords.latitude,
-                longitude: pos.coords.longitude,
-              }
+              ...prev,
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+            }
             : null
         );
         setCapturing(false);
@@ -233,10 +234,11 @@ export default function SchoolSettingsPage() {
 
             {/* Map Preview Placeholder (Per Design Docs) */}
             <div className="mt-4 h-64 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center">
-              <p className="text-sm text-slate-500">
-                [Leaflet.js Map Preview will render here showing pin at {settings.latitude},{' '}
-                {settings.longitude}]
-              </p>
+              <LeafletMap
+                latitude={settings.latitude}
+                longitude={settings.longitude}
+                radius={settings.geofenceRadius}
+              />
             </div>
           </CardContent>
         </Card>
