@@ -33,6 +33,49 @@ interface Student {
   firstName: string;
   lastName: string;
   admissionNumber: string | null;
+  /** Active primary guardian, loaded server-side by the page (at most one). */
+  guardians?: { userId: string }[];
+}
+
+/** Which user receives a message about this student, or null if nobody is linked. */
+function primaryGuardianUserId(student: Student): string | null {
+  return student.guardians?.[0]?.userId ?? null;
+}
+
+function studentLabel(student: Student): string {
+  const name = `${student.firstName} ${student.lastName}`;
+  const adm = student.admissionNumber ? ` (${student.admissionNumber})` : '';
+  const noGuardian = primaryGuardianUserId(student) ? '' : ' — no guardian linked';
+  return `${name}${adm}${noGuardian}`;
+}
+
+/** Shows the student's NAME (via `items`), not the raw id; trigger fills the column. */
+function StudentSelect({
+  students,
+  value,
+  onChange,
+}: {
+  students: Student[];
+  value: string | undefined;
+  onChange: (v: string | undefined) => void;
+}) {
+  const items = students.map((s) => ({ value: s.id, label: studentLabel(s) }));
+  return (
+    <Select value={value ?? null} onValueChange={(v) => onChange(v ? String(v) : undefined)} items={items}>
+      <FormControl>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Choose a student" />
+        </SelectTrigger>
+      </FormControl>
+      <SelectContent>
+        {students.map((student) => (
+          <SelectItem key={student.id} value={student.id}>
+            {studentLabel(student)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 interface TeacherComposeMessageProps {
@@ -54,15 +97,15 @@ export function TeacherComposeMessage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'individual' | 'class'>('individual');
 
-  const form = useForm<z.input<typeof createMessageSchema>>({
+  const form = useForm<z.input<typeof createMessageSchema>, unknown, CreateMessageInput>({
     resolver: zodResolver(createMessageSchema),
     defaultValues: {
       messageType: 'direct',
       subject: '',
       body: '',
       sendViaSms: false,
-      recipientId: '',
-      streamId: streamId || '',
+      recipientId: undefined,
+      streamId: undefined,
     },
   });
 
@@ -71,7 +114,7 @@ export function TeacherComposeMessage({
     if (activeTab === 'class' && streamId) {
       form.setValue('messageType', 'class');
       form.setValue('streamId', streamId);
-      form.setValue('recipientId', ''); // Clear individual recipient
+      form.setValue('recipientId', undefined); // Clear individual recipient
       form.clearErrors('recipientId');
     } else {
       form.setValue('messageType', 'direct');
@@ -85,24 +128,15 @@ export function TeacherComposeMessage({
       let payload = { ...data };
 
       if (data.messageType === 'direct') {
-        if (!data.recipientId) {
-          toast.error('Please select a student');
-          setIsSubmitting(false);
+        // data.recipientId is a STUDENT id here; the message goes to that student's primary guardian.
+        // The server (POST /api/messages) re-checks that this teacher may message that guardian.
+        const student = students.find((st) => st.id === data.recipientId);
+        const guardianUserId = student ? primaryGuardianUserId(student) : null;
+        if (!guardianUserId) {
+          toast.error('This student has no linked guardian. Ask the school admin to link one.');
           return;
         }
-        
-        // Fetch the primary guardian for this student
-        const res = await fetch(`/api/students/${data.recipientId}/guardian`);
-        if (!res.ok) throw new Error('Failed to fetch guardian information');
-        const { guardian } = await res.json();
-        
-        if (!guardian) {
-          toast.error('This student has no linked guardian');
-          setIsSubmitting(false);
-          return;
-        }
-        
-        payload.recipientId = guardian.userId;
+        payload.recipientId = guardianUserId;
       }
 
       const sendRes = await fetch('/api/messages', {
@@ -112,16 +146,16 @@ export function TeacherComposeMessage({
       });
 
       if (!sendRes.ok) {
-        const err = await sendRes.json();
-        throw new Error(err.error || 'Failed to send message');
+        const err = await sendRes.json().catch(() => null);
+        throw new Error(err?.error || 'Failed to send message');
       }
 
       toast.success('Message sent successfully');
       setOpen(false);
       form.reset();
       setActiveTab('individual');
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to send message');
     } finally {
       setIsSubmitting(false);
     }
@@ -137,9 +171,7 @@ export function TeacherComposeMessage({
         setActiveTab('individual');
       }
     }}>
-      <DialogTrigger>
-        <Button>Compose Message</Button>
-      </DialogTrigger>
+      <DialogTrigger render={<Button>Compose Message</Button>} />
       <DialogContent className="max-w-2xl sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Send Message</DialogTitle>
@@ -162,21 +194,7 @@ export function TeacherComposeMessage({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Select Student</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Choose a student" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {students.map((student) => (
-                              <SelectItem key={student.id} value={student.id}>
-                                {student.firstName} {student.lastName}
-                                {student.admissionNumber && ` (${student.admissionNumber})`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <StudentSelect students={students} value={field.value} onChange={field.onChange} />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -201,21 +219,7 @@ export function TeacherComposeMessage({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Select Student</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose a student" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {students.map((student) => (
-                          <SelectItem key={student.id} value={student.id}>
-                            {student.firstName} {student.lastName}
-                            {student.admissionNumber && ` (${student.admissionNumber})`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <StudentSelect students={students} value={field.value} onChange={field.onChange} />
                     <FormMessage />
                   </FormItem>
                 )}

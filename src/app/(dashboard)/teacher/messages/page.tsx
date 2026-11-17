@@ -26,7 +26,9 @@ export default async function TeacherMessagesPage() {
                   lastName: true,
                   admissionNumber: true,
                   guardians: {
-                    where: { isPrimary: true, isActive: true },
+                    // Prefer the primary guardian; otherwise any active one (isPrimary defaults to false)
+                    where: { isActive: true },
+                    orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
                     select: { userId: true },
                     take: 1,
                   },

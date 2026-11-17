@@ -58,21 +58,28 @@ const PAGES: [string, TestPage][] = [
 
 const user = (role: string, overrides: Record<string, unknown> = {}) => ({
   id: 'user-1',
+  clerkId: 'clerk_1',
   role,
   schoolId: 'school-A',
   isActive: true,
+  deletedAt: null,
   ...overrides,
 });
 
-const calls = () => h.state.calls;
-const dataCalls = () => h.state.calls.filter((c) => c.model !== 'user' && c.method !== 'findUnique');
+// `calls` must stay the SAME array object (reset with .length = 0), so these helpers see every query.
+const calls = h.state.calls;
+// Any query on a model other than `user` counts as "data". Do NOT exempt findUnique here:
+// that would hide a missing schoolId filter on findUnique queries.
+const dataCalls = () => calls.filter((c) => c.model !== 'user');
 
 beforeEach(() => {
-  h.state.calls = [];
+  calls.length = 0;
   h.state.currentTerm = null;
-  h.state.userRow = null;
+  h.state.userRow = user('deputy');
   authMock.mockReset();
   redirectMock.mockClear();
+  // A signed-in Clerk session by default; the "anonymous" test overrides this.
+  authMock.mockResolvedValue({ userId: 'clerk_1' });
 });
 
 describe.each(PAGES)('%s page (SEC-09)', (_name, Page) => {
