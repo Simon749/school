@@ -1,14 +1,13 @@
-// src/components/messages/TeacherComposeMessage.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { createMessageSchema, CreateMessageInput } from '@/lib/validations/message.schema';
+import { CreateMessageInput, createMessageSchema } from '@/lib/validations/message.schema';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -17,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -25,6 +25,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+// FIX: Added 'Form' to the imports
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 interface Student {
   id: string;
@@ -36,61 +38,77 @@ interface Student {
 interface TeacherComposeMessageProps {
   students: Student[];
   teacherId: string;
+  isClassTeacher?: boolean;
+  streamId?: string;
+  streamName?: string;
 }
 
-type CreateMessageFormInput = z.input<typeof createMessageSchema>;
-
-export function TeacherComposeMessage({ students, teacherId }: TeacherComposeMessageProps) {
+export function TeacherComposeMessage({ 
+  students, 
+  teacherId, 
+  isClassTeacher = false, 
+  streamId, 
+  streamName 
+}: TeacherComposeMessageProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'individual' | 'class'>('individual');
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors },
-    reset,
-  } = useForm<CreateMessageFormInput, unknown, CreateMessageInput>({
+  const form = useForm<z.input<typeof createMessageSchema>>({
     resolver: zodResolver(createMessageSchema),
     defaultValues: {
       messageType: 'direct',
+      subject: '',
       body: '',
       sendViaSms: false,
+      recipientId: '',
+      streamId: streamId || '',
     },
   });
 
-  const bodyLength = watch('body')?.length || 0;
+  // Sync form values with the active tab
+  useEffect(() => {
+    if (activeTab === 'class' && streamId) {
+      form.setValue('messageType', 'class');
+      form.setValue('streamId', streamId);
+      form.setValue('recipientId', ''); // Clear individual recipient
+      form.clearErrors('recipientId');
+    } else {
+      form.setValue('messageType', 'direct');
+      form.setValue('streamId', undefined);
+    }
+  }, [activeTab, streamId, form]);
 
   const onSubmit = async (data: CreateMessageInput) => {
-    if (!selectedStudent) {
-      toast.error('Please select a student');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      // Get the primary guardian for this student
-      const res = await fetch(`/api/students/${selectedStudent}/guardian`);
-      if (!res.ok) throw new Error('Failed to fetch guardian');
-      const { guardian } = await res.json();
+      let payload = { ...data };
 
-      if (!guardian) {
-        toast.error('This student has no linked guardian');
-        setIsSubmitting(false);
-        return;
+      if (data.messageType === 'direct') {
+        if (!data.recipientId) {
+          toast.error('Please select a student');
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // Fetch the primary guardian for this student
+        const res = await fetch(`/api/students/${data.recipientId}/guardian`);
+        if (!res.ok) throw new Error('Failed to fetch guardian information');
+        const { guardian } = await res.json();
+        
+        if (!guardian) {
+          toast.error('This student has no linked guardian');
+          setIsSubmitting(false);
+          return;
+        }
+        
+        payload.recipientId = guardian.userId;
       }
-
-      const messageData = {
-        ...data,
-        recipientId: guardian.userId,
-      };
 
       const sendRes = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(messageData),
+        body: JSON.stringify(payload),
       });
 
       if (!sendRes.ok) {
@@ -100,8 +118,8 @@ export function TeacherComposeMessage({ students, teacherId }: TeacherComposeMes
 
       toast.success('Message sent successfully');
       setOpen(false);
-      reset();
-      setSelectedStudent(null);
+      form.reset();
+      setActiveTab('individual');
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -109,74 +127,169 @@ export function TeacherComposeMessage({ students, teacherId }: TeacherComposeMes
     }
   };
 
+  const bodyLength = form.watch('body')?.length || 0;
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      setOpen(isOpen);
+      if (!isOpen) {
+        form.reset();
+        setActiveTab('individual');
+      }
+    }}>
       <DialogTrigger>
         <Button>Compose Message</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Send Message to Parent</DialogTitle>
+          <DialogTitle>Send Message</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
-          <div className="space-y-2">
-            <Label>Select Student</Label>
-            <Select onValueChange={(v: string | null) => setSelectedStudent(v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a student" />
-              </SelectTrigger>
-              <SelectContent>
-                {students.map((student) => (
-                  <SelectItem key={student.id} value={student.id}>
-                    {student.firstName} {student.lastName}
-                    {student.admissionNumber && ` (${student.admissionNumber})`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedStudent && (
-              <p className="text-xs text-muted-foreground">
-                Message will be sent to the primary guardian of this student.
-              </p>
+        
+        {/* FIX: Wrap the standard HTML form with shadcn's <Form> provider */}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+            {isClassTeacher && (
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'individual' | 'class')} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="individual">Individual Parent</TabsTrigger>
+                  <TabsTrigger value="class">Entire Class</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="individual" className="space-y-4 pt-2">
+                  <FormField
+                    control={form.control}
+                    name="recipientId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select Student</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose a student" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {students.map((student) => (
+                              <SelectItem key={student.id} value={student.id}>
+                                {student.firstName} {student.lastName}
+                                {student.admissionNumber && ` (${student.admissionNumber})`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TabsContent>
+
+                <TabsContent value="class" className="pt-2">
+                  <div className="rounded-md bg-blue-50 p-3 text-sm text-blue-900 border border-blue-200">
+                    <p>
+                      <strong>Class Broadcast:</strong> This message will be sent to all parents/guardians of students in{' '}
+                      <strong>{streamName || 'your class'}</strong>.
+                    </p>
+                  </div>
+                </TabsContent>
+              </Tabs>
             )}
-          </div>
 
-          <div className="space-y-2">
-            <Label>Message (500 characters max)</Label>
-            <Textarea
-              {...register('body')}
-              placeholder="Type your message here..."
-              className="min-h-[120px]"
+            {!isClassTeacher && (
+              <FormField
+                control={form.control}
+                name="recipientId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Select Student</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a student" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {students.map((student) => (
+                          <SelectItem key={student.id} value={student.id}>
+                            {student.firstName} {student.lastName}
+                            {student.admissionNumber && ` (${student.admissionNumber})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <FormField
+              control={form.control}
+              name="subject"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Subject (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Upcoming Parent-Teacher Meeting" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            <div className="flex justify-between items-center">
-              {errors.body && <p className="text-sm text-red-500">{errors.body.message}</p>}
-              <p
-                className={`text-xs ${bodyLength > 500 ? 'text-red-500' : 'text-muted-foreground'}`}
-              >
-                {bodyLength}/500
-              </p>
+
+            <FormField
+              control={form.control}
+              name="body"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Message</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Type your message here..."
+                      className="min-h-[120px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <div className="flex justify-between items-center">
+                    <FormMessage />
+                    <p className={`text-xs ${bodyLength > 500 ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
+                      {bodyLength}/500
+                    </p>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="sendViaSms"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Also send via SMS</FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      Useful if the parent does not actively check the app.
+                    </p>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Sending...' : 'Send Message'}
+              </Button>
             </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="sendViaSms"
-              onCheckedChange={(checked) => setValue('sendViaSms', !!checked)}
-            />
-            <Label htmlFor="sendViaSms" className="text-sm">
-              Also send via SMS (if parent doesn't have the app)
-            </Label>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !selectedStudent}>
-              {isSubmitting ? 'Sending...' : 'Send Message'}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

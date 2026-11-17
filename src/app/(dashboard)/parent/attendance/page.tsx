@@ -359,7 +359,7 @@ export default function ParentAttendancePage() {
             <CardHeader>
               <CardTitle className="text-base font-semibold">Recent Attendance</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="max-h-[500px] space-y-4 overflow-y-auto overscroll-contain pr-3">
               {selectedChild.recentDays.map((day) => (
                 <div
                   key={day.date}

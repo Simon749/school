@@ -79,10 +79,10 @@ export default function TeacherTodayPage() {
           // Map the API's classTeacherPanel to the UI's myClass shape
           const mappedMyClass = d.classTeacherPanel
             ? {
-                gradeName: d.classTeacherPanel.stream.grade,
-                streamName: d.classTeacherPanel.stream.name,
-                studentCount: d.classTeacherPanel.studentCount,
-              }
+              gradeName: d.classTeacherPanel.stream.grade,
+              streamName: d.classTeacherPanel.stream.name,
+              studentCount: d.classTeacherPanel.studentCount,
+            }
             : prev.myClass; // Keep fallback if not a class teacher
 
           return {
@@ -342,15 +342,14 @@ export default function TeacherTodayPage() {
           <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm space-y-4">
             <h2 className="text-lg font-bold text-slate-900">Today's Schedule</h2>
 
-            <div className="space-y-3">
+            <div className="max-h-[500px] overflow-y-auto overscroll-contain space-y-3 pr-3">
               {data?.slots?.map((slot) => {
                 const isCurrent = currentSlot?.id === slot.id;
                 return (
                   <div
                     key={slot.id}
-                    className={`rounded-lg border border-slate-300 p-4 flex items-center justify-between relative overflow-hidden bg-white transition-all ${
-                      isCurrent ? 'ring-1 ring-emerald-500/50' : ''
-                    }`}
+                    className={`rounded-lg border border-slate-300 p-4 flex items-center justify-between relative overflow-hidden bg-white transition-all ${isCurrent ? 'ring-1 ring-emerald-500/50' : ''
+                      }`}
                   >
                     <div className="absolute top-0 left-0 bottom-0 w-1 bg-emerald-500 rounded-l-lg" />
                     <div className="flex items-center gap-3.5 pl-2">

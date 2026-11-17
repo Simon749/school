@@ -47,38 +47,38 @@ import DeputyDashboardPage from '@/app/(dashboard)/deputy/page';
 import TeacherPerformancePage from '@/app/(dashboard)/deputy/teacher-performance/page';
 import UncoveredLessonsPage from '@/app/(dashboard)/deputy/uncovered-lessons/page';
 
-const PAGES = [
-  ['deputy dashboard', DeputyDashboardPage],
-  ['teacher performance', TeacherPerformancePage],
-  ['uncovered lessons', UncoveredLessonsPage],
-] as const;
+// Unified type for testing pages that might or might not use searchParams
+type TestPage = (props?: { searchParams: Promise<{ page?: string }> }) => Promise<React.ReactNode>;
 
-const user = (role: string, over: Record<string, unknown> = {}) => ({
-  id: 'u-1',
-  clerkId: 'clerk_1',
+const PAGES: [string, TestPage][] = [
+  ['deputy dashboard', DeputyDashboardPage as TestPage],
+  ['teacher performance', TeacherPerformancePage as TestPage],
+  ['uncovered lessons', UncoveredLessonsPage as TestPage],
+];
+
+const user = (role: string, overrides: Record<string, unknown> = {}) => ({
+  id: 'user-1',
   role,
   schoolId: 'school-A',
   isActive: true,
-  deletedAt: null,
-  ...over,
+  ...overrides,
 });
 
-const calls = h.state.calls;
-const dataCalls = () => calls.filter((c) => c.model !== 'user');
+const calls = () => h.state.calls;
+const dataCalls = () => h.state.calls.filter((c) => c.model !== 'user' && c.method !== 'findUnique');
 
 beforeEach(() => {
-  calls.length = 0;
+  h.state.calls = [];
+  h.state.currentTerm = null;
+  h.state.userRow = null;
   authMock.mockReset();
   redirectMock.mockClear();
-  h.state.currentTerm = null;
-  h.state.userRow = user('deputy');
-  authMock.mockResolvedValue({ userId: 'clerk_1' });
 });
 
 describe.each(PAGES)('%s page (SEC-09)', (_name, Page) => {
   it('sends anonymous visitors to /login before querying anything', async () => {
     authMock.mockResolvedValue({ userId: null });
-    await expect(Page()).rejects.toThrow('REDIRECT:/login');
+    await expect(Page({ searchParams: Promise.resolve({}) })).rejects.toThrow('REDIRECT:/login');
     expect(calls).toHaveLength(0);
   });
 
@@ -86,20 +86,20 @@ describe.each(PAGES)('%s page (SEC-09)', (_name, Page) => {
     'turns role %s away before querying data',
     async (role) => {
       h.state.userRow = user(role);
-      await expect(Page()).rejects.toThrow('REDIRECT:/unauthorized');
+      await expect(Page({ searchParams: Promise.resolve({}) })).rejects.toThrow('REDIRECT:/unauthorized');
       expect(dataCalls()).toHaveLength(0);
     }
   );
 
   it('turns away a deactivated deputy (SEC-21)', async () => {
     h.state.userRow = user('deputy', { isActive: false });
-    await expect(Page()).rejects.toThrow('REDIRECT:/unauthorized');
+    await expect(Page({ searchParams: Promise.resolve({}) })).rejects.toThrow('REDIRECT:/unauthorized');
     expect(dataCalls()).toHaveLength(0);
   });
 
   it.each(['deputy', 'admin'])('lets %s in', async (role) => {
     h.state.userRow = user(role);
-    await expect(Page()).resolves.toBeDefined();
+    await expect(Page({ searchParams: Promise.resolve({}) })).resolves.toBeDefined();
   });
 
   it("scopes EVERY query to the caller's school (no cross-school data)", async () => {
@@ -109,7 +109,7 @@ describe.each(PAGES)('%s page (SEC-09)', (_name, Page) => {
       startDate: new Date('2026-01-05'),
       endDate: new Date('2026-04-03'),
     };
-    await Page();
+    await Page({ searchParams: Promise.resolve({}) });
     const queried = dataCalls();
     expect(queried.length).toBeGreaterThan(0);
     for (const c of queried) {
@@ -122,7 +122,7 @@ describe.each(PAGES)('%s page (SEC-09)', (_name, Page) => {
 
   it('never widens to every term when no term is current', async () => {
     h.state.currentTerm = null;
-    await Page();
+    await Page({ searchParams: Promise.resolve({}) });
     const slotQueries = dataCalls().filter((x) => x.model === 'timetableSlot');
     for (const c of slotQueries) {
       expect(JSON.stringify(c.args?.where)).toContain('"termId":{"in":[]}');

@@ -10,7 +10,6 @@ export default async function TeacherMessagesPage() {
   const { userId } = await auth();
   if (!userId) redirect('/sign-in');
 
-  // Get teacher with students
   const user = await prisma.user.findUnique({
     where: { clerkId: userId },
     include: {
@@ -18,11 +17,7 @@ export default async function TeacherMessagesPage() {
         include: {
           classTeacherStream: {
             include: {
-              grade: {
-                select: {
-                  name: true,
-                },
-              },
+              grade: { select: { name: true } },
               students: {
                 where: { status: 'active' },
                 select: {
@@ -30,6 +25,11 @@ export default async function TeacherMessagesPage() {
                   firstName: true,
                   lastName: true,
                   admissionNumber: true,
+                  guardians: {
+                    where: { isPrimary: true, isActive: true },
+                    select: { userId: true },
+                    take: 1,
+                  },
                 },
               },
             },
@@ -49,14 +49,16 @@ export default async function TeacherMessagesPage() {
   }
 
   const teacher = user.teacher;
-
-  // Get students: if class teacher, get all students in their stream
-  // Otherwise, we could fetch students they teach (would need timetable lookup)
   const students = teacher.classTeacherStream?.students || [];
+  const streamName = teacher.classTeacherStream
+    ? `${teacher.classTeacherStream.grade?.name ?? 'Class'} ${teacher.classTeacherStream.name}`
+    : 'Class';
+  const TeacherComposeMessageComponent = TeacherComposeMessage as unknown as (props: {
+    students: typeof students;
+  }) => JSX.Element;
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <MessageSquare className="h-8 w-8 text-emerald-600" />
@@ -67,27 +69,29 @@ export default async function TeacherMessagesPage() {
             </p>
           </div>
         </div>
-        <TeacherComposeMessage students={students} teacherId={teacher.id} />
+        <TeacherComposeMessage
+          students={students}
+          teacherId={teacher.id}
+          isClassTeacher={teacher.isClassTeacher}
+          streamId={teacher.classTeacherStream?.id}
+          streamName={streamName}
+        />
       </div>
 
-      {/* Info card for class teachers */}
       {teacher.isClassTeacher && teacher.classTeacherStream && (
         <Card className="bg-blue-50 border-blue-200">
           <CardContent className="pt-4">
             <p className="text-sm text-blue-900">
-              <strong>Class Teacher Mode:</strong> You can message parents of students in
+              <strong>Class Teacher Mode:</strong> You can message parents of students in{' '}
               <strong>
-                {' '}
-                {teacher.classTeacherStream.grade?.name ?? 'Class'}{' '}
-                {teacher.classTeacherStream.name}
+                {teacher.classTeacherStream.grade?.name ?? 'Class'} {teacher.classTeacherStream.name}
               </strong>
-              .{students.length} students available.
+              . ({students.length} students available)
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Messages List */}
       <Card>
         <CardHeader>
           <CardTitle>Your Messages</CardTitle>
