@@ -86,12 +86,12 @@ interface TeacherComposeMessageProps {
   streamName?: string;
 }
 
-export function TeacherComposeMessage({ 
-  students, 
-  teacherId, 
-  isClassTeacher = false, 
-  streamId, 
-  streamName 
+export function TeacherComposeMessage({
+  students,
+  teacherId,
+  isClassTeacher = false,
+  streamId,
+  streamName
 }: TeacherComposeMessageProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -125,7 +125,10 @@ export function TeacherComposeMessage({
   const onSubmit = async (data: CreateMessageInput) => {
     setIsSubmitting(true);
     try {
-      let payload = { ...data };
+
+      const payload = {
+        ...data
+      };
 
       if (data.messageType === 'direct') {
         // data.recipientId is a STUDENT id here; the message goes to that student's primary guardian.
@@ -176,7 +179,7 @@ export function TeacherComposeMessage({
         <DialogHeader>
           <DialogTitle>Send Message</DialogTitle>
         </DialogHeader>
-        
+
         {/* FIX: Wrap the standard HTML form with shadcn's <Form> provider */}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
@@ -186,7 +189,7 @@ export function TeacherComposeMessage({
                   <TabsTrigger value="individual">Individual Parent</TabsTrigger>
                   <TabsTrigger value="class">Entire Class</TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="individual" className="space-y-4 pt-2">
                   <FormField
                     control={form.control}

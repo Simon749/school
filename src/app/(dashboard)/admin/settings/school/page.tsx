@@ -7,7 +7,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { LeafletMap } from '@/components/ui/leaflet-map';
+import dynamic from 'next/dynamic';
+
+const LeafletMap = dynamic(
+  () => import('@/components/ui/leaflet-map').then((mod) => mod.LeafletMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full items-center justify-center text-sm text-slate-500">
+        Loading map...
+      </div>
+    ),
+  }
+);
 
 interface SchoolSettings {
   id: string;
