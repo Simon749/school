@@ -1,6 +1,6 @@
-import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { requirePageUser } from '@/lib/auth/current-user';
 import { redis } from '@/lib/redis';
 import { exportQueue } from '@/lib/export/queue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,20 +31,15 @@ import {
 } from 'lucide-react';
 
 export default async function ItAdminDashboardPage() {
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
-
-  // 1. Verify IT Admin Role
-  const currentUser = await prisma.user.findUnique({
-    where: { clerkId: userId },
-    include: { school: true },
-  });
-
-  if (!currentUser || currentUser.role !== 'it_admin') {
-    redirect('/unauthorized');
-  }
-
+  // 1. Verify IT Admin role (active, not deleted) - redirects otherwise
+  const currentUser = await requirePageUser(['it_admin']);
   const schoolId = currentUser.schoolId;
+
+  const school = await prisma.school.findUnique({
+    where: { id: schoolId },
+    select: { name: true, smsBalance: true },
+  });
+  if (!school) redirect('/unauthorized');
 
   // 2. Fetch Dashboard Metrics
   const [totalUsers, totalStudents, totalTeachers, recentAuditLogs] = await Promise.all([
@@ -103,7 +98,7 @@ export default async function ItAdminDashboardPage() {
     { label: 'Teachers', value: totalTeachers, icon: UserCheck, color: 'text-purple-600' },
     {
       label: 'SMS Balance',
-      value: currentUser.school.smsBalance,
+      value: school.smsBalance,
       icon: MessageSquare,
       color: 'text-orange-600',
     },
@@ -170,7 +165,7 @@ export default async function ItAdminDashboardPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900">IT Admin Dashboard</h1>
         <p className="text-slate-500 mt-1">
-          System overview, user management, and data operations for {currentUser.school.name}.
+          System overview, user management, and data operations for {school.name}.
         </p>
       </div>
 

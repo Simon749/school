@@ -1,38 +1,35 @@
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { requirePageUser } from '@/lib/auth/current-user';
 import { MessageList } from '@/components/messages/MessageList';
 import { TeacherComposeMessage } from '@/components/messages/TeacherComposeMessage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessageSquare } from 'lucide-react';
 
 export default async function TeacherMessagesPage() {
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
+  // Not signed in -> /login; deactivated, deleted or non-teacher -> /unauthorized (SEC-09 / SEC-21).
+  const user = await requirePageUser(['teacher']);
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+  // Found by the INTERNAL user id and the caller's school (FEAT-01 / SEC-11).
+  const teacher = await prisma.teacher.findFirst({
+    where: { userId: user.id, schoolId: user.schoolId },
     include: {
-      teacher: {
+      classTeacherStream: {
         include: {
-          classTeacherStream: {
-            include: {
-              grade: { select: { name: true } },
-              students: {
-                where: { status: 'active' },
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  admissionNumber: true,
-                  guardians: {
-                    // Prefer the primary guardian; otherwise any active one (isPrimary defaults to false)
-                    where: { isActive: true },
-                    orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
-                    select: { userId: true },
-                    take: 1,
-                  },
-                },
+          grade: { select: { name: true } },
+          students: {
+            where: { status: 'active', deletedAt: null, schoolId: user.schoolId },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              admissionNumber: true,
+              guardians: {
+                // Prefer the primary guardian; otherwise any active one (isPrimary defaults to false).
+                // POST /api/messages still re-checks that this teacher may message that guardian.
+                where: { isActive: true },
+                orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+                select: { userId: true },
+                take: 1,
               },
             },
           },
@@ -41,7 +38,7 @@ export default async function TeacherMessagesPage() {
     },
   });
 
-  if (!user || !user.teacher) {
+  if (!teacher) {
     return (
       <div className="p-8 text-center">
         <h2 className="text-xl font-semibold text-red-500">Teacher profile not found</h2>
@@ -50,7 +47,6 @@ export default async function TeacherMessagesPage() {
     );
   }
 
-  const teacher = user.teacher;
   const students = teacher.classTeacherStream?.students || [];
   const streamName = teacher.classTeacherStream
     ? `${teacher.classTeacherStream.grade?.name ?? 'Class'} ${teacher.classTeacherStream.name}`

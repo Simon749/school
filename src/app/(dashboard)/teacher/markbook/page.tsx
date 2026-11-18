@@ -1,6 +1,5 @@
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { requirePageUser } from '@/lib/auth/current-user';
 import { CreateAssessmentDialog } from '@/components/assessment/CreateAssessmentDialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,28 +29,24 @@ const getStatusBadge = (status: string) => {
 };
 
 export default async function TeacherMarkbookPage() {
-  const { userId } = auth();
-  if (!userId) redirect('/sign-in');
+  // Not signed in -> /login; deactivated, deleted or non-teacher -> /unauthorized (SEC-09 / SEC-21).
+  const user = await requirePageUser(['teacher']);
 
-  // FIX: First find the User by clerkId, then get the teacher
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+  // Found by the INTERNAL user id and the caller's school (FEAT-01 / SEC-11).
+  const teacher = await prisma.teacher.findFirst({
+    where: { userId: user.id, schoolId: user.schoolId },
     include: {
-      teacher: {
+      school: {
         include: {
-          school: {
-            include: {
-              streams: { select: { id: true, name: true } },
-              learningAreas: { select: { id: true, name: true } },
-              terms: { select: { id: true, name: true } },
-            },
-          },
+          streams: { select: { id: true, name: true } },
+          learningAreas: { select: { id: true, name: true } },
+          terms: { select: { id: true, name: true } },
         },
       },
     },
   });
 
-  if (!user || !user.teacher) {
+  if (!teacher) {
     return (
       <div className="p-8 text-center">
         <h2 className="text-xl font-semibold text-red-500">Teacher profile not found</h2>
@@ -59,8 +54,6 @@ export default async function TeacherMarkbookPage() {
       </div>
     );
   }
-
-  const teacher = user.teacher;
 
   const assessments = await prisma.assessment.findMany({
     where: { teacherId: teacher.id, schoolId: teacher.schoolId },

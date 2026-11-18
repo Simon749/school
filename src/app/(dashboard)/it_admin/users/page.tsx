@@ -1,7 +1,6 @@
 import { Prisma, UserRole } from "@prisma/client";
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { requirePageUser } from '@/lib/auth/current-user';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,14 +18,7 @@ const FILTERABLE_ROLES = ['admin', 'deputy', 'teacher', 'bursar', 'parent', 'it_
 
 
 export default async function ItAdminUsersPage({ searchParams }: { searchParams: SearchParams }) {
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
-
-  const currentUser = await prisma.user.findUnique({
-    where: { clerkId: userId },
-    select: { schoolId: true, role: true },
-  });
-  if (!currentUser || currentUser.role !== 'it_admin') redirect('/unauthorized');
+  const currentUser = await requirePageUser(['it_admin']);
 
   const page = Math.max(1, parseInt(searchParams.page || '1', 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.limit || '20', 10) || 20));

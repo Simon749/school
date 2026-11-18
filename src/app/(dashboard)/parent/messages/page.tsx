@@ -1,7 +1,6 @@
 // src/app/(dashboard)/parent/messages/page.tsx
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { requirePageUser } from '@/lib/auth/current-user';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,14 +8,8 @@ import Link from 'next/link';
 import { MessageItem } from '@/components/messages/MessageItem';
 
 export default async function ParentMessagesPage() {
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
-
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-  });
-
-  if (!user) redirect('/');
+  // Not signed in -> /login; deactivated, deleted or non-parent -> /unauthorized (SEC-09 / SEC-21).
+  const user = await requirePageUser(['parent']);
 
   const messages = await prisma.message.findMany({
     where: {

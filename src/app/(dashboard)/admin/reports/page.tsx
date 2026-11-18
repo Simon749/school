@@ -1,7 +1,6 @@
 // src/app/(dashboard)/admin/reports/page.tsx
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { requirePageUser } from '@/lib/auth/current-user';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,16 +15,8 @@ import {
 import Link from 'next/link';
 
 export default async function AdminReportsPage() {
-  const { userId } = await auth();
-  if (!userId) redirect('/sign-in');
-
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-  });
-
-  if (!user || (user.role !== 'admin' && user.role !== 'deputy')) {
-    return <div className="p-8 text-red-500">Access denied.</div>;
-  }
+  // Not signed in -> /login. Deactivated, deleted or wrong role -> /unauthorized (SEC-09 / SEC-21).
+  const user = await requirePageUser(['admin', 'deputy']);
 
   const currentTerm = await prisma.term.findFirst({
     where: { schoolId: user.schoolId, isCurrent: true },
