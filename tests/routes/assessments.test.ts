@@ -149,7 +149,10 @@ beforeEach(() => {
     id: 'a-1',
     ...data,
   }));
-  studentFindMany.mockResolvedValue([{ id: S1, firstName: 'Amara' }, { id: S2, firstName: 'Baraka' }]);
+  studentFindMany.mockResolvedValue([
+    { id: S1, firstName: 'Amara' },
+    { id: S2, firstName: 'Baraka' },
+  ]);
   subStrandFindMany.mockResolvedValue([{ id: SUB }]);
   resultFindMany.mockResolvedValue([]);
   guardianFindMany.mockResolvedValue([]);
@@ -382,8 +385,9 @@ describe('POST /api/assessments/[id]/publish', () => {
       { studentId: S1, resultStatus: 'scored', marksObtained: 42, rubricScores: [] },
       { studentId: S2, resultStatus: 'absent', marksObtained: 0, rubricScores: [] },
     ]);
-    guardianFindMany.mockImplementation(async ({ where }: { where: { studentId: string } }) =>
-      where.studentId === S1 ? [{ userId: 'p-1' }] : []
+    guardianFindMany.mockImplementation(
+      async ({ where }: { where: { studentId: string } }) =>
+        where.studentId === S1 ? [{ userId: 'p-1' }] : []
     );
 
     const res = await run();
@@ -397,11 +401,16 @@ describe('POST /api/assessments/[id]/publish', () => {
     const q = resultFindMany.mock.calls[0]![0]!;
     expect(q.where).toEqual({ schoolId: 'school-A', assessmentId: 'a-1' });
     expect(studentFindMany.mock.calls[0]![0]!.where).toMatchObject({
-      schoolId: 'school-A', streamId: STREAM, status: 'active', deletedAt: null,
+      schoolId: 'school-A',
+      streamId: STREAM,
+      status: 'active',
+      deletedAt: null,
     });
     expect(guardianFindMany).toHaveBeenCalledTimes(2);
     expect(guardianFindMany.mock.calls[0]![0]!.where).toMatchObject({
-      studentId: S1, isPrimary: true, isActive: true,
+      studentId: S1,
+      isPrimary: true,
+      isActive: true,
     });
 
     // 3. Notifications are sent correctly
@@ -494,7 +503,9 @@ describe('POST /api/assessments/[id]/results', () => {
     });
     expect(res.status).toBe(400);
     expect(txUpsert).not.toHaveBeenCalled();
-    expect(assessmentFindFirst.mock.calls[0]![0]!.include.learningArea.include.strands.include.subStrands.select.id).toBe(true);
+    expect(
+      assessmentFindFirst.mock.calls[0]![0]!.include.learningArea.include.strands.include.subStrands.select.id
+    ).toBe(true);
   });
 
   it('saves marks and rubric scores, and audits (without logging marks themselves)', async () => {
