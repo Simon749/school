@@ -68,13 +68,17 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
       continue;
     }
     if (result.resultStatus === 'absent') {
-      if (result.marksObtained === null || Number(result.marksObtained) !== 0) incomplete.push(student.firstName);
+      if (result.marksObtained === null || Number(result.marksObtained) !== 0) {
+        incomplete.push(student.firstName);
+      }
       continue;
     }
 
     if (requiredSubStrandIds.length > 0) {
       const recorded = new Set(result.rubricScores.map((score) => score.subStrandId));
-      if (requiredSubStrandIds.some((id) => !recorded.has(id))) incomplete.push(student.firstName);
+      if (requiredSubStrandIds.some((id) => !recorded.has(id))) {
+        incomplete.push(student.firstName);
+      }
     } else if (result.marksObtained === null) {
       incomplete.push(student.firstName);
     }
@@ -85,7 +89,8 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
     const suffix = incomplete.length > 5 ? ` and ${incomplete.length - 5} more` : '';
     return NextResponse.json(
       {
-        error: `Cannot publish: ${incomplete.length} learner(s) have missing or incomplete results: ${preview}${suffix}. Enter a score or explicitly mark each learner absent.`,
+        error:
+          `Cannot publish: ${incomplete.length} learner(s) have missing or incomplete results: ${preview}${suffix}. Enter a score or explicitly mark each learner absent.`,
         incompleteCount: incomplete.length,
       },
       { status: 422 }
@@ -163,7 +168,10 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
     return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof Error && error.message === 'ASSESSMENT_STATE_CHANGED') {
-      return NextResponse.json({ error: 'Assessment status changed. Refresh and try again.' }, { status: 409 });
+      return NextResponse.json(
+        { error: 'Assessment status changed. Refresh and try again.' },
+        { status: 409 }
+      );
     }
     console.error('Publish assessment error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
