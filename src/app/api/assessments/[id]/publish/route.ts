@@ -93,8 +93,8 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
     return NextResponse.json(
       {
         error:
-          `Cannot publish: ${incomplete.length} learner(s) have missing or incomplete results: ${preview}${suffix}. ` +
-          'Enter a score or explicitly mark each learner absent.',
+          `Cannot publish: ${incomplete.length} learner(s) have missing or incomplete results: ` +
+          `${preview}${suffix}. Enter a score or explicitly mark each learner absent.`,
         incompleteCount: incomplete.length,
       },
       { status: 422 }
