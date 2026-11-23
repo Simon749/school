@@ -248,7 +248,7 @@ export function MarksEntryTable({
     });
   };
 
-  const updateResultStatus = (studentId: string, status: Exclude<ResultStatus, 'scored'>) => {
+  const updateResultStatus = (studentId: string, status: ResultStatus) => {
     const current = latestStatesRef.current[studentId] ?? emptyStudentState();
     updateStudent(studentId, {
       resultStatus: status,
@@ -371,7 +371,7 @@ export function MarksEntryTable({
                       onValueChange={(value: string | null) =>
                         updateResultStatus(
                           student.id,
-                          (value || 'not_entered') as Exclude<ResultStatus, 'scored'>
+                          (value || 'not_entered') as ResultStatus
                         )
                       }
                       disabled={isLocked || isPublishing}
