@@ -9,13 +9,17 @@ export const rubricScoreSchema = z.object({
   comment: z.string().max(500).optional().nullable(),
 });
 
-/** A blank mark means "not marked yet" (null). It must never silently become 0. */
-const blankToNull = (value: unknown) => (value === '' ? null : value);
+/** Preserve null/empty marks as null; only convert non-empty numeric strings. */
+const parseOptionalNumber = (value: unknown) => {
+  if (value === '' || value === null || value === undefined) return value;
+  if (typeof value === 'string') return Number(value);
+  return value;
+};
 
 export const assessmentResultInputSchema = z.object({
   studentId: z.string().uuid(),
   resultStatus: resultStatusSchema.optional(),
-  marksObtained: z.preprocess(blankToNull, z.coerce.number().min(0).optional().nullable()),
+  marksObtained: z.preprocess(parseOptionalNumber, z.number().finite().min(0).optional().nullable()),
   teacherComment: z.string().max(1000).optional().nullable(),
   rubricScores: z.array(rubricScoreSchema).max(100).optional(),
 });
