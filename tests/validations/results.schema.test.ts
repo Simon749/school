@@ -19,7 +19,7 @@ describe('bulkUpsertResultsSchema', () => {
     });
 
     expect(parsed.success).toBe(true);
-    if (parsed.success) expect(parsed.data.results[0].marksObtained).toBe(0);
+    if (parsed.success) expect(parsed.data.results[0]?.marksObtained).toBe(0);
   });
 
   it('converts a numeric input string without treating an empty string as zero', () => {
@@ -28,7 +28,7 @@ describe('bulkUpsertResultsSchema', () => {
     });
 
     expect(parsed.success).toBe(true);
-    if (parsed.success) expect(parsed.data.results[0].marksObtained).toBe(17.5);
+    if (parsed.success) expect(parsed.data.results[0]?.marksObtained).toBe(17.5);
   });
 
   it('preserves an empty input as an unentered mark', () => {
@@ -37,7 +37,7 @@ describe('bulkUpsertResultsSchema', () => {
     });
 
     expect(parsed.success).toBe(true);
-    if (parsed.success) expect(parsed.data.results[0].marksObtained).toBeNull();
+    if (parsed.success) expect(parsed.data.results[0]?.marksObtained).toBeNull();
   });
 
   it('accepts an explicit absence with a zero mark', () => {
@@ -48,7 +48,7 @@ describe('bulkUpsertResultsSchema', () => {
     expect(parsed.success).toBe(true);
     if (parsed.success) {
       expect(parsed.data.results[0]?.resultStatus).toBe('absent');
-      expect(parsed.data.results[0].marksObtained).toBe(0);
+      expect(parsed.data.results[0]?.marksObtained).toBe(0);
     }
   });
 
