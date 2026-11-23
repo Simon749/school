@@ -142,7 +142,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         // This allows switching a result to ABSENT / NOT_ENTERED to clear stale scores.
         if (result.rubricScores !== undefined) {
           await tx.rubricScore.deleteMany({ where: { resultId: assessmentResult.id } });
-          if (status !== 'absent' && result.rubricScores.length > 0) {
+          if (status === 'scored' && result.rubricScores.length > 0) {
             await tx.rubricScore.createMany({
               data: result.rubricScores.map((score) => ({
                 resultId: assessmentResult.id,
