@@ -155,7 +155,13 @@ export default async function ParentResultsPage({ params }: { params: { studentI
                     </div>
                   )}
 
-                  {hasRubric && (
+                  {hasRubric && result.resultStatus === 'absent' && (
+                    <p className="text-sm text-muted-foreground">
+                      CBC rubric scores were not recorded because the learner was absent.
+                    </p>
+                  )}
+
+                  {hasRubric && result.resultStatus !== 'absent' && (
                     <div>
                       <p className="text-sm font-medium mb-2">CBC Rubric Scores:</p>
                       <div className="flex flex-wrap gap-2">
