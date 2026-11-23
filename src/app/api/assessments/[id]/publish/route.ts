@@ -48,7 +48,10 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
   ]);
 
   if (students.length === 0) {
-    return NextResponse.json({ error: 'There are no active learners in this class to publish results for' }, { status: 422 });
+    return NextResponse.json(
+      { error: 'There are no active learners in this class to publish results for' },
+      { status: 422 }
+    );
   }
 
   const resultByStudent = new Map(results.map((result) => [result.studentId, result]));
@@ -90,7 +93,8 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
     return NextResponse.json(
       {
         error:
-          `Cannot publish: ${incomplete.length} learner(s) have missing or incomplete results: ${preview}${suffix}. Enter a score or explicitly mark each learner absent.`,
+          `Cannot publish: ${incomplete.length} learner(s) have missing or incomplete results: ${preview}${suffix}. ` +
+          'Enter a score or explicitly mark each learner absent.',
         incompleteCount: incomplete.length,
       },
       { status: 422 }
