@@ -43,6 +43,18 @@ export const bulkUpsertResultsSchema = z
         });
       }
       seen.add(r.studentId);
+
+      const rubricIds = new Set<string>();
+      (r.rubricScores ?? []).forEach((score, scoreIndex) => {
+        if (rubricIds.has(score.subStrandId)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['results', i, 'rubricScores', scoreIndex, 'subStrandId'],
+            message: 'A sub-strand can only be scored once per learner',
+          });
+        }
+        rubricIds.add(score.subStrandId);
+      });
     });
   });
 
