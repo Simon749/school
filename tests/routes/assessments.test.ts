@@ -258,7 +258,7 @@ describe('POST /api/assessments', () => {
   });
 
   it(
-    'passes a real Date object to the database (a bare "2026-10-26" string is not a valid Prisma DateTime)',
+    'passes a real Date object to Prisma',
     async () => {
     signedInAs('teacher');
     await create(valid());
