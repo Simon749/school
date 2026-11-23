@@ -64,7 +64,7 @@ export default async function ParentResultsPage({ params }: { params: { studentI
       termId: currentTerm?.id,
     },
     include: {
-      learningArea: { select: { name: true, code: true, color: true } },
+      learningArea: { select: { name: true, code: true, color: true, strands: { select: { subStrands: { select: { id: true } } } } } },
       term: { select: { name: true } },
       teacher: { select: { user: { select: { firstName: true, lastName: true } } } },
       AssessmentResult: {
@@ -107,7 +107,7 @@ export default async function ParentResultsPage({ params }: { params: { studentI
               return null;
             }
 
-            const hasRubric = result.rubricScores.length > 0;
+            const hasRubric = assessment.learningArea.strands.some((strand) => strand.subStrands.length > 0);
 
             return (
               <Card key={assessment.id}>
