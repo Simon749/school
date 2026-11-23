@@ -34,9 +34,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   if (!assessment) {
     return NextResponse.json({ error: 'Assessment not found or access denied' }, { status: 404 });
   }
-  if (assessment.status === 'locked' || assessment.status === 'published') {
+  if (assessment.status === 'locked') {
     return NextResponse.json(
-      { error: 'Published or locked assessment results cannot be edited' },
+      { error: 'Assessment is locked and cannot be edited' },
+      { status: 403 }
+    );
+  }
+  if (assessment.status === 'published') {
+    return NextResponse.json(
+      { error: 'Published assessment results cannot be edited' },
       { status: 409 }
     );
   }
