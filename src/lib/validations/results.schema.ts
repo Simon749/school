@@ -1,6 +1,8 @@
 // src/lib/validations/results.schema.ts
 import { z } from 'zod';
 
+export const resultStatusSchema = z.enum(['scored', 'absent', 'not_entered']);
+
 export const rubricScoreSchema = z.object({
   subStrandId: z.string().uuid(),
   score: z.enum(['EE', 'ME', 'AE', 'BE']),
@@ -12,6 +14,7 @@ const blankToNull = (value: unknown) => (value === '' ? null : value);
 
 export const assessmentResultInputSchema = z.object({
   studentId: z.string().uuid(),
+  resultStatus: resultStatusSchema.optional(),
   marksObtained: z.preprocess(blankToNull, z.coerce.number().min(0).optional().nullable()),
   teacherComment: z.string().max(1000).optional().nullable(),
   rubricScores: z.array(rubricScoreSchema).max(100).optional(),
