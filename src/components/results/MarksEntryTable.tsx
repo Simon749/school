@@ -265,7 +265,9 @@ export function MarksEntryTable({
     try {
       const saved = await saveLatest();
       if (!saved) {
-        throw new Error('Some changes could not be saved. Resolve the save error before publishing.');
+        throw new Error(
+          'Some changes could not be saved. Resolve the save error before publishing.'
+        );
       }
       const response = await fetch(`/api/assessments/${assessmentId}/publish`, {
         method: 'POST',
