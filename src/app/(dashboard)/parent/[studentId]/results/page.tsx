@@ -64,7 +64,16 @@ export default async function ParentResultsPage({ params }: { params: { studentI
       termId: currentTerm?.id,
     },
     include: {
-      learningArea: { select: { name: true, code: true, color: true, strands: { select: { subStrands: { select: { id: true } } } } } },
+      learningArea: {
+        select: {
+          name: true,
+          code: true,
+          color: true,
+          strands: {
+            select: { subStrands: { select: { id: true } } },
+          },
+        },
+      },
       term: { select: { name: true } },
       teacher: { select: { user: { select: { firstName: true, lastName: true } } } },
       AssessmentResult: {
@@ -79,7 +88,9 @@ export default async function ParentResultsPage({ params }: { params: { studentI
     orderBy: { assessmentDate: 'desc' },
   });
 
-  const assessmentsWithResults = assessments.filter((a) => a.AssessmentResult.length > 0);
+  const assessmentsWithResults = assessments.filter((assessment) =>
+    assessment.AssessmentResult.some((result) => result.resultStatus !== 'not_entered')
+  );
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -131,7 +142,9 @@ export default async function ParentResultsPage({ params }: { params: { studentI
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {!hasRubric && result.marksObtained !== null && assessment.maxMarks !== null && (
+                  {!hasRubric &&
+                    result.marksObtained !== null &&
+                    assessment.maxMarks !== null && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">Score:</span>
                       <span className="text-lg font-bold">
@@ -171,7 +184,8 @@ export default async function ParentResultsPage({ params }: { params: { studentI
                     <AssessmentDetail
                       assessment={{
                         ...assessment,
-                        maxMarks: assessment.maxMarks === null ? null : Number(assessment.maxMarks),
+                        maxMarks:
+                          assessment.maxMarks === null ? null : Number(assessment.maxMarks),
                         assessmentDate: assessment.assessmentDate?.toISOString() ?? null,
                       }}
                       result={{
