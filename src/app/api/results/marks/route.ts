@@ -60,7 +60,10 @@ export async function POST(req: NextRequest) {
       select: { id: true },
     });
     if (!teacher || assessment.teacherId !== teacher.id) {
-      return NextResponse.json({ error: 'You are not assigned to this assessment' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'You are not assigned to this assessment' },
+        { status: 403 }
+      );
     }
   }
 
