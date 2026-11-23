@@ -399,6 +399,20 @@ describe('POST /api/assessments/[id]/publish', () => {
     expect(notifAdd).not.toHaveBeenCalled();
   });
 
+  it('blocks publication while any active learner is not entered', async () => {
+    signedInAs('teacher');
+    resultFindMany.mockResolvedValue([
+      { studentId: S1, resultStatus: 'scored', marksObtained: 42, rubricScores: [] },
+    ]);
+
+    const response = await run();
+
+    expect(response.status).toBe(422);
+    expect((await response.json()).incompleteCount).toBe(1);
+    expect(assessmentUpdateMany).not.toHaveBeenCalled();
+    expect(notifAdd).not.toHaveBeenCalled();
+  });
+
   it('publishes, notifies only guardians of students who HAVE a result, and audits', async () => {
     signedInAs('teacher');
     resultFindMany.mockResolvedValue([
@@ -483,6 +497,16 @@ describe('POST /api/assessments/[id]/results', () => {
     expect(txUpsert).not.toHaveBeenCalled();
   });
 
+  it('409 when trying to edit a published assessment', async () => {
+    signedInAs('teacher');
+    assessmentFindFirst.mockResolvedValue(assessment({ status: 'published' }));
+
+    const response = await save({ results: [row()] });
+
+    expect(response.status).toBe(409);
+    expect(txUpsert).not.toHaveBeenCalled();
+  });
+
   it(
     "400 when a student is not in THIS assessment's class (cross-class / cross-school write)",
     async () => {
@@ -521,6 +545,29 @@ describe('POST /api/assessments/[id]/results', () => {
     expect(res.status).toBe(200);
     expect(txUpsert.mock.calls[0]![0]!.update.marksObtained).toBe(50);
     expect(txUpsert.mock.calls[1]![0]!.update.marksObtained).toBeNull();
+  });
+
+  it('stores a confirmed absence as zero, not as an unentered result', async () => {
+    signedInAs('teacher');
+    const response = await save({
+      results: [row({ resultStatus: 'absent', marksObtained: 0 })],
+    });
+
+    expect(response.status).toBe(200);
+    expect(txUpsert.mock.calls[0]![0]!.update).toMatchObject({
+      resultStatus: 'absent',
+      marksObtained: 0,
+    });
+  });
+
+  it('rejects an absence carrying a non-zero mark', async () => {
+    signedInAs('teacher');
+    const response = await save({
+      results: [row({ resultStatus: 'absent', marksObtained: 12 })],
+    });
+
+    expect(response.status).toBe(400);
+    expect(txUpsert).not.toHaveBeenCalled();
   });
 
   it(
