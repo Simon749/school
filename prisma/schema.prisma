@@ -912,6 +912,7 @@ model AssessmentResult {
   assessmentId   String    @map("assessment_id")
   studentId      String    @map("student_id")
   marksObtained  Decimal?  @map("marks_obtained") @db.Decimal(5, 2)
+  resultStatus   String    @default("not_entered") @map("result_status") @db.VarChar(20)
   teacherComment String?   @map("teacher_comment")
   submittedAt    DateTime? @map("submitted_at")
   isLocked       Boolean   @default(false) @map("is_locked")
