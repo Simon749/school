@@ -52,7 +52,11 @@ vi.mock('@/lib/db', () => ({
           findFirst: (...a: unknown[]) => assessmentFindFirst(...a),
           findFirstOrThrow: (...a: unknown[]) => assessmentFindFirstOrThrow(...a),
         },
-        assessmentResult: { upsert: (...a: unknown[]) => txUpsert(...a) },
+        assessmentResult: {
+          findMany: (...a: unknown[]) => resultFindMany(...a),
+          upsert: (...a: unknown[]) => txUpsert(...a),
+        },
+        student: { findMany: (...a: unknown[]) => studentFindMany(...a) },
         rubricScore: {
           deleteMany: (...a: unknown[]) => txDeleteMany(...a),
           createMany: (...a: unknown[]) => txCreateMany(...a),
@@ -149,7 +153,10 @@ beforeEach(() => {
     id: 'a-1',
     ...data,
   }));
-  studentFindMany.mockResolvedValue([{ id: S1, firstName: 'Amara' }, { id: S2, firstName: 'Baraka' }]);
+  studentFindMany.mockResolvedValue([
+    { id: S1, firstName: 'Amara' },
+    { id: S2, firstName: 'Baraka' },
+  ]);
   subStrandFindMany.mockResolvedValue([{ id: SUB }]);
   resultFindMany.mockResolvedValue([]);
   guardianFindMany.mockResolvedValue([]);
@@ -194,7 +201,9 @@ describe.each([
     teacherFindFirst.mockResolvedValue(null);
     expect((await run()).status).toBe(403);
   });
-  it('FEAT-01: finds the teacher by the INTERNAL user id, so a real teacher is no longer rejected', async () => {
+  it(
+    'FEAT-01: finds the teacher by the INTERNAL user id, so a real teacher is no longer rejected',
+    async () => {
     signedInAs('teacher');
     await run();
     expect(teacherFindFirst.mock.calls[0]![0]!.where).toEqual({
@@ -235,7 +244,9 @@ describe('POST /api/assessments', () => {
   const create = (body: unknown) =>
     createAssessment(new Request('http://x/api/assessments', json(body)) as never);
 
-  it('creates a draft owned by the caller, with school and teacher taken from the session', async () => {
+  it(
+    'creates a draft owned by the caller, with school and teacher taken from the session',
+    async () => {
     signedInAs('teacher');
     const res = await create(
       valid({ schoolId: 'school-EVIL', teacherId: 't-EVIL', status: 'published' })
@@ -250,7 +261,9 @@ describe('POST /api/assessments', () => {
     });
   });
 
-  it('passes a real Date object to the database (a bare "2026-10-26" string is not a valid Prisma DateTime)', async () => {
+  it(
+    'passes a real Date object to Prisma',
+    async () => {
     signedInAs('teacher');
     await create(valid());
     const data = assessmentCreate.mock.calls[0]![0]!.data;
@@ -258,7 +271,9 @@ describe('POST /api/assessments', () => {
     expect(data.assessmentDate.toISOString()).toBe('2026-10-26T00:00:00.000Z');
   });
 
-  it('saves the instructions the teacher typed (the dialog has an Instructions field)', async () => {
+  it(
+    'saves the instructions the teacher typed (the dialog has an Instructions field)',
+    async () => {
     signedInAs('teacher');
     await create(valid({ instructions: 'Answer all questions. Calculators allowed.' }));
     expect(assessmentCreate.mock.calls[0]![0]!.data.instructions).toBe(
@@ -272,7 +287,9 @@ describe('POST /api/assessments', () => {
     expect(res.status).toBe(201);
   });
 
-  it('ignores a client-sent dueDate instead of crashing (the database has no such column yet)', async () => {
+  it(
+    'ignores a client-sent dueDate instead of crashing (the database has no such column yet)',
+    async () => {
     signedInAs('teacher');
     const res = await create(valid({ dueDate: '2026-11-02' }));
     expect(res.status).toBe(201);
@@ -306,7 +323,9 @@ describe('POST /api/assessments', () => {
     }
   );
 
-  describe('D20: the teacher must be timetabled for this class and learning area, in this term', () => {
+  describe(
+    'D20: the teacher must be timetabled for this class and learning area, in this term',
+    () => {
     it('403 when the teacher has no timetable slot for it, and nothing is created', async () => {
       signedInAs('teacher');
       slotFindFirst.mockResolvedValue(null);
@@ -316,7 +335,9 @@ describe('POST /api/assessments', () => {
       expect(assessmentCreate).not.toHaveBeenCalled();
     });
 
-    it('looks for a slot of THIS teacher, in THIS school, class, learning area and term', async () => {
+    it(
+      'looks for a slot of THIS teacher, in THIS school, class, learning area and term',
+      async () => {
       signedInAs('teacher');
       await create(valid());
       expect(slotFindFirst.mock.calls[0]![0]!.where).toEqual({
@@ -328,7 +349,9 @@ describe('POST /api/assessments', () => {
       });
     });
 
-    it('is only checked after the class/term/learning area are confirmed to be in the school', async () => {
+    it(
+      'is only checked after the class/term/learning area are confirmed to be in the school',
+      async () => {
       signedInAs('teacher');
       streamFindFirst.mockResolvedValue(null);
       expect((await create(valid())).status).toBe(400);
@@ -336,7 +359,9 @@ describe('POST /api/assessments', () => {
     });
   });
 
-  it('400 for malformed JSON and for invalid fields; no raw error details beyond field messages', async () => {
+  it(
+    '400 for malformed JSON and for invalid fields; no raw error details beyond field messages',
+    async () => {
     signedInAs('teacher');
     expect((await create('{nope')).status).toBe(400);
     expect((await create(valid({ title: 'x' }))).status).toBe(400);
@@ -349,7 +374,9 @@ describe('POST /api/assessments', () => {
 describe('POST /api/assessments/[id]/publish', () => {
   const run = () => publish(new Request('http://x', json({})) as never, { params: { id: 'a-1' } });
 
-  it("looks the assessment up by id + the caller's school + the caller as owner (404 otherwise)", async () => {
+  it(
+    "looks the assessment up by id + the caller's school + the caller as owner (404 otherwise)",
+    async () => {
     signedInAs('teacher');
     assessmentFindFirst.mockResolvedValue(null);
     expect((await run()).status).toBe(404);
@@ -376,14 +403,31 @@ describe('POST /api/assessments/[id]/publish', () => {
     expect(notifAdd).not.toHaveBeenCalled();
   });
 
+  it('blocks publication while any active learner is not entered', async () => {
+    signedInAs('teacher');
+    resultFindMany.mockResolvedValue([
+      { studentId: S1, resultStatus: 'scored', marksObtained: 42, rubricScores: [] },
+    ]);
+
+    const response = await run();
+
+    expect(response.status).toBe(422);
+    expect((await response.json()).incompleteCount).toBe(1);
+    expect(assessmentUpdateMany).toHaveBeenCalledTimes(1);
+    expect(assessmentFindFirstOrThrow).not.toHaveBeenCalled();
+    expect(logAudit).not.toHaveBeenCalled();
+    expect(notifAdd).not.toHaveBeenCalled();
+  });
+
   it('publishes, notifies only guardians of students who HAVE a result, and audits', async () => {
     signedInAs('teacher');
     resultFindMany.mockResolvedValue([
       { studentId: S1, resultStatus: 'scored', marksObtained: 42, rubricScores: [] },
       { studentId: S2, resultStatus: 'absent', marksObtained: 0, rubricScores: [] },
     ]);
-    guardianFindMany.mockImplementation(async ({ where }: { where: { studentId: string } }) =>
-      where.studentId === S1 ? [{ userId: 'p-1' }] : []
+    guardianFindMany.mockImplementation(
+      async ({ where }: { where: { studentId: string } }) =>
+        where.studentId === S1 ? [{ userId: 'p-1' }] : []
     );
 
     const res = await run();
@@ -397,11 +441,16 @@ describe('POST /api/assessments/[id]/publish', () => {
     const q = resultFindMany.mock.calls[0]![0]!;
     expect(q.where).toEqual({ schoolId: 'school-A', assessmentId: 'a-1' });
     expect(studentFindMany.mock.calls[0]![0]!.where).toMatchObject({
-      schoolId: 'school-A', streamId: STREAM, status: 'active', deletedAt: null,
+      schoolId: 'school-A',
+      streamId: STREAM,
+      status: 'active',
+      deletedAt: null,
     });
     expect(guardianFindMany).toHaveBeenCalledTimes(2);
     expect(guardianFindMany.mock.calls[0]![0]!.where).toMatchObject({
-      studentId: S1, isPrimary: true, isActive: true,
+      studentId: S1,
+      isPrimary: true,
+      isActive: true,
     });
 
     // 3. Notifications are sent correctly
@@ -416,7 +465,7 @@ describe('POST /api/assessments/[id]/publish', () => {
       expect.objectContaining({
         schoolId: 'school-A',
         actorId: 'u-1',
-        action: 'ASSESSMENT_PUBLISHED', // ➕ FIXED: Route sends 'ASSESSMENT_PUBLISHED', test expected 'assessment.published'
+        action: 'ASSESSMENT_PUBLISHED',
       })
     );
   });
@@ -433,7 +482,9 @@ describe('POST /api/assessments/[id]/results', () => {
     ...over,
   });
 
-  it("404 for an assessment that is not the caller's (looked up by id + school + owner)", async () => {
+  it(
+    "404 for an assessment that is not the caller's (looked up by id + school + owner)",
+    async () => {
     signedInAs('teacher');
     assessmentFindFirst.mockResolvedValue(null);
     expect((await save({ results: [row()] })).status).toBe(404);
@@ -452,7 +503,29 @@ describe('POST /api/assessments/[id]/results', () => {
     expect(txUpsert).not.toHaveBeenCalled();
   });
 
-  it("400 when a student is not in THIS assessment's class (cross-class / cross-school write)", async () => {
+  it('409 when trying to edit a published assessment', async () => {
+    signedInAs('teacher');
+    assessmentFindFirst.mockResolvedValue(assessment({ status: 'published' }));
+
+    const response = await save({ results: [row()] });
+
+    expect(response.status).toBe(409);
+    expect(txUpsert).not.toHaveBeenCalled();
+  });
+
+  it('409 if the assessment is no longer editable when the save transaction starts', async () => {
+    signedInAs('teacher');
+    assessmentUpdateMany.mockResolvedValue({ count: 0 });
+
+    const response = await save({ results: [row()] });
+
+    expect(response.status).toBe(409);
+    expect(txUpsert).not.toHaveBeenCalled();
+  });
+
+  it(
+    "400 when a student is not in THIS assessment's class (cross-class / cross-school write)",
+    async () => {
     signedInAs('teacher');
     studentFindMany.mockResolvedValue([{ id: S1 }]); // S2 not found in the stream
     const res = await save({ results: [row(), row({ studentId: S2 })] });
@@ -466,7 +539,9 @@ describe('POST /api/assessments/[id]/results', () => {
     });
   });
 
-  it('400 for marks above the assessment maximum, negative marks, duplicates, oversize input', async () => {
+  it(
+    '400 for marks above the assessment maximum, negative marks, duplicates, oversize input',
+    async () => {
     signedInAs('teacher');
     expect((await save({ results: [row({ marksObtained: 51 })] })).status).toBe(400);
     expect((await save({ results: [row({ marksObtained: -1 })] })).status).toBe(400);
@@ -476,7 +551,9 @@ describe('POST /api/assessments/[id]/results', () => {
     expect(txUpsert).not.toHaveBeenCalled();
   });
 
-  it('accepts the maximum mark, zero, and blank marks (null or empty string = not marked, NOT zero)', async () => {
+  it(
+    'accepts the maximum mark, zero, and blank marks (null or empty string = not marked, NOT zero)',
+    async () => {
     signedInAs('teacher');
     const res = await save({
       results: [row({ marksObtained: 50 }), row({ studentId: S2, marksObtained: '' })],
@@ -486,7 +563,32 @@ describe('POST /api/assessments/[id]/results', () => {
     expect(txUpsert.mock.calls[1]![0]!.update.marksObtained).toBeNull();
   });
 
-  it("400 when a rubric sub-strand does not belong to this assessment's learning area", async () => {
+  it('stores a confirmed absence as zero, not as an unentered result', async () => {
+    signedInAs('teacher');
+    const response = await save({
+      results: [row({ resultStatus: 'absent', marksObtained: 0 })],
+    });
+
+    expect(response.status).toBe(200);
+    expect(txUpsert.mock.calls[0]![0]!.update).toMatchObject({
+      resultStatus: 'absent',
+      marksObtained: 0,
+    });
+  });
+
+  it('rejects an absence carrying a non-zero mark', async () => {
+    signedInAs('teacher');
+    const response = await save({
+      results: [row({ resultStatus: 'absent', marksObtained: 12 })],
+    });
+
+    expect(response.status).toBe(400);
+    expect(txUpsert).not.toHaveBeenCalled();
+  });
+
+  it(
+    "400 when a rubric sub-strand does not belong to this assessment's learning area",
+    async () => {
     signedInAs('teacher');
     subStrandFindMany.mockResolvedValue([]);
     const res = await save({
@@ -494,7 +596,10 @@ describe('POST /api/assessments/[id]/results', () => {
     });
     expect(res.status).toBe(400);
     expect(txUpsert).not.toHaveBeenCalled();
-    expect(assessmentFindFirst.mock.calls[0]![0]!.include.learningArea.include.strands.include.subStrands.select.id).toBe(true);
+    expect(
+      assessmentFindFirst.mock.calls[0]![0]!.include.learningArea.include.strands.include.subStrands
+        .select.id
+    ).toBe(true);
   });
 
   it('saves marks and rubric scores, and audits (without logging marks themselves)', async () => {
@@ -519,6 +624,6 @@ describe('POST /api/assessments/[id]/results', () => {
       actorId: 'u-1',
       action: 'assessment.results_saved',
     });
-    expect(JSON.stringify(audit)).not.toContain('Good'); // no per-student content in the audit entry
+    expect(JSON.stringify(audit)).not.toContain('Good');
   });
 });

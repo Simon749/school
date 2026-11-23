@@ -20,7 +20,10 @@ const parseOptionalNumber = (value: unknown) => {
 export const assessmentResultInputSchema = z.object({
   studentId: z.string().uuid(),
   resultStatus: resultStatusSchema.optional(),
-  marksObtained: z.preprocess(parseOptionalNumber, z.number().finite().min(0).optional().nullable()),
+  marksObtained: z.preprocess(
+    parseOptionalNumber,
+    z.number().finite().min(0).optional().nullable()
+  ),
   teacherComment: z.string().max(1000).optional().nullable(),
   rubricScores: z.array(rubricScoreSchema).max(100).optional(),
 });
@@ -40,6 +43,18 @@ export const bulkUpsertResultsSchema = z
         });
       }
       seen.add(r.studentId);
+
+      const rubricIds = new Set<string>();
+      (r.rubricScores ?? []).forEach((score, scoreIndex) => {
+        if (rubricIds.has(score.subStrandId)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['results', i, 'rubricScores', scoreIndex, 'subStrandId'],
+            message: 'A sub-strand can only be scored once per learner',
+          });
+        }
+        rubricIds.add(score.subStrandId);
+      });
     });
   });
 

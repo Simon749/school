@@ -6,7 +6,8 @@ import { notificationQueue } from '@/lib/queue';
 
 /**
  * Publish only after every active learner has an explicitly completed result.
- * An absence is a completed result with zero; a missing entry blocks publication.
+ * The assessment row is claimed inside the transaction before validating results.
+ * The save endpoint claims the same row, preventing a save/publish race.
  */
 export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
   const guard = await requireTeacher();
@@ -17,7 +18,7 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
     where: { id: params.id, schoolId: user.schoolId, teacherId: teacher.id },
     include: {
       learningArea: {
-        include: { strands: { include: { subStrands: { select: { id: true, name: true } } } } },
+        include: { strands: { include: { subStrands: { select: { id: true } } } } },
       },
     },
   });
@@ -31,84 +32,86 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
     return NextResponse.json({ error: 'Assessment is already published' }, { status: 409 });
   }
 
-  const [students, results] = await Promise.all([
-    prisma.student.findMany({
-      where: {
-        schoolId: user.schoolId,
-        streamId: assessment.streamId,
-        status: 'active',
-        deletedAt: null,
-      },
-      select: { id: true, firstName: true },
-    }),
-    prisma.assessmentResult.findMany({
-      where: { schoolId: user.schoolId, assessmentId: assessment.id },
-      include: { rubricScores: { select: { subStrandId: true } } },
-    }),
-  ]);
-
-  if (students.length === 0) {
-    return NextResponse.json({ error: 'There are no active learners in this class to publish results for' }, { status: 422 });
-  }
-
-  const resultByStudent = new Map(results.map((result) => [result.studentId, result]));
-  const requiredSubStrandIds = assessment.learningArea.strands.flatMap((strand) =>
-    strand.subStrands.map((subStrand) => subStrand.id)
-  );
-  const incomplete: string[] = [];
-
-  for (const student of students) {
-    const result = resultByStudent.get(student.id);
-    if (!result || result.resultStatus === 'not_entered') {
-      incomplete.push(student.firstName);
-      continue;
-    }
-    if (result.resultStatus !== 'scored' && result.resultStatus !== 'absent') {
-      incomplete.push(student.firstName);
-      continue;
-    }
-    if (result.resultStatus === 'absent') {
-      if (result.marksObtained === null || Number(result.marksObtained) !== 0) {
-        incomplete.push(student.firstName);
-      }
-      continue;
-    }
-
-    if (requiredSubStrandIds.length > 0) {
-      const recorded = new Set(result.rubricScores.map((score) => score.subStrandId));
-      if (requiredSubStrandIds.some((id) => !recorded.has(id))) {
-        incomplete.push(student.firstName);
-      }
-    } else if (result.marksObtained === null) {
-      incomplete.push(student.firstName);
-    }
-  }
-
-  if (incomplete.length > 0) {
-    const preview = incomplete.slice(0, 5).join(', ');
-    const suffix = incomplete.length > 5 ? ` and ${incomplete.length - 5} more` : '';
-    return NextResponse.json(
-      {
-        error:
-          `Cannot publish: ${incomplete.length} learner(s) have missing or incomplete results: ${preview}${suffix}. Enter a score or explicitly mark each learner absent.`,
-        incompleteCount: incomplete.length,
-      },
-      { status: 422 }
-    );
-  }
-
   try {
-    const updated = await prisma.$transaction(async (tx) => {
-      // Optimistic state check prevents two simultaneous publish requests.
-      const changed = await tx.assessment.updateMany({
-        where: { id: assessment.id, schoolId: user.schoolId, status: assessment.status },
+    const { published, students } = await prisma.$transaction(async (tx) => {
+      // Claim and lock the assessment row first. The results-save endpoint uses
+      // the same conditional update, so concurrent writes are serialized here.
+      const claimed = await tx.assessment.updateMany({
+        where: {
+          id: assessment.id,
+          schoolId: user.schoolId,
+          teacherId: teacher.id,
+          status: assessment.status,
+        },
         data: { status: 'published', publishedAt: new Date() },
       });
-      if (changed.count !== 1) {
+      if (claimed.count !== 1) {
         throw new Error('ASSESSMENT_STATE_CHANGED');
       }
 
-      const published = await tx.assessment.findFirstOrThrow({
+      // Read the roster and results only after acquiring the assessment lock.
+      const [activeStudents, results] = await Promise.all([
+        tx.student.findMany({
+          where: {
+            schoolId: user.schoolId,
+            streamId: assessment.streamId,
+            status: 'active',
+            deletedAt: null,
+          },
+          select: { id: true, firstName: true },
+        }),
+        tx.assessmentResult.findMany({
+          where: { schoolId: user.schoolId, assessmentId: assessment.id },
+          include: { rubricScores: { select: { subStrandId: true } } },
+        }),
+      ]);
+
+      if (activeStudents.length === 0) {
+        throw new Error('ASSESSMENT_NO_ACTIVE_STUDENTS');
+      }
+
+      const resultByStudent = new Map(results.map((result) => [result.studentId, result]));
+      const requiredSubStrandIds = assessment.learningArea.strands.flatMap((strand) =>
+        strand.subStrands.map((subStrand) => subStrand.id)
+      );
+      const incomplete: string[] = [];
+
+      for (const student of activeStudents) {
+        const result = resultByStudent.get(student.id);
+        if (!result || result.resultStatus === 'not_entered') {
+          incomplete.push(student.firstName);
+          continue;
+        }
+        if (result.resultStatus !== 'scored' && result.resultStatus !== 'absent') {
+          incomplete.push(student.firstName);
+          continue;
+        }
+        if (result.resultStatus === 'absent') {
+          if (result.marksObtained === null || Number(result.marksObtained) !== 0) {
+            incomplete.push(student.firstName);
+          }
+          continue;
+        }
+
+        if (requiredSubStrandIds.length > 0) {
+          const recorded = new Set(result.rubricScores.map((score) => score.subStrandId));
+          if (requiredSubStrandIds.some((id) => !recorded.has(id))) {
+            incomplete.push(student.firstName);
+          }
+        } else if (result.marksObtained === null) {
+          incomplete.push(student.firstName);
+        }
+      }
+
+      if (incomplete.length > 0) {
+        const preview = incomplete.slice(0, 5).join(', ');
+        const suffix = incomplete.length > 5 ? ` and ${incomplete.length - 5} more` : '';
+        throw new Error(
+          `ASSESSMENT_RESULTS_INCOMPLETE|${incomplete.length}|${preview}${suffix}`
+        );
+      }
+
+      const publishedAssessment = await tx.assessment.findFirstOrThrow({
         where: { id: assessment.id, schoolId: user.schoolId },
       });
       await logAudit(
@@ -119,14 +122,16 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
           tableName: 'assessments',
           recordId: assessment.id,
           oldData: { status: assessment.status },
-          newData: { status: 'published', resultCount: students.length },
+          newData: { status: 'published', resultCount: activeStudents.length },
         },
         tx
       );
-      return published;
+
+      return { published: publishedAssessment, students: activeStudents };
     });
 
-    // Notify only the active primary guardian for learners with a completed result.
+    // Publication is committed. Queue failures must not roll it back or report
+    // that publishing itself failed.
     for (const student of students) {
       const guardians = await prisma.guardian.findMany({
         where: {
@@ -155,8 +160,6 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
           },
         });
       } catch (notificationError) {
-        // Publication is already committed. A queue outage must not report that
-        // the assessment itself failed to publish.
         console.error('Could not queue result-published notification', {
           assessmentId: assessment.id,
           studentId: student.id,
@@ -165,13 +168,33 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
       }
     }
 
-    return NextResponse.json(updated);
+    return NextResponse.json(published);
   } catch (error) {
-    if (error instanceof Error && error.message === 'ASSESSMENT_STATE_CHANGED') {
-      return NextResponse.json(
-        { error: 'Assessment status changed. Refresh and try again.' },
-        { status: 409 }
-      );
+    if (error instanceof Error) {
+      if (error.message === 'ASSESSMENT_STATE_CHANGED') {
+        return NextResponse.json(
+          { error: 'Assessment status changed. Refresh and try again.' },
+          { status: 409 }
+        );
+      }
+      if (error.message === 'ASSESSMENT_NO_ACTIVE_STUDENTS') {
+        return NextResponse.json(
+          { error: 'There are no active learners in this class to publish results for' },
+          { status: 422 }
+        );
+      }
+      if (error.message.startsWith('ASSESSMENT_RESULTS_INCOMPLETE|')) {
+        const [, count, names] = error.message.split('|');
+        return NextResponse.json(
+          {
+            error:
+              `Cannot publish: ${count} learner(s) have missing or incomplete results: ${names}. ` +
+              'Enter a score or explicitly mark each learner absent.',
+            incompleteCount: Number(count),
+          },
+          { status: 422 }
+        );
+      }
     }
     console.error('Publish assessment error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

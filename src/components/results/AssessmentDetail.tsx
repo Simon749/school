@@ -91,7 +91,7 @@ export function AssessmentDetail({ assessment, result }: AssessmentDetailProps) 
         <Card className="mt-3 border-2">
           <CardContent className="pt-4 space-y-4">
             {/* Numeric Marks */}
-            {!hasRubric && result.marksObtained && assessment.maxMarks && (
+            {!hasRubric && result.marksObtained !== null && assessment.maxMarks !== null && (
               <div>
                 <h4 className="font-semibold mb-2">Score</h4>
                 <p className="text-2xl font-bold">

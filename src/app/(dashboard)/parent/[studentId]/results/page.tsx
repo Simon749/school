@@ -118,7 +118,9 @@ export default async function ParentResultsPage({ params }: { params: { studentI
               return null;
             }
 
-            const hasRubric = assessment.learningArea.strands.some((strand) => strand.subStrands.length > 0);
+            const hasRubric = assessment.learningArea.strands.some(
+    (strand) => strand.subStrands.length > 0
+  );
 
             return (
               <Card key={assessment.id}>
@@ -153,14 +155,22 @@ export default async function ParentResultsPage({ params }: { params: { studentI
                     </div>
                   )}
 
-                  {hasRubric && (
+                  {hasRubric && result.resultStatus === 'absent' && (
+                    <p className="text-sm text-muted-foreground">
+                      CBC rubric scores were not recorded because the learner was absent.
+                    </p>
+                  )}
+
+                  {hasRubric && result.resultStatus !== 'absent' && (
                     <div>
                       <p className="text-sm font-medium mb-2">CBC Rubric Scores:</p>
                       <div className="flex flex-wrap gap-2">
                         {result.rubricScores.map((score) => (
                           <Badge
                             key={score.id}
-                            className={`${getRubricColor(score.score)} border text-xs font-semibold`}
+                            className={
+                              `${getRubricColor(score.score)} border text-xs font-semibold`
+                            }
                             title={`${score.subStrand.strand.name} → ${score.subStrand.name}`}
                           >
                             {score.score}
