@@ -162,7 +162,9 @@ export default async function ParentResultsPage({ params }: { params: { studentI
                         {result.rubricScores.map((score) => (
                           <Badge
                             key={score.id}
-                            className={`${getRubricColor(score.score)} border text-xs font-semibold`}
+                            className={
+                              `${getRubricColor(score.score)} border text-xs font-semibold`
+                            }
                             title={`${score.subStrand.strand.name} → ${score.subStrand.name}`}
                           >
                             {score.score}
