@@ -240,8 +240,11 @@ export function MarksEntryTable({
     const hasAnyScore = Object.values(rubricScores).some(Boolean);
     updateStudent(studentId, {
       rubricScores,
-      resultStatus:
-        current.resultStatus === 'absent' ? 'absent' : hasAnyScore ? 'scored' : 'not_entered',
+      resultStatus: hasAnyScore
+        ? 'scored'
+        : current.resultStatus === 'absent'
+          ? 'absent'
+          : 'not_entered',
     });
   };
 
@@ -315,7 +318,10 @@ export function MarksEntryTable({
                 variant="outline"
                 onClick={() => void saveLatest()}
                 disabled={
-                  saveStatus === 'saving' || saveStatus === 'saved' || saveStatus === 'idle'
+                  isPublishing ||
+                  saveStatus === 'saving' ||
+                  saveStatus === 'saved' ||
+                  saveStatus === 'idle'
                 }
               >
                 Save changes
@@ -342,11 +348,13 @@ export function MarksEntryTable({
               )}
               {hasRubric &&
                 subStrands.map((ss) => (
-                <TableHead key={ss.id} className="min-w-[120px]">
-                  <div className="text-xs font-normal text-muted-foreground">{ss.strandName}</div>
-                  <div className="text-sm font-medium">{ss.name}</div>
-                </TableHead>
-              ))}
+                  <TableHead key={ss.id} className="min-w-[120px]">
+                    <div className="text-xs font-normal text-muted-foreground">
+                      {ss.strandName}
+                    </div>
+                    <div className="text-sm font-medium">{ss.name}</div>
+                  </TableHead>
+                ))}
               <TableHead className="w-[200px]">Teacher Comment</TableHead>
             </TableRow>
           </TableHeader>
@@ -366,7 +374,7 @@ export function MarksEntryTable({
                           (value || 'not_entered') as Exclude<ResultStatus, 'scored'>
                         )
                       }
-                      disabled={isLocked}
+                      disabled={isLocked || isPublishing}
                     >
                       <SelectTrigger className="min-w-[140px]">
                         <SelectValue>{statusLabel[state.resultStatus]}</SelectValue>
@@ -385,7 +393,7 @@ export function MarksEntryTable({
                         type="number"
                         value={state.marksObtained}
                         onChange={(event) => updateMarks(student.id, event.target.value)}
-                        disabled={isLocked || state.resultStatus === 'absent'}
+                        disabled={isLocked || isPublishing || state.resultStatus === 'absent'}
                         max={maxMarks}
                         min={0}
                         step="0.01"
@@ -401,7 +409,7 @@ export function MarksEntryTable({
                         onValueChange={(value: string | null) =>
                           updateRubricScore(student.id, ss.id, value || '')
                         }
-                        disabled={isLocked || state.resultStatus === 'absent'}
+                        disabled={isLocked || isPublishing || state.resultStatus === 'absent'}
                       >
                         <SelectTrigger className="w-[100px]">
                           <SelectValue placeholder="Select" />
@@ -422,7 +430,7 @@ export function MarksEntryTable({
                       onChange={(event) =>
                         updateStudent(student.id, { teacherComment: event.target.value })
                       }
-                      disabled={isLocked}
+                      disabled={isLocked || isPublishing}
                       className="min-h-[60px]"
                     />
                   </TableCell>
