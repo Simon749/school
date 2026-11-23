@@ -52,7 +52,11 @@ vi.mock('@/lib/db', () => ({
           findFirst: (...a: unknown[]) => assessmentFindFirst(...a),
           findFirstOrThrow: (...a: unknown[]) => assessmentFindFirstOrThrow(...a),
         },
-        assessmentResult: { upsert: (...a: unknown[]) => txUpsert(...a) },
+        assessmentResult: {
+          findMany: (...a: unknown[]) => resultFindMany(...a),
+          upsert: (...a: unknown[]) => txUpsert(...a),
+        },
+        student: { findMany: (...a: unknown[]) => studentFindMany(...a) },
         rubricScore: {
           deleteMany: (...a: unknown[]) => txDeleteMany(...a),
           createMany: (...a: unknown[]) => txCreateMany(...a),
@@ -409,7 +413,9 @@ describe('POST /api/assessments/[id]/publish', () => {
 
     expect(response.status).toBe(422);
     expect((await response.json()).incompleteCount).toBe(1);
-    expect(assessmentUpdateMany).not.toHaveBeenCalled();
+    expect(assessmentUpdateMany).toHaveBeenCalledTimes(1);
+    expect(assessmentFindFirstOrThrow).not.toHaveBeenCalled();
+    expect(logAudit).not.toHaveBeenCalled();
     expect(notifAdd).not.toHaveBeenCalled();
   });
 
