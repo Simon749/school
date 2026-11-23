@@ -42,7 +42,10 @@ export async function POST(req: NextRequest) {
     where: { id: assessmentId, schoolId: user.schoolId },
   });
   if (!assessment) {
-    return NextResponse.json({ error: 'Assessment not found or not in your school' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Assessment not found or not in your school' },
+      { status: 404 }
+    );
   }
   if (assessment.status === 'locked' || assessment.status === 'published') {
     return NextResponse.json(
@@ -62,9 +65,10 @@ export async function POST(req: NextRequest) {
   }
 
   const maxMarks = assessment.maxMarks === null ? null : Number(assessment.maxMarks);
-  if (maxMarks !== null && results.some((result) =>
-    result.marksObtained != null && result.marksObtained > maxMarks
-  )) {
+  if (
+    maxMarks !== null &&
+    results.some((result) => result.marksObtained != null && result.marksObtained > maxMarks)
+  ) {
     return NextResponse.json({ error: `Marks cannot be more than ${maxMarks}` }, { status: 400 });
   }
 
@@ -75,7 +79,11 @@ export async function POST(req: NextRequest) {
         where: { id: assessmentId, schoolId: user.schoolId },
         select: { status: true },
       });
-      if (!currentAssessment || currentAssessment.status === 'locked' || currentAssessment.status === 'published') {
+      if (
+        !currentAssessment ||
+        currentAssessment.status === 'locked' ||
+        currentAssessment.status === 'published'
+      ) {
         throw new Error('ASSESSMENT_NOT_EDITABLE');
       }
 
@@ -133,10 +141,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     if (error instanceof Error && error.message === 'ASSESSMENT_NOT_EDITABLE') {
-      return NextResponse.json({ error: 'Cannot modify a published or locked assessment' }, { status: 409 });
+      return NextResponse.json(
+        { error: 'Cannot modify a published or locked assessment' },
+        { status: 409 }
+      );
     }
     if (error instanceof Error && error.message === 'STUDENT_NOT_IN_ASSESSMENT') {
-      return NextResponse.json({ error: 'A student is not an active member of this assessment class' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'A student is not an active member of this assessment class' },
+        { status: 400 }
+      );
     }
     console.error('Legacy marks entry error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
