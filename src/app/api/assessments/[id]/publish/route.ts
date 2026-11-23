@@ -68,7 +68,7 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
       continue;
     }
     if (result.resultStatus === 'absent') {
-      if (Number(result.marksObtained ?? 0) !== 0) incomplete.push(student.firstName);
+      if (result.marksObtained === null || Number(result.marksObtained) !== 0) incomplete.push(student.firstName);
       continue;
     }
 
@@ -136,18 +136,28 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
       const parent = guardians[0];
       if (!parent) continue;
 
-      await notificationQueue.add('notification-queue', {
-        schoolId: user.schoolId,
-        userId: parent.userId,
-        type: 'result-published',
-        title: 'Results Published',
-        body: `${student.firstName}'s ${assessment.title} results are now available`,
-        data: {
-          studentId: student.id,
+      try {
+        await notificationQueue.add('notification-queue', {
+          schoolId: user.schoolId,
+          userId: parent.userId,
+          type: 'result-published',
+          title: 'Results Published',
+          body: `${student.firstName}'s ${assessment.title} results are now available`,
+          data: {
+            studentId: student.id,
+            assessmentId: assessment.id,
+            url: `/parent/${student.id}/results`,
+          },
+        });
+      } catch (notificationError) {
+        // Publication is already committed. A queue outage must not report that
+        // the assessment itself failed to publish.
+        console.error('Could not queue result-published notification', {
           assessmentId: assessment.id,
-          url: `/parent/${student.id}/results`,
-        },
-      });
+          studentId: student.id,
+          notificationError,
+        });
+      }
     }
 
     return NextResponse.json(updated);
