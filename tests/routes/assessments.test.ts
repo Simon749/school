@@ -513,6 +513,16 @@ describe('POST /api/assessments/[id]/results', () => {
     expect(txUpsert).not.toHaveBeenCalled();
   });
 
+  it('409 if the assessment is no longer editable when the save transaction starts', async () => {
+    signedInAs('teacher');
+    assessmentUpdateMany.mockResolvedValue({ count: 0 });
+
+    const response = await save({ results: [row()] });
+
+    expect(response.status).toBe(409);
+    expect(txUpsert).not.toHaveBeenCalled();
+  });
+
   it(
     "400 when a student is not in THIS assessment's class (cross-class / cross-school write)",
     async () => {
