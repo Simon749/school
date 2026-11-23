@@ -374,7 +374,7 @@
 
 #### Results Integrity Hardening — 2026-11-23
 - [x] Create isolated branch: `feature/results-integrity`
-- [x] Add explicit result states: `scored`, `absent`, `not_entered`
+- [x] Add explicit result states: `scored`, `absent`, `not_entered`; backfill existing marks/rubric scores as `scored`
 - [x] Add additive Prisma migration with legacy rows defaulting to `not_entered`
 - [x] Preserve null marks during Zod validation; zero remains a valid score
 - [x] Harden canonical and legacy marks APIs against published/locked edits
