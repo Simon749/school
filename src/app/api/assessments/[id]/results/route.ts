@@ -50,25 +50,36 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   const { results } = parsed.data;
   const maxMarks = assessment.maxMarks === null ? null : Number(assessment.maxMarks);
   const hasRubric = assessment.learningArea.strands.some((strand) => strand.subStrands.length > 0);
-  if (maxMarks !== null && results.some((result) =>
-    result.marksObtained != null && result.marksObtained > maxMarks
-  )) {
+  if (
+    maxMarks !== null &&
+    results.some((result) => result.marksObtained != null && result.marksObtained > maxMarks)
+  ) {
     return NextResponse.json({ error: `Marks cannot be more than ${maxMarks}` }, { status: 400 });
   }
 
   for (const result of results) {
     const hasRubricScores = (result.rubricScores?.length ?? 0) > 0;
-    const status = result.resultStatus ??
+    const status =
+      result.resultStatus ??
       (result.marksObtained != null || hasRubricScores ? 'scored' : 'not_entered');
 
     if (status === 'absent' && result.marksObtained != null && result.marksObtained !== 0) {
-      return NextResponse.json({ error: 'An absent learner must have a score of zero' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'An absent learner must have a score of zero' },
+        { status: 400 }
+      );
     }
     if (status === 'scored' && !hasRubric && result.marksObtained == null) {
-      return NextResponse.json({ error: 'A scored numerical result must include marks' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'A scored numerical result must include marks' },
+        { status: 400 }
+      );
     }
     if (status === 'scored' && hasRubric && !hasRubricScores) {
-      return NextResponse.json({ error: 'A scored CBC result must include at least one rubric score' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'A scored CBC result must include at least one rubric score' },
+        { status: 400 }
+      );
     }
   }
 
@@ -93,7 +104,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     const subStrandIds = [
-      ...new Set(results.flatMap((result) => (result.rubricScores ?? []).map((score) => score.subStrandId))),
+      ...new Set(
+        results.flatMap((result) =>
+          (result.rubricScores ?? []).map((score) => score.subStrandId)
+        )
+      ),
     ];
     if (subStrandIds.length > 0) {
       const validSubStrands = assessment.learningArea.strands.flatMap((strand) =>
@@ -114,14 +129,22 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         where: { id: assessment.id, schoolId: user.schoolId, teacherId: teacher.id },
         select: { status: true },
       });
-      if (!currentAssessment || currentAssessment.status === 'published' || currentAssessment.status === 'locked') {
+      if (
+        !currentAssessment ||
+        currentAssessment.status === 'published' ||
+        currentAssessment.status === 'locked'
+      ) {
         throw new Error('ASSESSMENT_NOT_EDITABLE');
       }
 
       for (const result of results) {
-        const status = result.resultStatus ??
-          (result.marksObtained != null || (result.rubricScores?.length ?? 0) > 0 ? 'scored' : 'not_entered');
-        const marksObtained = status === 'absent' ? 0 : status === 'not_entered' ? null : result.marksObtained ?? null;
+        const status =
+          result.resultStatus ??
+          (result.marksObtained != null || (result.rubricScores?.length ?? 0) > 0
+            ? 'scored'
+            : 'not_entered');
+        const marksObtained =
+          status === 'absent' ? 0 : status === 'not_entered' ? null : result.marksObtained ?? null;
         const assessmentResult = await tx.assessmentResult.upsert({
           where: {
             assessmentId_studentId: { assessmentId: assessment.id, studentId: result.studentId },
