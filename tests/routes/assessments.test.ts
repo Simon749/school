@@ -365,7 +365,7 @@ describe('POST /api/assessments/[id]/publish', () => {
     signedInAs('teacher');
     assessmentFindFirst.mockResolvedValue(assessment({ status: 'locked' }));
     expect((await run()).status).toBe(403);
-    expect(assessmentUpdate).not.toHaveBeenCalled();
+    expect(assessmentUpdateMany).not.toHaveBeenCalled();
   });
 
   it('409 when already published, and parents are NOT notified a second time', async () => {
