@@ -271,7 +271,15 @@ export function MarksEntryTable({
   };
 
   return (
-    <div className="space-y-4">
+    <div
+      className="space-y-4"
+      onBlurCapture={(event) => {
+        const nextTarget = event.relatedTarget as Node | null;
+        if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
+          void saveLatest();
+        }
+      }}
+    >
       <div className="flex flex-wrap justify-between items-center gap-3">
         <div className="flex items-center gap-2" aria-live="polite">
           {saveStatus === 'saving' && <Badge variant="outline">Saving...</Badge>}
