@@ -20,7 +20,10 @@ const parseOptionalNumber = (value: unknown) => {
 export const assessmentResultInputSchema = z.object({
   studentId: z.string().uuid(),
   resultStatus: resultStatusSchema.optional(),
-  marksObtained: z.preprocess(parseOptionalNumber, z.number().finite().min(0).optional().nullable()),
+  marksObtained: z.preprocess(
+    parseOptionalNumber,
+    z.number().finite().min(0).optional().nullable()
+  ),
   teacherComment: z.string().max(1000).optional().nullable(),
   rubricScores: z.array(rubricScoreSchema).max(100).optional(),
 });
