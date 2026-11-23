@@ -1,5 +1,5 @@
 # EduTrack Kenya — Build Progress Tracker
-> Last Updated: 2026-08-14  |  Current Phase: Phase 0 — Project Setup  |  Pilot Target: 1 Nairobi Private School
+> Last Updated: 2026-11-23  |  Current Focus: Phase 3 — Results & Comms (results integrity hardening)  |  Pilot Target: 1 Nairobi Private School
 
 > **Rebuild note (2026-08-14):** Previous repo (`Simon749/sms-`) audited against this tracker
 > and SYSTEM_DESIGN.md — found to be a different, single-tenant tutorial-based project covering
@@ -371,6 +371,23 @@
 - [ ] API: `POST /api/results/assessment`
 
 ### 3.2 CBC Rubric Marks Entry
+
+#### Results Integrity Hardening — 2026-11-23
+- [x] Create isolated branch: `feature/results-integrity`
+- [x] Add explicit result states: `scored`, `absent`, `not_entered`; backfill existing marks/rubric scores as `scored`
+- [x] Add additive Prisma migration with legacy rows defaulting to `not_entered`
+- [x] Preserve null marks during Zod validation; zero remains a valid score
+- [x] Harden canonical and legacy marks APIs against published/locked edits
+- [x] Validate learner, stream, school and rubric ownership before saving
+- [x] Require every active learner to have a completed result before publishing
+- [x] Flush pending teacher edits before publishing; show dirty/saving/saved/error states
+- [x] Display zero and explicit absence on parent results
+- [x] Add validation unit tests
+- [ ] Run Prisma format/generate, typecheck, lint and tests locally
+- [ ] Apply migration to development database after backup/review
+- [ ] Verify the complete teacher-to-parent workflow against seeded test data
+
+> Implementation note: these changes are committed to the feature branch only. They have not yet been run against the local environment or a live database.
 - [ ] Marks entry UI (`app/(dashboard)/teacher/markbook/[assessmentId]/page.tsx`):
   - [ ] Table: one row per student
   - [ ] For non-rubric: number input (marks out of max)
@@ -740,3 +757,19 @@ Questions/Decisions needed:
 ---
 
 *Progress tracker version 1.0 | EduTrack Kenya | Update this file every session*
+
+## Results Integrity Work Log — 2026-11-23
+
+**Branch:** `feature/results-integrity`
+
+**Completed in repository:**
+- Added explicit assessment result status and an additive migration.
+- Reworked teacher mark entry to save the latest state, retry failed saves, and flush before publication.
+- Added explicit absence handling (zero) and automatic scored/not-entered state transitions.
+- Hardened both results write endpoints and publication completeness checks.
+- Fixed zero-mark display on teacher and parent results pages.
+- Added Zod validation tests.
+
+**Not yet verified:** Prisma generation, TypeScript compilation, lint, automated test execution, migration application, and end-to-end browser/database behaviour.
+
+**Next:** Run local validation before adding special-exam correction history or analytics.

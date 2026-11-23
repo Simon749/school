@@ -11,9 +11,12 @@ const assessmentFindMany = vi.fn();
 const assessmentFindFirst = vi.fn();
 const assessmentCreate = vi.fn();
 const assessmentUpdate = vi.fn();
+const assessmentUpdateMany = vi.fn();
+const assessmentFindFirstOrThrow = vi.fn();
 const studentFindMany = vi.fn();
 const subStrandFindMany = vi.fn();
 const resultFindMany = vi.fn();
+const guardianFindMany = vi.fn();
 const txUpsert = vi.fn();
 const txDeleteMany = vi.fn();
 const txCreateMany = vi.fn();
@@ -38,11 +41,17 @@ vi.mock('@/lib/db', () => ({
       update: (...a: unknown[]) => assessmentUpdate(...a),
     },
     student: { findMany: (...a: unknown[]) => studentFindMany(...a) },
+    guardian: { findMany: (...a: unknown[]) => guardianFindMany(...a) },
     subStrand: { findMany: (...a: unknown[]) => subStrandFindMany(...a) },
     assessmentResult: { findMany: (...a: unknown[]) => resultFindMany(...a) },
     $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
       fn({
-        assessment: { update: (...a: unknown[]) => assessmentUpdate(...a) }, // ➕ ADD THIS LINE
+        assessment: {
+          update: (...a: unknown[]) => assessmentUpdate(...a),
+          updateMany: (...a: unknown[]) => assessmentUpdateMany(...a),
+          findFirst: (...a: unknown[]) => assessmentFindFirst(...a),
+          findFirstOrThrow: (...a: unknown[]) => assessmentFindFirstOrThrow(...a),
+        },
         assessmentResult: { upsert: (...a: unknown[]) => txUpsert(...a) },
         rubricScore: {
           deleteMany: (...a: unknown[]) => txDeleteMany(...a),
@@ -90,6 +99,7 @@ const assessment = (over: Record<string, unknown> = {}) => ({
   title: 'CAT 1',
   status: 'draft',
   maxMarks: 50,
+  learningArea: { strands: [] },
   ...over,
 });
 
@@ -106,9 +116,12 @@ beforeEach(() => {
     assessmentFindFirst,
     assessmentCreate,
     assessmentUpdate,
+    assessmentUpdateMany,
+    assessmentFindFirstOrThrow,
     studentFindMany,
     subStrandFindMany,
     resultFindMany,
+    guardianFindMany,
     txUpsert,
     txDeleteMany,
     txCreateMany,
@@ -136,9 +149,12 @@ beforeEach(() => {
     id: 'a-1',
     ...data,
   }));
-  studentFindMany.mockResolvedValue([{ id: S1 }, { id: S2 }]);
+  studentFindMany.mockResolvedValue([{ id: S1, firstName: 'Amara' }, { id: S2, firstName: 'Baraka' }]);
   subStrandFindMany.mockResolvedValue([{ id: SUB }]);
   resultFindMany.mockResolvedValue([]);
+  guardianFindMany.mockResolvedValue([]);
+  assessmentUpdateMany.mockResolvedValue({ count: 1 });
+  assessmentFindFirstOrThrow.mockResolvedValue(assessment({ status: 'published' }));
   txUpsert.mockResolvedValue({ id: 'res-1' });
 });
 
@@ -342,46 +358,51 @@ describe('POST /api/assessments/[id]/publish', () => {
       schoolId: 'school-A',
       teacherId: 't-1',
     });
-    expect(assessmentUpdate).not.toHaveBeenCalled();
+    expect(assessmentUpdateMany).not.toHaveBeenCalled();
   });
 
   it('403 for a locked assessment', async () => {
     signedInAs('teacher');
     assessmentFindFirst.mockResolvedValue(assessment({ status: 'locked' }));
     expect((await run()).status).toBe(403);
-    expect(assessmentUpdate).not.toHaveBeenCalled();
+    expect(assessmentUpdateMany).not.toHaveBeenCalled();
   });
 
   it('409 when already published, and parents are NOT notified a second time', async () => {
     signedInAs('teacher');
     assessmentFindFirst.mockResolvedValue(assessment({ status: 'published' }));
     expect((await run()).status).toBe(409);
-    expect(assessmentUpdate).not.toHaveBeenCalled();
+    expect(assessmentUpdateMany).not.toHaveBeenCalled();
     expect(notifAdd).not.toHaveBeenCalled();
   });
 
   it('publishes, notifies only guardians of students who HAVE a result, and audits', async () => {
     signedInAs('teacher');
     resultFindMany.mockResolvedValue([
-      { student: { id: S1, firstName: 'Amara', guardians: [{ userId: 'p-1' }] } },
-      { student: { id: S2, firstName: 'Baraka', guardians: [] } }, // no active primary guardian
+      { studentId: S1, resultStatus: 'scored', marksObtained: 42, rubricScores: [] },
+      { studentId: S2, resultStatus: 'absent', marksObtained: 0, rubricScores: [] },
     ]);
+    guardianFindMany.mockImplementation(async ({ where }: { where: { studentId: string } }) =>
+      where.studentId === S1 ? [{ userId: 'p-1' }] : []
+    );
 
     const res = await run();
     expect(res.status).toBe(200);
 
     // 1. Assessment update is called correctly
-    expect(assessmentUpdate.mock.calls[0]![0]!.data).toMatchObject({ status: 'published' });
-    expect(assessmentUpdate.mock.calls[0]![0]!.data.publishedAt).toBeInstanceOf(Date);
+    expect(assessmentUpdateMany.mock.calls[0]![0]!.data).toMatchObject({ status: 'published' });
+    expect(assessmentUpdateMany.mock.calls[0]![0]!.data.publishedAt).toBeInstanceOf(Date);
 
     // 2. Results query is scoped correctly
     const q = resultFindMany.mock.calls[0]![0]!;
-    expect(q.where).toMatchObject({
-      schoolId: 'school-A', // ➕ FIXED: Moved to root to match route.ts (was incorrectly nested inside student)
-      assessmentId: 'a-1',
-      student: { deletedAt: null, status: 'active' },
+    expect(q.where).toEqual({ schoolId: 'school-A', assessmentId: 'a-1' });
+    expect(studentFindMany.mock.calls[0]![0]!.where).toMatchObject({
+      schoolId: 'school-A', streamId: STREAM, status: 'active', deletedAt: null,
     });
-    expect(JSON.stringify(q.select.student.select.guardians.where)).toContain('"isActive":true');
+    expect(guardianFindMany).toHaveBeenCalledTimes(2);
+    expect(guardianFindMany.mock.calls[0]![0]!.where).toMatchObject({
+      studentId: S1, isPrimary: true, isActive: true,
+    });
 
     // 3. Notifications are sent correctly
     expect(notifAdd).toHaveBeenCalledTimes(1);
@@ -440,6 +461,7 @@ describe('POST /api/assessments/[id]/results', () => {
     expect(studentFindMany.mock.calls[0]![0]!.where).toMatchObject({
       streamId: STREAM,
       schoolId: 'school-A',
+      status: 'active',
       deletedAt: null,
     });
   });
@@ -472,13 +494,15 @@ describe('POST /api/assessments/[id]/results', () => {
     });
     expect(res.status).toBe(400);
     expect(txUpsert).not.toHaveBeenCalled();
-    expect(subStrandFindMany.mock.calls[0]![0]!.where).toMatchObject({
-      strand: { learningAreaId: AREA },
-    });
+    expect(assessmentFindFirst.mock.calls[0]![0]!.include.learningArea.include.strands.include.subStrands.select.id).toBe(true);
   });
 
   it('saves marks and rubric scores, and audits (without logging marks themselves)', async () => {
     signedInAs('teacher');
+    assessmentFindFirst.mockResolvedValue(assessment({
+      maxMarks: null,
+      learningArea: { strands: [{ subStrands: [{ id: SUB }] }] },
+    }));
     const res = await save({
       results: [row({ rubricScores: [{ subStrandId: SUB, score: 'EE' }] })],
     });

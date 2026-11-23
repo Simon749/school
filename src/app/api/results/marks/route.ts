@@ -4,19 +4,20 @@ import { requireUser } from '@/lib/auth/current-user';
 import { logAudit, getRequestMetadata } from '@/lib/audit';
 import { z } from 'zod';
 
+// Compatibility endpoint for older clients. New markbook code uses
+// /api/assessments/[id]/results as the canonical results API.
 const marksEntrySchema = z.object({
   assessmentId: z.string().uuid(),
   results: z.array(
     z.object({
       studentId: z.string().uuid(),
-      marksObtained: z.number().min(0).optional(),
-      teacherComment: z.string().max(500).optional(),
+      marksObtained: z.number().finite().min(0).nullable().optional(),
+      teacherComment: z.string().max(1000).nullable().optional(),
     })
-  ),
+  ).max(500),
 });
 
 export async function POST(req: NextRequest) {
-  // 1. Only teachers (for their own assessments) or admins can enter marks
   const guard = await requireUser(['admin', 'teacher']);
   if (!guard.ok) return guard.response;
   const user = guard.user;
@@ -37,20 +38,15 @@ export async function POST(req: NextRequest) {
   }
 
   const { assessmentId, results } = parsed.data;
-
-  // 2. Verify assessment belongs to caller's school and is not locked
-  const assessment = await prisma.assessment.findUnique({
+  const assessment = await prisma.assessment.findFirst({
     where: { id: assessmentId, schoolId: user.schoolId },
-    include: { stream: { select: { id: true, schoolId: true } } },
   });
-
   if (!assessment) {
     return NextResponse.json(
       { error: 'Assessment not found or not in your school' },
       { status: 404 }
     );
   }
-
   if (assessment.status === 'locked' || assessment.status === 'published') {
     return NextResponse.json(
       { error: 'Cannot modify marks for a locked or published assessment' },
@@ -58,59 +54,105 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 3. Verify teacher owns this assessment (unless admin)
-  if (user.role !== 'admin' && assessment.teacherId !== user.id) {
-    // Check if they are a valid substitute (simplified for brevity)
-    return NextResponse.json({ error: 'You are not assigned to this assessment' }, { status: 403 });
+  if (user.role === 'teacher') {
+    const teacher = await prisma.teacher.findFirst({
+      where: { userId: user.id, schoolId: user.schoolId },
+      select: { id: true },
+    });
+    if (!teacher || assessment.teacherId !== teacher.id) {
+      return NextResponse.json({ error: 'You are not assigned to this assessment' }, { status: 403 });
+    }
+  }
+
+  const maxMarks = assessment.maxMarks === null ? null : Number(assessment.maxMarks);
+  if (
+    maxMarks !== null &&
+    results.some((result) => result.marksObtained != null && result.marksObtained > maxMarks)
+  ) {
+    return NextResponse.json({ error: `Marks cannot be more than ${maxMarks}` }, { status: 400 });
   }
 
   const { ipAddress, userAgent } = getRequestMetadata(req);
-
-  // 4. Atomic upsert + Audit (R5-01)
-  await prisma.$transaction(async (tx) => {
-    const upsertPromises = results.map(async (r) => {
-      // Verify student belongs to the assessment's stream and school
-      const student = await tx.student.findUnique({
-        where: { id: r.studentId, schoolId: user.schoolId, streamId: assessment.streamId },
+  try {
+    await prisma.$transaction(async (tx) => {
+      const currentAssessment = await tx.assessment.findFirst({
+        where: { id: assessmentId, schoolId: user.schoolId },
+        select: { status: true },
       });
-      if (!student) {
-        throw new Error(`Student ${r.studentId} is not in this assessment's class`);
+      if (
+        !currentAssessment ||
+        currentAssessment.status === 'locked' ||
+        currentAssessment.status === 'published'
+      ) {
+        throw new Error('ASSESSMENT_NOT_EDITABLE');
       }
 
-      return tx.assessmentResult.upsert({
-        where: { assessmentId_studentId: { assessmentId, studentId: r.studentId } },
-        update: {
-          marksObtained: r.marksObtained !== undefined ? r.marksObtained : undefined,
-          teacherComment: r.teacherComment !== undefined ? r.teacherComment : undefined,
-          submittedAt: new Date(),
+      for (const result of results) {
+        const student = await tx.student.findFirst({
+          where: {
+            id: result.studentId,
+            schoolId: user.schoolId,
+            streamId: assessment.streamId,
+            status: 'active',
+            deletedAt: null,
+          },
+          select: { id: true },
+        });
+        if (!student) {
+          throw new Error('STUDENT_NOT_IN_ASSESSMENT');
+        }
+
+        const resultStatus = result.marksObtained == null ? 'not_entered' : 'scored';
+        await tx.assessmentResult.upsert({
+          where: { assessmentId_studentId: { assessmentId, studentId: result.studentId } },
+          update: {
+            marksObtained: result.marksObtained ?? null,
+            resultStatus,
+            teacherComment: result.teacherComment,
+            submittedAt: new Date(),
+          },
+          create: {
+            schoolId: user.schoolId,
+            assessmentId,
+            studentId: result.studentId,
+            marksObtained: result.marksObtained ?? null,
+            resultStatus,
+            teacherComment: result.teacherComment ?? null,
+            submittedAt: new Date(),
+          },
+        });
+      }
+
+      await logAudit(
+        {
+          schoolId: user.schoolId,
+          actorId: user.id,
+          action: 'ASSESSMENT_MARKS_ENTERED',
+          tableName: 'assessment_results',
+          recordId: assessmentId,
+          newData: { resultCount: results.length },
+          ipAddress,
+          userAgent,
         },
-        create: {
-          schoolId: user.schoolId, // ➕ R5-04: Strict tenancy
-          assessmentId,
-          studentId: r.studentId,
-          marksObtained: r.marksObtained ?? null,
-          teacherComment: r.teacherComment ?? null,
-          submittedAt: new Date(),
-        },
-      });
+        tx
+      );
     });
 
-    await Promise.all(upsertPromises);
-
-    await logAudit(
-      {
-        schoolId: user.schoolId,
-        actorId: user.id,
-        action: 'ASSESSMENT_MARKS_ENTERED',
-        tableName: 'assessment_results',
-        recordId: assessmentId,
-        newData: { resultCount: results.length },
-        ipAddress,
-        userAgent,
-      },
-      tx
-    );
-  });
-
-  return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'ASSESSMENT_NOT_EDITABLE') {
+      return NextResponse.json(
+        { error: 'Cannot modify a published or locked assessment' },
+        { status: 409 }
+      );
+    }
+    if (error instanceof Error && error.message === 'STUDENT_NOT_IN_ASSESSMENT') {
+      return NextResponse.json(
+        { error: 'A student is not an active member of this assessment class' },
+        { status: 400 }
+      );
+    }
+    console.error('Legacy marks entry error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

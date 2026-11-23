@@ -3,7 +3,6 @@
   "MISSING-ROUTE GET /api/fees/mpesa/query  (src/app/(dashboard)/bursar/fees/disputes/page.tsx)",
   "MISSING-ROUTE GET /api/school/guardian-count  (src/components/messages/AdminBroadcastMessage.tsx)",
   "MISSING-ROUTE GET /api/streams/${value}/guardian-count  (src/components/messages/AdminBroadcastMessage.tsx)",
-  "MISSING-ROUTE GET /api/students/${selectedStudent}/guardian  (src/components/messages/TeacherComposeMessage.tsx)",
   "MISSING-ROUTE POST /api/activities  (src/app/(dashboard)/admin/activities/page.tsx)",
   "WRONG-METHOD GET /api/streams — route exports [POST]  (src/app/(dashboard)/teacher/markbook/exports/page.tsx)"
 ]
