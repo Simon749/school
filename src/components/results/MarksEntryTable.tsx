@@ -235,7 +235,7 @@ export function MarksEntryTable({
     });
   };
 
-  const updateResultStatus = (studentId: string, status: ResultStatus) => {
+  const updateResultStatus = (studentId: string, status: Exclude<ResultStatus, 'scored'>) => {
     const current = latestStatesRef.current[studentId] ?? emptyStudentState();
     updateStudent(studentId, {
       resultStatus: status,
@@ -324,7 +324,7 @@ export function MarksEntryTable({
                   <TableCell>
                     <Select
                       value={state.resultStatus}
-                      onValueChange={(value: string | null) => updateResultStatus(student.id, (value || 'not_entered') as ResultStatus)}
+                      onValueChange={(value: string | null) => updateResultStatus(student.id, (value || 'not_entered') as Exclude<ResultStatus, 'scored'>)}
                       disabled={isLocked}
                     >
                       <SelectTrigger className="min-w-[140px]">
@@ -332,7 +332,6 @@ export function MarksEntryTable({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="not_entered">Not entered</SelectItem>
-                        <SelectItem value="scored">Scored</SelectItem>
                         <SelectItem value="absent">Absent (0)</SelectItem>
                       </SelectContent>
                     </Select>
@@ -344,7 +343,7 @@ export function MarksEntryTable({
                         type="number"
                         value={state.marksObtained}
                         onChange={(event) => updateMarks(student.id, event.target.value)}
-                        disabled={isLocked || state.resultStatus === 'absent' || state.resultStatus === 'not_entered'}
+                        disabled={isLocked || state.resultStatus === 'absent'}
                         max={maxMarks}
                         min={0}
                         step="0.01"
@@ -357,7 +356,7 @@ export function MarksEntryTable({
                       <Select
                         value={state.rubricScores[ss.id] ?? ''}
                         onValueChange={(value: string | null) => updateRubricScore(student.id, ss.id, value || '')}
-                        disabled={isLocked || state.resultStatus !== 'scored'}
+                        disabled={isLocked || state.resultStatus === 'absent'}
                       >
                         <SelectTrigger className="w-[100px]">
                           <SelectValue placeholder="Select" />
