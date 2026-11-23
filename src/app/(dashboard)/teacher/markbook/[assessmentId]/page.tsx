@@ -81,11 +81,11 @@ export default async function MarksEntryPage({ params }: { params: { assessmentI
             subStrands={subStrands}
             existingResults={existingResults.map((r) => ({
               ...r,
-              marksObtained: r.marksObtained ? Number(r.marksObtained) : null,
+              marksObtained: r.marksObtained === null ? null : Number(r.marksObtained),
             }))}
             isLocked={assessment.status === 'locked' || assessment.status === 'published'}
             hasRubric={subStrands.length > 0}
-            maxMarks={assessment.maxMarks ? Number(assessment.maxMarks) : undefined}
+            maxMarks={assessment.maxMarks === null ? undefined : Number(assessment.maxMarks)}
           />
         </CardContent>
       </Card>
