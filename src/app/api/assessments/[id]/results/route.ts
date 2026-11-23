@@ -101,6 +101,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     await prisma.$transaction(async (tx) => {
+      // Re-check inside the write transaction so a request that started before
+      // publication cannot write marks after the assessment becomes published.
+      const currentAssessment = await tx.assessment.findFirst({
+        where: { id: assessment.id, schoolId: user.schoolId, teacherId: teacher.id },
+        select: { status: true },
+      });
+      if (!currentAssessment || currentAssessment.status === 'published' || currentAssessment.status === 'locked') {
+        throw new Error('ASSESSMENT_NOT_EDITABLE');
+      }
+
       for (const result of results) {
         const status = result.resultStatus ??
           (result.marksObtained != null || (result.rubricScores?.length ?? 0) > 0 ? 'scored' : 'not_entered');
@@ -156,6 +166,12 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     return NextResponse.json({ success: true, saved: results.length });
   } catch (error) {
+    if (error instanceof Error && error.message === 'ASSESSMENT_NOT_EDITABLE') {
+      return NextResponse.json(
+        { error: 'Published or locked assessment results cannot be edited' },
+        { status: 409 }
+      );
+    }
     console.error('Bulk upsert results error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
