@@ -11,7 +11,8 @@ export const rubricScoreSchema = z.object({
 
 /** Preserve null/empty marks as null; only convert non-empty numeric strings. */
 const parseOptionalNumber = (value: unknown) => {
-  if (value === '' || value === null || value === undefined) return value;
+  if (value === '') return null;
+  if (value === null || value === undefined) return value;
   if (typeof value === 'string') return Number(value);
   return value;
 };
