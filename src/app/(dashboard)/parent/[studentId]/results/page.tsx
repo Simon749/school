@@ -118,7 +118,9 @@ export default async function ParentResultsPage({ params }: { params: { studentI
               return null;
             }
 
-            const hasRubric = assessment.learningArea.strands.some((strand) => strand.subStrands.length > 0);
+            const hasRubric = assessment.learningArea.strands.some(
+    (strand) => strand.subStrands.length > 0
+  );
 
             return (
               <Card key={assessment.id}>
