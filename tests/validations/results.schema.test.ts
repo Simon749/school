@@ -10,7 +10,7 @@ describe('bulkUpsertResultsSchema', () => {
     });
 
     expect(parsed.success).toBe(true);
-    if (parsed.success) expect(parsed.data.results[0].marksObtained).toBeNull();
+    if (parsed.success) expect(parsed.data.results[0]?.marksObtained).toBeNull();
   });
 
   it('accepts zero as a real scored mark', () => {
@@ -47,7 +47,7 @@ describe('bulkUpsertResultsSchema', () => {
 
     expect(parsed.success).toBe(true);
     if (parsed.success) {
-      expect(parsed.data.results[0].resultStatus).toBe('absent');
+      expect(parsed.data.results[0]?.resultStatus).toBe('absent');
       expect(parsed.data.results[0].marksObtained).toBe(0);
     }
   });
