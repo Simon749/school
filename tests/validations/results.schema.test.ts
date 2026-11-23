@@ -31,6 +31,27 @@ describe('bulkUpsertResultsSchema', () => {
     if (parsed.success) expect(parsed.data.results[0].marksObtained).toBe(17.5);
   });
 
+  it('preserves an empty input as an unentered mark', () => {
+    const parsed = bulkUpsertResultsSchema.safeParse({
+      results: [{ studentId, resultStatus: 'not_entered', marksObtained: '' }],
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.results[0].marksObtained).toBeNull();
+  });
+
+  it('accepts an explicit absence with a zero mark', () => {
+    const parsed = bulkUpsertResultsSchema.safeParse({
+      results: [{ studentId, resultStatus: 'absent', marksObtained: 0 }],
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.results[0].resultStatus).toBe('absent');
+      expect(parsed.data.results[0].marksObtained).toBe(0);
+    }
+  });
+
   it('rejects unknown result states', () => {
     const parsed = bulkUpsertResultsSchema.safeParse({
       results: [{ studentId, resultStatus: 'excused', marksObtained: null }],
