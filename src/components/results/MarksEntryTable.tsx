@@ -215,8 +215,17 @@ export function MarksEntryTable({
 
   const updateMarks = (studentId: string, value: string) => {
     const parsed = value.trim() === '' ? null : Number(value);
-    if (parsed !== null && (!Number.isFinite(parsed) || parsed < 0 || (maxMarks != null && parsed > maxMarks))) {
-      toast.error(maxMarks != null ? `Enter a mark between 0 and ${maxMarks}` : 'Enter a valid non-negative mark');
+    if (
+      parsed !== null &&
+      (!Number.isFinite(parsed) ||
+        parsed < 0 ||
+        (maxMarks != null && parsed > maxMarks))
+    ) {
+      toast.error(
+        maxMarks != null
+          ? `Enter a mark between 0 and ${maxMarks}`
+          : 'Enter a valid non-negative mark'
+      );
       return;
     }
     updateStudent(studentId, {
@@ -231,7 +240,8 @@ export function MarksEntryTable({
     const hasAnyScore = Object.values(rubricScores).some(Boolean);
     updateStudent(studentId, {
       rubricScores,
-      resultStatus: current.resultStatus === 'absent' ? 'absent' : hasAnyScore ? 'scored' : 'not_entered',
+      resultStatus:
+        current.resultStatus === 'absent' ? 'absent' : hasAnyScore ? 'scored' : 'not_entered',
     });
   };
 
@@ -239,18 +249,27 @@ export function MarksEntryTable({
     const current = latestStatesRef.current[studentId] ?? emptyStudentState();
     updateStudent(studentId, {
       resultStatus: status,
-      marksObtained: status === 'absent' ? '0' : status === 'not_entered' ? '' : current.marksObtained,
+      marksObtained:
+        status === 'absent' ? '0' : status === 'not_entered' ? '' : current.marksObtained,
       rubricScores: status === 'absent' || status === 'not_entered' ? {} : current.rubricScores,
     });
   };
 
   const handlePublish = async () => {
-    if (!confirm('Publish these results to parents? They will be able to see them immediately.')) return;
+    if (
+      !confirm('Publish these results to parents? They will be able to see them immediately.')
+    ) {
+      return;
+    }
     setIsPublishing(true);
     try {
       const saved = await saveLatest();
-      if (!saved) throw new Error('Some changes could not be saved. Resolve the save error before publishing.');
-      const response = await fetch(`/api/assessments/${assessmentId}/publish`, { method: 'POST' });
+      if (!saved) {
+        throw new Error('Some changes could not be saved. Resolve the save error before publishing.');
+      }
+      const response = await fetch(`/api/assessments/${assessmentId}/publish`, {
+        method: 'POST',
+      });
       if (!response.ok) {
         const data = await response.json().catch(() => null);
         throw new Error(data?.error || 'Failed to publish results');
@@ -290,7 +309,13 @@ export function MarksEntryTable({
         <div className="flex gap-2">
           {!isLocked && (
             <>
-              <Button variant="outline" onClick={() => void saveLatest()} disabled={saveStatus === 'saving' || saveStatus === 'saved' || saveStatus === 'idle'}>
+              <Button
+                variant="outline"
+                onClick={() => void saveLatest()}
+                disabled={
+                  saveStatus === 'saving' || saveStatus === 'saved' || saveStatus === 'idle'
+                }
+              >
                 Save changes
               </Button>
               <Button onClick={handlePublish} disabled={isPublishing || saveStatus === 'saving'}>
@@ -313,7 +338,8 @@ export function MarksEntryTable({
                   Marks {maxMarks != null ? `(/ ${maxMarks})` : ''}
                 </TableHead>
               )}
-              {hasRubric && subStrands.map((ss) => (
+              {hasRubric &&
+                subStrands.map((ss) => (
                 <TableHead key={ss.id} className="min-w-[120px]">
                   <div className="text-xs font-normal text-muted-foreground">{ss.strandName}</div>
                   <div className="text-sm font-medium">{ss.name}</div>
@@ -332,7 +358,12 @@ export function MarksEntryTable({
                   <TableCell>
                     <Select
                       value={state.resultStatus}
-                      onValueChange={(value: string | null) => updateResultStatus(student.id, (value || 'not_entered') as Exclude<ResultStatus, 'scored'>)}
+                      onValueChange={(value: string | null) =>
+                        updateResultStatus(
+                          student.id,
+                          (value || 'not_entered') as Exclude<ResultStatus, 'scored'>
+                        )
+                      }
                       disabled={isLocked}
                     >
                       <SelectTrigger className="min-w-[140px]">
@@ -360,11 +391,14 @@ export function MarksEntryTable({
                     </TableCell>
                   )}
 
-                  {hasRubric && subStrands.map((ss) => (
+                  {hasRubric &&
+                    subStrands.map((ss) => (
                     <TableCell key={ss.id}>
                       <Select
                         value={state.rubricScores[ss.id] ?? ''}
-                        onValueChange={(value: string | null) => updateRubricScore(student.id, ss.id, value || '')}
+                        onValueChange={(value: string | null) =>
+                          updateRubricScore(student.id, ss.id, value || '')
+                        }
                         disabled={isLocked || state.resultStatus === 'absent'}
                       >
                         <SelectTrigger className="w-[100px]">
@@ -383,7 +417,9 @@ export function MarksEntryTable({
                   <TableCell>
                     <Textarea
                       value={state.teacherComment}
-                      onChange={(event) => updateStudent(student.id, { teacherComment: event.target.value })}
+                      onChange={(event) =>
+                        updateStudent(student.id, { teacherComment: event.target.value })
+                      }
                       disabled={isLocked}
                       className="min-h-[60px]"
                     />
@@ -395,7 +431,8 @@ export function MarksEntryTable({
         </Table>
       </div>
       <p className="text-xs text-muted-foreground">
-        Mark a learner as Absent only when their absence is confirmed. Not entered blocks publication.
+        Mark a learner as Absent only when their absence is confirmed. Not entered blocks
+        publication.
       </p>
     </div>
   );
