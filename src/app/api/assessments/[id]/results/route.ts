@@ -43,6 +43,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
   const { results } = parsed.data;
   const maxMarks = assessment.maxMarks === null ? null : Number(assessment.maxMarks);
+  const hasRubric = assessment.learningArea.strands.some((strand) => strand.subStrands.length > 0);
   if (maxMarks !== null && results.some((result) =>
     result.marksObtained != null && result.marksObtained > maxMarks
   )) {
@@ -57,10 +58,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (status === 'absent' && result.marksObtained != null && result.marksObtained !== 0) {
       return NextResponse.json({ error: 'An absent learner must have a score of zero' }, { status: 400 });
     }
-    if (status === 'scored' && maxMarks !== null && result.marksObtained == null) {
+    if (status === 'scored' && !hasRubric && result.marksObtained == null) {
       return NextResponse.json({ error: 'A scored numerical result must include marks' }, { status: 400 });
     }
-    if (status === 'scored' && maxMarks === null && !hasRubricScores) {
+    if (status === 'scored' && hasRubric && !hasRubricScores) {
       return NextResponse.json({ error: 'A scored CBC result must include at least one rubric score' }, { status: 400 });
     }
   }
