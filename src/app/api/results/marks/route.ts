@@ -78,15 +78,15 @@ export async function POST(req: NextRequest) {
   const { ipAddress, userAgent } = getRequestMetadata(req);
   try {
     await prisma.$transaction(async (tx) => {
-      const currentAssessment = await tx.assessment.findFirst({
-        where: { id: assessmentId, schoolId: user.schoolId },
-        select: { status: true },
+      const editable = await tx.assessment.updateMany({
+        where: {
+          id: assessmentId,
+          schoolId: user.schoolId,
+          status: { notIn: ['locked', 'published'] },
+        },
+        data: { updatedAt: new Date() },
       });
-      if (
-        !currentAssessment ||
-        currentAssessment.status === 'locked' ||
-        currentAssessment.status === 'published'
-      ) {
+      if (editable.count !== 1) {
         throw new Error('ASSESSMENT_NOT_EDITABLE');
       }
 
