@@ -332,6 +332,7 @@ export function MarksEntryTable({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="not_entered">Not entered</SelectItem>
+                        <SelectItem value="scored" disabled>Scored</SelectItem>
                         <SelectItem value="absent">Absent (0)</SelectItem>
                       </SelectContent>
                     </Select>
