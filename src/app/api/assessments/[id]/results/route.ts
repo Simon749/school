@@ -123,17 +123,18 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     await prisma.$transaction(async (tx) => {
-      // Re-check inside the write transaction so a request that started before
-      // publication cannot write marks after the assessment becomes published.
-      const currentAssessment = await tx.assessment.findFirst({
-        where: { id: assessment.id, schoolId: user.schoolId, teacherId: teacher.id },
-        select: { status: true },
+      // Claim a row lock before writing. Publication uses the same conditional
+      // update, so a save and publish request cannot pass each other's status check.
+      const editable = await tx.assessment.updateMany({
+        where: {
+          id: assessment.id,
+          schoolId: user.schoolId,
+          teacherId: teacher.id,
+          status: { notIn: ['published', 'locked'] },
+        },
+        data: { updatedAt: new Date() },
       });
-      if (
-        !currentAssessment ||
-        currentAssessment.status === 'published' ||
-        currentAssessment.status === 'locked'
-      ) {
+      if (editable.count !== 1) {
         throw new Error('ASSESSMENT_NOT_EDITABLE');
       }
 
