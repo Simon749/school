@@ -120,17 +120,19 @@ export default async function ParentResultsPage({ params }: { params: { studentI
                         {assessment.teacher.user.lastName}
                       </p>
                     </div>
-                    <Badge variant="outline">
-                      {new Date(assessment.assessmentDate!).toLocaleDateString('en-KE')}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {result.resultStatus === 'absent' && (
+                        <Badge variant="outline">Absent · recorded as 0</Badge>
+                      )}
+                      <Badge variant="outline">
+                        {new Date(assessment.assessmentDate!).toLocaleDateString('en-KE')}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {!hasRubric && result.marksObtained !== null && assessment.maxMarks !== null && (
                     <div className="flex items-center gap-2">
-                      {result.resultStatus === 'absent' && (
-                        <Badge variant="outline">Absent</Badge>
-                      )}
                       <span className="text-sm font-medium">Score:</span>
                       <span className="text-lg font-bold">
                         {Number(result.marksObtained)} / {Number(assessment.maxMarks)}
