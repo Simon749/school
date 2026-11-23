@@ -81,6 +81,7 @@ export default async function MarksEntryPage({ params }: { params: { assessmentI
             subStrands={subStrands}
             existingResults={existingResults.map((r) => ({
               ...r,
+              resultStatus: r.resultStatus as 'scored' | 'absent' | 'not_entered',
               marksObtained: r.marksObtained === null ? null : Number(r.marksObtained),
             }))}
             isLocked={assessment.status === 'locked' || assessment.status === 'published'}
