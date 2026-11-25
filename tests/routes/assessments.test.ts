@@ -627,3 +627,38 @@ describe('POST /api/assessments/[id]/results', () => {
     expect(JSON.stringify(audit)).not.toContain('Good');
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+describe('POST /api/assessments: marks-based types need a maximum', () => {
+  const valid = (over: Record<string, unknown> = {}) => ({
+    title: 'Term 1 CAT',
+    type: 'cat',
+    assessmentDate: '2026-10-26',
+    maxMarks: 50,
+    streamId: STREAM,
+    learningAreaId: AREA,
+    termId: TERM,
+    ...over,
+  });
+  const create = (body: unknown) =>
+    createAssessment(new Request('http://x/api/assessments', json(body)) as never);
+
+  it.each(['cat', 'exam', 'assignment'])('400 for a %s with no maximum marks', async (type) => {
+    signedInAs('teacher');
+    const body = valid({ type });
+    delete (body as Record<string, unknown>).maxMarks;
+    const res = await create(body);
+    expect(res.status).toBe(400);
+    expect(assessmentCreate).not.toHaveBeenCalled();
+  });
+
+  it.each(['project', 'portfolio'])(
+    'a %s may still be created without a maximum (rubric/comment only)',
+    async (type) => {
+      signedInAs('teacher');
+      const body = valid({ type });
+      delete (body as Record<string, unknown>).maxMarks;
+      expect((await create(body)).status).toBe(201);
+    }
+  );
+});

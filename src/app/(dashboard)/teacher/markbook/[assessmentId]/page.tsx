@@ -85,6 +85,8 @@ export default async function MarksEntryPage({ params }: { params: { assessmentI
               marksObtained: r.marksObtained === null ? null : Number(r.marksObtained),
             }))}
             isLocked={assessment.status === 'locked' || assessment.status === 'published'}
+            // Published results are read-only, except an ABSENT learner who sat a special exam.
+            canRecordSpecialExam={assessment.status === 'published'}
             hasRubric={subStrands.length > 0}
             maxMarks={assessment.maxMarks === null ? undefined : Number(assessment.maxMarks)}
           />

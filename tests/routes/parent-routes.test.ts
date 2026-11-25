@@ -285,3 +285,92 @@ describe('parent/results (SEC-04): drafts must never reach parents', () => {
     );
   });
 });
+
+describe('parent/results: how marks are averaged (not-entered is not zero, absent is zero)', () => {
+  const result = (over: {
+    marks: number | null;
+    status?: 'scored' | 'absent' | 'not_entered';
+    max?: number | null;
+    termNumber?: number;
+    termName?: string;
+    area?: string;
+  }) => ({
+    id: Math.random().toString(36),
+    marksObtained: over.marks,
+    resultStatus: over.status ?? 'scored',
+    teacherComment: null,
+    assessment: {
+      title: 'CAT',
+      type: 'cat',
+      assessmentDate: new Date('2026-10-01'),
+      maxMarks: over.max === undefined ? 50 : over.max,
+      weightPercent: null,
+      learningArea: { name: over.area ?? 'Mathematics' },
+      term: {
+        name: over.termName ?? `Term ${over.termNumber ?? 1} 2026`,
+        termNumber: over.termNumber ?? 1,
+      },
+    },
+  });
+  const fetchChild = async () => {
+    signedInAs('parent');
+    const body = await (await getResults()).json();
+    return body.children[0];
+  };
+
+  it('a Term 3 result lands in Term 3, not Term 2 ("Term 3 2026" contains a 2)', async () => {
+    resultFindMany.mockResolvedValue([
+      result({ marks: 25, termNumber: 2 }), // 50%
+      result({ marks: 40, termNumber: 3 }), // 80%
+    ]);
+    const maths = (await fetchChild()).subjectPerformance[0];
+    expect(maths.term2).toBe(50);
+    expect(maths.term3).toBe(80);
+    expect(maths.term1).toBe(0);
+  });
+
+  it('buckets by the real term number even when the term name says something misleading', async () => {
+    resultFindMany.mockResolvedValue([
+      result({ marks: 50, termNumber: 3, termName: 'Term 1 2021 revision' }),
+    ]);
+    const maths = (await fetchChild()).subjectPerformance[0];
+    expect(maths.term3).toBe(100);
+    expect(maths.term1).toBe(0);
+  });
+
+  it('a not-entered result is left OUT of the average, never counted as 0%', async () => {
+    resultFindMany.mockResolvedValue([
+      result({ marks: 40 }),
+      result({ marks: null, status: 'not_entered' }),
+    ]);
+    const child = await fetchChild();
+    expect(child.overallAverage).toBe(80);
+    expect(child.subjectPerformance[0].average).toBe(80);
+  });
+
+  it('an ABSENT learner counts as 0% and is flagged as absent', async () => {
+    resultFindMany.mockResolvedValue([
+      result({ marks: 40 }),
+      result({ marks: 0, status: 'absent' }),
+    ]);
+    const child = await fetchChild();
+    expect(child.overallAverage).toBe(40); // (80 + 0) / 2
+    const absentRow = child.assessments.find((a: { absent: boolean }) => a.absent);
+    expect(absentRow).toMatchObject({ absent: true, percentage: 0 });
+  });
+
+  it('a genuine zero score counts as 0%', async () => {
+    resultFindMany.mockResolvedValue([result({ marks: 0 }), result({ marks: 50 })]);
+    expect((await fetchChild()).overallAverage).toBe(50);
+  });
+
+  it('a subject whose only term average is a real 0 is averaged as 0, not skipped', async () => {
+    resultFindMany.mockResolvedValue([result({ marks: 0, status: 'absent', termNumber: 1 })]);
+    expect((await fetchChild()).subjectPerformance[0].average).toBe(0);
+  });
+
+  it('an assessment with no maximum mark contributes nothing to averages', async () => {
+    resultFindMany.mockResolvedValue([result({ marks: 40, max: null }), result({ marks: 25 })]);
+    expect((await fetchChild()).overallAverage).toBe(50);
+  });
+});

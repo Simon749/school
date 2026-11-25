@@ -1,4 +1,3 @@
-
 name: CI
 
 on:
@@ -12,8 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -42,24 +39,5 @@ jobs:
       - name: Run ESLint
         run: pnpm run lint
 
-      - name: Check Prettier formatting on changed files
-        shell: bash
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            BASE="${{ github.event.pull_request.base.sha }}"
-            HEAD="${{ github.event.pull_request.head.sha }}"
-          else
-            BASE="${{ github.event.before }}"
-            HEAD="${{ github.sha }}"
-          fi
-
-          FILES=$(git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD" -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.json' '*.css' '*.scss' '*.md' '*.yaml' '*.yml' '*.html')
-
-          if [[ -z "$FILES" ]]; then
-            echo "No supported files changed. Skipping Prettier."
-            exit 0
-          fi
-
-          echo "$FILES" | while IFS= read -r file; do
-            pnpm exec prettier --check "$file" || exit 1
-          done
+      - name: Check Prettier formatting
+        run: pnpm exec prettier --check .

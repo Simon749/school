@@ -10,26 +10,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   if (!guard.ok) return guard.response;
   const { user, teacher } = guard;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
-  }
+  const assessmentId = params.id;
 
-  const parsed = bulkUpsertResultsSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Validation failed', details: parsed.error.errors },
-      { status: 400 }
-    );
-  }
-
+  // Ownership and school isolation in one query.
   const assessment = await prisma.assessment.findFirst({
-    where: { id: params.id, schoolId: user.schoolId, teacherId: teacher.id },
-    include: {
-      learningArea: { include: { strands: { include: { subStrands: { select: { id: true } } } } } },
-    },
+    where: { id: assessmentId, schoolId: user.schoolId, teacherId: teacher.id },
   });
   if (!assessment) {
     return NextResponse.json({ error: 'Assessment not found or access denied' }, { status: 404 });
@@ -42,167 +27,177 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   }
   if (assessment.status === 'published') {
     return NextResponse.json(
-      { error: 'Published assessment results cannot be edited' },
+      { error: 'Published marks cannot be silently edited. Use the special exam endpoint.' },
       { status: 409 }
     );
   }
 
-  const { results } = parsed.data;
-  const maxMarks = assessment.maxMarks === null ? null : Number(assessment.maxMarks);
-  const hasRubric = assessment.learningArea.strands.some((strand) => strand.subStrands.length > 0);
-  if (
-    maxMarks !== null &&
-    results.some((result) => result.marksObtained != null && result.marksObtained > maxMarks)
-  ) {
-    return NextResponse.json({ error: `Marks cannot be more than ${maxMarks}` }, { status: 400 });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
   }
+  const parsed = bulkUpsertResultsSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Validation failed', details: parsed.error.errors },
+      { status: 400 }
+    );
+  }
+  const { results } = parsed.data;
 
-  for (const result of results) {
-    const hasRubricScores = (result.rubricScores?.length ?? 0) > 0;
-    const status =
-      result.resultStatus ??
-      (result.marksObtained != null || hasRubricScores ? 'scored' : 'not_entered');
-
-    if (status === 'absent' && result.marksObtained != null && result.marksObtained !== 0) {
-      return NextResponse.json(
-        { error: 'An absent learner must have a score of zero' },
-        { status: 400 }
-      );
-    }
-    if (status === 'scored' && !hasRubric && result.marksObtained == null) {
-      return NextResponse.json(
-        { error: 'A scored numerical result must include marks' },
-        { status: 400 }
-      );
-    }
-    if (status === 'scored' && hasRubric && !hasRubricScores) {
-      return NextResponse.json(
-        { error: 'A scored CBC result must include at least one rubric score' },
-        { status: 400 }
-      );
+  // No mark may exceed the assessment's maximum.
+  if (assessment.maxMarks !== null) {
+    const max = Number(assessment.maxMarks);
+    if (results.some((r: any) => r.marksObtained != null && r.marksObtained !== '' && Number(r.marksObtained) > max)) {
+      return NextResponse.json({ error: `Marks cannot be more than ${max}` }, { status: 400 });
     }
   }
 
   try {
-    const studentIds = results.map((result) => result.studentId);
+    // Every student must be an active student of THIS assessment's class, in this school.
+    const studentIds = results.map((r: any) => r.studentId);
     const students = await prisma.student.findMany({
       where: {
         id: { in: studentIds },
         streamId: assessment.streamId,
         schoolId: user.schoolId,
-        status: 'active',
         deletedAt: null,
       },
       select: { id: true },
     });
-    const foundStudents = new Set(students.map((student) => student.id));
-    if (studentIds.some((id) => !foundStudents.has(id))) {
+    const found = new Set(students.map((s) => s.id));
+    if (studentIds.some((id: string) => !found.has(id))) {
       return NextResponse.json(
-        { error: "Some students are not active members of this assessment's class" },
+        { error: "Some students are not in this assessment's class" },
         { status: 400 }
       );
     }
 
+    // Every rubric sub-strand must belong to this assessment's learning area.
     const subStrandIds = [
-      ...new Set(
-        results.flatMap((result) =>
-          (result.rubricScores ?? []).map((score) => score.subStrandId)
-        )
-      ),
+      ...new Set(results.flatMap((r: any) => (r.rubricScores ?? []).map((s: any) => s.subStrandId))),
     ];
     if (subStrandIds.length > 0) {
-      const validSubStrands = assessment.learningArea.strands.flatMap((strand) =>
-        strand.subStrands.map((subStrand) => subStrand.id)
-      );
-      if (subStrandIds.some((id) => !validSubStrands.includes(id))) {
+      const valid = await prisma.subStrand.findMany({
+        where: {
+          id: { in: subStrandIds },
+          strand: { learningAreaId: assessment.learningAreaId },
+        },
+        select: { id: true },
+      });
+      if (valid.length !== subStrandIds.length) {
         return NextResponse.json(
-          { error: 'Some rubric items do not belong to this assessment learning area' },
+          { error: 'Some rubric items do not belong to this learning area' },
           { status: 400 }
         );
       }
     }
 
     await prisma.$transaction(async (tx) => {
-      // Claim a row lock before writing. Publication uses the same conditional
-      // update, so a save and publish request cannot pass each other's status check.
-      const editable = await tx.assessment.updateMany({
-        where: {
-          id: assessment.id,
-          schoolId: user.schoolId,
-          teacherId: teacher.id,
-          status: { notIn: ['published', 'locked'] },
-        },
-        data: { updatedAt: new Date() },
+      const upserts = results.map((r: any) => {
+        const isBlank =
+          r.marksObtained === '' || r.marksObtained === null || r.marksObtained === undefined;
+        const isExplicitlyAbsent = r.resultStatus === 'absent' || r.isAbsent === true;
+
+        let dataPayload: any = {};
+
+        if (isExplicitlyAbsent) {
+          dataPayload = {
+            isAbsent: true,
+            marksObtained: null,
+            resultStatus: 'absent',
+            submittedAt: new Date(),
+          };
+        } else if (isBlank) {
+          dataPayload = {
+            isAbsent: false,
+            marksObtained: null,
+            resultStatus: 'not_entered',
+            submittedAt: null,
+          };
+        } else {
+          // Genuine score (including exactly 0)
+          dataPayload = {
+            isAbsent: false,
+            marksObtained: Number(r.marksObtained),
+            resultStatus: 'scored',
+            submittedAt: new Date(),
+          };
+        }
+
+        const commentFields =
+          r.teacherComment !== undefined ? { teacherComment: r.teacherComment } : {};
+
+        return {
+          result: r,
+          payload: {
+            where: {
+              // Adjust this unique constraint name to match your schema's @@unique definition
+              assessmentId_studentId: {
+                assessmentId: assessment.id,
+                studentId: r.studentId,
+              },
+            },
+            update: {
+              ...dataPayload,
+              ...commentFields,
+              schoolId: user.schoolId,
+            },
+            create: {
+              assessmentId: assessment.id,
+              studentId: r.studentId,
+              schoolId: user.schoolId,
+              ...dataPayload,
+              ...commentFields,
+            },
+          },
+        };
       });
-      if (editable.count !== 1) {
-        throw new Error('ASSESSMENT_NOT_EDITABLE');
-      }
 
-      for (const result of results) {
-        const status =
-          result.resultStatus ??
-          (result.marksObtained != null || (result.rubricScores?.length ?? 0) > 0
-            ? 'scored'
-            : 'not_entered');
-        const marksObtained =
-          status === 'absent' ? 0 : status === 'not_entered' ? null : result.marksObtained ?? null;
-        const assessmentResult = await tx.assessmentResult.upsert({
-          where: {
-            assessmentId_studentId: { assessmentId: assessment.id, studentId: result.studentId },
-          },
-          update: {
-            resultStatus: status,
-            marksObtained,
-            teacherComment: result.teacherComment,
-            submittedAt: new Date(),
-            schoolId: user.schoolId,
-          },
-          create: {
-            assessmentId: assessment.id,
-            studentId: result.studentId,
-            schoolId: user.schoolId,
-            resultStatus: status,
-            marksObtained,
-            teacherComment: result.teacherComment,
-            submittedAt: new Date(),
-          },
-        });
+      const savedResults = await Promise.all(
+        upserts.map(({ payload }) => tx.assessmentResult.upsert(payload))
+      );
 
-        // When rubricScores is supplied, replace the set even when it is empty.
-        // This allows switching a result to ABSENT / NOT_ENTERED to clear stale scores.
-        if (result.rubricScores !== undefined) {
+      // 2. Handle Rubric Scores if provided
+      for (let i = 0; i < upserts.length; i++) {
+        const upsert = upserts[i];
+        if (!upsert) continue;
+
+        const result = upsert.result;
+        const assessmentResult = savedResults[i];
+
+        if (!assessmentResult) continue;
+
+        if (result.rubricScores && result.rubricScores.length > 0) {
+          // Delete existing scores for this student/assessment to avoid duplicates
           await tx.rubricScore.deleteMany({ where: { resultId: assessmentResult.id } });
-          if (status === 'scored' && result.rubricScores.length > 0) {
-            await tx.rubricScore.createMany({
-              data: result.rubricScores.map((score) => ({
-                resultId: assessmentResult.id,
-                subStrandId: score.subStrandId,
-                score: score.score,
-                comment: score.comment,
-              })),
-            });
-          }
+
+          await tx.rubricScore.createMany({
+            data: result.rubricScores.map((score: any) => ({
+              resultId: assessmentResult.id,
+              subStrandId: score.subStrandId,
+              score: score.score,
+              comment: score.comment,
+            })),
+          });
         }
       }
     });
 
+    // Counts only: no student marks or comments go into the audit log.
     await logAudit({
       schoolId: user.schoolId,
       actorId: user.id,
       action: 'assessment.results_saved',
       tableName: 'assessment_results',
-      recordId: assessment.id,
+      recordId: assessmentId,
       newData: { studentCount: results.length, assessmentStatus: assessment.status },
     });
 
     return NextResponse.json({ success: true, saved: results.length });
   } catch (error) {
-    if (error instanceof Error && error.message === 'ASSESSMENT_NOT_EDITABLE') {
-      return NextResponse.json(
-        { error: 'Published or locked assessment results cannot be edited' },
-        { status: 409 }
-      );
-    }
     console.error('Bulk upsert results error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

@@ -30,6 +30,7 @@ interface Assessment {
 interface Result {
   id: string;
   marksObtained: number | null;
+  isAbsent?: boolean;
   teacherComment: string | null;
   rubricScores: RubricScore[];
 }
@@ -91,7 +92,16 @@ export function AssessmentDetail({ assessment, result }: AssessmentDetailProps) 
         <Card className="mt-3 border-2">
           <CardContent className="pt-4 space-y-4">
             {/* Numeric Marks */}
-            {!hasRubric && result.marksObtained !== null && assessment.maxMarks !== null && (
+            {result.isAbsent && (
+              <div>
+                <h4 className="font-semibold mb-2">Score</h4>
+                <p className="text-2xl font-bold">Absent</p>
+                <p className="text-sm text-muted-foreground mt-1">Recorded as 0 (did not sit).</p>
+              </div>
+            )}
+
+            {/* A real score of 0 must show too, so test for null rather than truthiness. */}
+            {!result.isAbsent && !hasRubric && result.marksObtained !== null && assessment.maxMarks && (
               <div>
                 <h4 className="font-semibold mb-2">Score</h4>
                 <p className="text-2xl font-bold">

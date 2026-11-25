@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
-import { Menu, X, School } from 'lucide-react';
+import { useUser, useClerk } from '@clerk/nextjs';
+import { Menu, X, School, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ROLE_NAVIGATION } from '@/lib/navigation';
 import { UserRole } from '@prisma/client';
@@ -13,9 +13,15 @@ export default function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const { user } = useUser();
+  const { signOut } = useClerk();
 
   const role = (user?.publicMetadata?.role as UserRole) || 'admin';
   const navItems = ROLE_NAVIGATION[role] || ROLE_NAVIGATION.admin;
+
+  const handleSignOut = async () => {
+    setOpen(false);
+    await signOut({ redirectUrl: '/login' });
+  };
 
   return (
     <div className="lg:hidden">
@@ -57,6 +63,17 @@ export default function MobileNav() {
               );
             })}
           </nav>
+
+          <div className="border-t border-slate-200 p-4">
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-red-50 hover:text-red-700"
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+              Sign out
+            </button>
+          </div>
         </div>
       )}
     </div>
