@@ -44,7 +44,7 @@ export async function GET() {
           assessment: {
             include: {
               learningArea: { select: { name: true } },
-              term: { select: { name: true } },
+              term: { select: { name: true, termNumber: true } },
             },
           },
         },
@@ -68,62 +68,70 @@ export async function GET() {
         },
       });
 
-      // Calculate subject performance across terms
+      // Percentage of the maximum for one result, or null when there is nothing to count.
+      //  - an ABSENT learner counts as zero (school decision; marks are stored as 0)
+      //  - "not entered" is NOT zero and is left out of every average
+      const percentOf = (r: (typeof assessments)[number]): number | null => {
+        if (r.resultStatus === 'absent') return 0;
+        if (r.resultStatus !== 'scored') return null;
+        if (r.marksObtained === null || r.marksObtained === undefined) return null;
+        const max = r.assessment.maxMarks === null ? 0 : Number(r.assessment.maxMarks);
+        if (!(max > 0)) return null;
+        return (Number(r.marksObtained) / max) * 100;
+      };
+      const mean = (values: number[]) =>
+        values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
+
+      // Calculate subject performance across terms. Terms are bucketed by their real term
+      // NUMBER (1-3), never by looking for a digit in the term's name: "Term 3 2026" contains a 2.
       const subjectMap = new Map<string, { term1: number[]; term2: number[]; term3: number[] }>();
 
       assessments.forEach((result) => {
+        const percentage = percentOf(result);
+        if (percentage === null) return;
         const subject = result.assessment.learningArea.name;
-        const percentage =
-          result.marksObtained && result.assessment.maxMarks
-            ? (Number(result.marksObtained) / Number(result.assessment.maxMarks)) * 100
-            : 0;
-        const termName = result.assessment.term.name || '';
-        const termNum = termName.includes('1') ? 1 : termName.includes('2') ? 2 : 3;
+        const termNum = result.assessment.term.termNumber;
 
         if (!subjectMap.has(subject)) {
           subjectMap.set(subject, { term1: [], term2: [], term3: [] });
         }
-
-        if (termNum === 1) subjectMap.get(subject)!.term1.push(percentage);
-        else if (termNum === 2) subjectMap.get(subject)!.term2.push(percentage);
-        else subjectMap.get(subject)!.term3.push(percentage);
+        const bucket = subjectMap.get(subject)!;
+        if (termNum === 1) bucket.term1.push(percentage);
+        else if (termNum === 2) bucket.term2.push(percentage);
+        else if (termNum === 3) bucket.term3.push(percentage);
       });
 
       const subjectPerformance = Array.from(subjectMap.entries()).map(([subject, data]) => {
-        const term1Avg =
-          data.term1.length > 0 ? data.term1.reduce((a, b) => a + b, 0) / data.term1.length : 0;
-        const term2Avg =
-          data.term2.length > 0 ? data.term2.reduce((a, b) => a + b, 0) / data.term2.length : 0;
-        const term3Avg =
-          data.term3.length > 0 ? data.term3.reduce((a, b) => a + b, 0) / data.term3.length : 0;
-        const overallAvg =
-          [term1Avg, term2Avg, term3Avg].filter((v) => v > 0).reduce((a, b) => a + b, 0) /
-            [term1Avg, term2Avg, term3Avg].filter((v) => v > 0).length || 0;
+        const term1Avg = mean(data.term1);
+        const term2Avg = mean(data.term2);
+        const term3Avg = mean(data.term3);
+        // A term whose average is a genuine 0 still counts; only terms with no marks are skipped.
+        const termAvgs = [term1Avg, term2Avg, term3Avg].filter((v): v is number => v !== null);
+        const overallAvg = mean(termAvgs) ?? 0;
 
-        // Determine trend
+        // Determine trend (only when both ends have marks)
         let trend: 'improving' | 'declining' | 'stable' = 'stable';
-        if (term3Avg > term1Avg + 5) trend = 'improving';
-        else if (term3Avg < term1Avg - 5) trend = 'declining';
+        if (term1Avg !== null && term3Avg !== null) {
+          if (term3Avg > term1Avg + 5) trend = 'improving';
+          else if (term3Avg < term1Avg - 5) trend = 'declining';
+        }
 
         return {
           subject,
-          term1: Math.round(term1Avg * 10) / 10,
-          term2: Math.round(term2Avg * 10) / 10,
-          term3: Math.round(term3Avg * 10) / 10,
+          term1: Math.round((term1Avg ?? 0) * 10) / 10,
+          term2: Math.round((term2Avg ?? 0) * 10) / 10,
+          term3: Math.round((term3Avg ?? 0) * 10) / 10,
           average: Math.round(overallAvg * 10) / 10,
           trend,
           needsAttention: overallAvg < 50 || trend === 'declining',
         };
       });
 
-      // Calculate overall average
-      const allPercentages = assessments.map((a) =>
-        a.marksObtained ? (Number(a.marksObtained) / Number(a.assessment.maxMarks)) * 100 : 0
-      );
-      const overallAverage =
-        allPercentages.length > 0
-          ? allPercentages.reduce((a, b) => a + b, 0) / allPercentages.length
-          : 0;
+      // Calculate overall average (not-entered results are left out, absent counts as zero)
+      const allPercentages = assessments
+        .map(percentOf)
+        .filter((v): v is number => v !== null);
+      const overallAverage = mean(allPercentages) ?? 0;
 
       // Identify strengths and weaknesses
       const strengths = subjectPerformance.filter((s) => s.average >= 70).map((s) => s.subject);
@@ -153,11 +161,8 @@ export async function GET() {
           maxMarks: a.assessment.maxMarks,
           weightPercent: a.assessment.weightPercent,
           marksObtained: a.marksObtained,
-          percentage:
-            a.marksObtained && a.assessment.maxMarks
-              ? Math.round((Number(a.marksObtained) / Number(a.assessment.maxMarks)) * 100 * 10) /
-                10
-              : 0,
+          absent: a.resultStatus === 'absent',
+          percentage: Math.round((percentOf(a) ?? 0) * 10) / 10,
           grade: '',
           teacherComment: a.teacherComment || undefined,
         })),

@@ -60,7 +60,8 @@ export default async function ParentResultsPage({ params }: { params: { studentI
     where: {
       schoolId: guardian.student.schoolId,
       streamId: guardian.student.streamId,
-      status: 'published',
+      // Locked results were published first; they must stay visible to parents.
+      status: { in: ['published', 'locked'] },
       termId: currentTerm?.id,
     },
     include: {

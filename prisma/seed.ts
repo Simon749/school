@@ -26,6 +26,9 @@
 //   time-bound, and don't make sense as static seed data).
 //   These are Phase 3/4 tracker items — add them when you actually build
 //   those modules, per AGENTS.md §6 (no scope creep).
+//   Term reports, portfolio artefacts, messages, activities, exam timetable,
+//   teacher duties, lesson-register locking, payment disputes, audit logs, QR tokens.
+//   (Note: Assessments/CBC results for Term 1 & 2 ARE now seeded to test averages).
 //
 // BEFORE RUNNING:
 //   1. Export SEED_EMAIL_LOCAL_PART (your Gmail/provider local part, e.g. "jane.doe") — the
@@ -1210,6 +1213,123 @@ async function main() {
     dailyRows,
     3000
   );
+
+    // ── 14. ASSESSMENTS & RESULTS (Term 1 & Term 2) ───────────────────────
+  console.log('📝 Seeding assessments and results for Term 1 & Term 2...');
+
+  const term1 = await prisma.term.findFirstOrThrow({ where: { schoolId: school.id, termNumber: 1 } });
+  const term2 = await prisma.term.findFirstOrThrow({ where: { schoolId: school.id, termNumber: 2 } });
+  const termsForResults = [term1, term2];
+
+  type AssessmentRow = {
+    id: string;
+    schoolId: string;
+    termId: string;
+    learningAreaId: string;
+    streamId: string;
+    teacherId: string;
+    title: string;
+    type: string;
+    maxMarks: number;
+    weightPercent: number;
+    assessmentDate: Date;
+    status: string;
+    publishedAt: Date | null;
+  };
+
+  type AssessmentResultRow = {
+    id: string;
+    schoolId: string;
+    assessmentId: string;
+    studentId: string;
+    marksObtained: number | null;
+    resultStatus: string;
+    isAbsent: boolean;
+    submittedAt: Date | null;
+  };
+
+  const assessmentRows: AssessmentRow[] = [];
+  const resultRows: AssessmentResultRow[] = [];
+
+  // Group students by stream for easy lookup
+  const studentsByStreamMap = new Map<string, typeof studentRows>();
+  for (const s of studentRows) {
+    const arr = studentsByStreamMap.get(s.streamId) ?? [];
+    arr.push(s);
+    studentsByStreamMap.set(s.streamId, arr);
+  }
+
+  for (const term of termsForResults) {
+    for (const stream of streams) {
+      // Pick 2 learning areas relevant to this stream's stage to assess
+      const stageAreas = areasByStage(stream.cbcStage);
+      const areasToAssess = stageAreas.slice(0, 2); 
+
+      for (const area of areasToAssess) {
+        const assessmentId = randomUUID();
+        const isTerm1 = term.termNumber === 1;
+        
+        assessmentRows.push({
+          id: assessmentId,
+          schoolId: school.id,
+          termId: term.id,
+          learningAreaId: area.id,
+          streamId: stream.id,
+          teacherId: teachers[randInt(0, teachers.length - 1)]!.teacherId,
+          title: `${area.name} ${isTerm1 ? 'CAT 1' : 'End of Term'}`,
+          type: 'marks',
+          maxMarks: 50,
+          weightPercent: isTerm1 ? 30 : 70,
+          assessmentDate: addDays(term.startDate, randInt(10, 60)),
+          status: isTerm1 ? 'locked' : 'published',
+          publishedAt: isTerm1 ? addDays(term.startDate, 65) : addDays(term.startDate, 60),
+        });
+
+        // Generate results for every student in this stream
+        const studentsInStream = studentsByStreamMap.get(stream.id) ?? [];
+        for (const student of studentsInStream) {
+          const roll = rand();
+          let marksObtained: number | null = null;
+          let resultStatus = 'not_entered';
+          let isAbsent = false;
+
+          if (roll < 0.05) {
+            // 5% absent
+            resultStatus = 'absent';
+            isAbsent = true;
+            marksObtained = null;
+          } else if (roll < 0.95) {
+            // 90% scored
+            resultStatus = 'scored';
+            isAbsent = false;
+            marksObtained = randInt(10, 50); // random score between 10 and 50
+          } else {
+            // 5% not entered (blank)
+            resultStatus = 'not_entered';
+            isAbsent = false;
+            marksObtained = null;
+          }
+
+          resultRows.push({
+            id: randomUUID(),
+            schoolId: school.id,
+            assessmentId: assessmentId,
+            studentId: student.id,
+            marksObtained: marksObtained,
+            resultStatus: resultStatus,
+            isAbsent: isAbsent,
+            submittedAt: resultStatus !== 'not_entered' ? addDays(term.startDate, 60) : null,
+          });
+        }
+      }
+    }
+  }
+
+  await createManyChunked('Assessments', (d) => prisma.assessment.createMany({ data: d }), assessmentRows);
+  await createManyChunked('Assessment Results', (d) => prisma.assessmentResult.createMany({ data: d }), resultRows, 3000);
+  console.log(`  ✓ Seeded ${assessmentRows.length} assessments and ${resultRows.length} results across Term 1 & 2`);
+
+  // ── SUMMARY ──────────────────────────────────────────────────────────
 
   // ── SUMMARY ──────────────────────────────────────────────────────────
   console.log('\n✅ Seed complete.\n');

@@ -64,6 +64,8 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/africastalking": "^0.8.0",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^20",
@@ -73,6 +75,7 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.25",
     "husky": "^9.1.7",
+    "jsdom": "^25.0.1",
     "postcss": "^8",
     "prettier": "^3.3.3",
     "sharp": "^0.35.5",

@@ -50,6 +50,8 @@ interface MarksEntryTableProps {
   subStrands: SubStrand[];
   existingResults: ExistingResult[];
   isLocked: boolean;
+  /** Published (not locked): an ABSENT learner may still be given a special-exam mark. */
+  canRecordSpecialExam?: boolean;
   hasRubric: boolean;
   maxMarks?: number;
 }
@@ -76,6 +78,7 @@ export function MarksEntryTable({
   subStrands,
   existingResults,
   isLocked,
+  canRecordSpecialExam = false,
   hasRubric,
   maxMarks,
 }: MarksEntryTableProps) {
@@ -385,6 +388,30 @@ export function MarksEntryTable({
                         <SelectItem value="absent">Absent (0)</SelectItem>
                       </SelectContent>
                     </Select>
+                    {isLocked &&
+                      canRecordSpecialExam &&
+                      maxMarks !== undefined &&
+                      state.resultStatus === 'absent' && (
+                        <SpecialExamForm
+                          assessmentId={assessmentId}
+                          studentId={student.id}
+                          studentName={`${student.firstName} ${student.lastName}`}
+                          maxMarks={maxMarks}
+                          onRecorded={(marks) => {
+                            // Already saved on the server, so show it without marking the table dirty.
+                            latestStatesRef.current = {
+                              ...latestStatesRef.current,
+                              [student.id]: {
+                                ...(latestStatesRef.current[student.id] ?? emptyStudentState()),
+                                resultStatus: 'scored',
+                                marksObtained: String(marks),
+                              },
+                            };
+                            setStudentStates(latestStatesRef.current);
+                            router.refresh();
+                          }}
+                        />
+                      )}
                   </TableCell>
 
                   {!hasRubric && (
@@ -444,6 +471,96 @@ export function MarksEntryTable({
         Mark a learner as Absent only when their absence is confirmed. Not entered blocks
         publication.
       </p>
+    </div>
+  );
+}
+
+/**
+ * Published results cannot be edited, with one exception: a learner who was ABSENT and later sat
+ * a special exam. This is audited on the server (who, why, old and new value).
+ */
+function SpecialExamForm({
+  assessmentId,
+  studentId,
+  studentName,
+  maxMarks,
+  onRecorded,
+}: {
+  assessmentId: string;
+  studentId: string;
+  studentName: string;
+  maxMarks: number;
+  onRecorded: (marks: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [marks, setMarks] = useState('');
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  if (!open) {
+    return (
+      <Button size="sm" variant="outline" className="mt-2" onClick={() => setOpen(true)}>
+        Record special exam
+      </Button>
+    );
+  }
+
+  const n = Number(marks);
+  const marksOk = marks.trim() !== '' && Number.isFinite(n) && n >= 0 && n <= maxMarks;
+  const canSubmit = marksOk && reason.trim().length >= 5 && !busy;
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/assessments/${assessmentId}/special-exam`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, marksObtained: n, reason: reason.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof err.error === 'string' ? err.error : 'Could not record the special exam.'
+        );
+      }
+      toast.success(`Special exam recorded for ${studentName}. This change is in the audit log.`);
+      setOpen(false);
+      onRecorded(n);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not record the special exam.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 space-y-2 rounded-md border p-2">
+      <Input
+        type="number"
+        inputMode="decimal"
+        aria-label={`Special exam marks for ${studentName}`}
+        placeholder={`Marks (max ${maxMarks})`}
+        min={0}
+        max={maxMarks}
+        step="0.01"
+        value={marks}
+        onChange={(e) => setMarks(e.target.value)}
+      />
+      <Input
+        aria-label={`Reason for ${studentName}'s special exam`}
+        placeholder="Why was a special exam sat? (recorded)"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        maxLength={500}
+      />
+      <div className="flex gap-2">
+        <Button size="sm" onClick={submit} disabled={!canSubmit}>
+          {busy ? 'Saving…' : 'Save'}
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setOpen(false)} disabled={busy}>
+          Cancel
+        </Button>
+      </div>
     </div>
   );
 }

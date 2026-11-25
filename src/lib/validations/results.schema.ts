@@ -59,3 +59,19 @@ export const bulkUpsertResultsSchema = z
   });
 
 export type BulkUpsertResultsInput = z.infer<typeof bulkUpsertResultsSchema>;
+
+/**
+ * The ONLY edit allowed after results are published: a learner who was ABSENT and later sat a
+ * special exam. A reason is mandatory because it goes into the audit trail.
+ */
+export const specialExamSchema = z.object({
+  studentId: z.string().uuid(),
+  marksObtained: z.coerce.number().finite().min(0, 'Marks cannot be negative'),
+  reason: z
+    .string()
+    .trim()
+    .min(5, 'Say why this learner is sitting a special exam (at least 5 characters)')
+    .max(500),
+});
+
+export type SpecialExamInput = z.infer<typeof specialExamSchema>;

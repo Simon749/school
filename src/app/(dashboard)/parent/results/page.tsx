@@ -49,6 +49,8 @@ type Assessment = {
   maxMarks: number;
   weightPercent: number;
   marksObtained: number;
+  /** Did not sit the assessment; recorded as zero. */
+  absent?: boolean;
   percentage: number;
   grade: string;
   teacherComment?: string;
@@ -464,7 +466,9 @@ export default function ParentResultsPage() {
                         {assessment.percentage.toFixed(1)}%
                       </Badge>
                       <p className="text-xs text-slate-500 mt-1">
-                        {assessment.marksObtained}/{assessment.maxMarks}
+                        {assessment.absent
+                          ? 'Absent (recorded as 0)'
+                          : `${assessment.marksObtained}/${assessment.maxMarks}`}
                       </p>
                     </div>
                   </div>

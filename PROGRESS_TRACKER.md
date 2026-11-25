@@ -457,6 +457,17 @@
 - [ ] Store FCM token in `users.device_tokens[]`
 - [ ] Send push for: attendance alerts, messages, result publications, payment confirmations
 
+### 3.8 Class Results, Rankings & Special Exams *(added 2026-11-24 — see `docs/RESULTS_RANKING.md`)*
+> `[~]` = implemented and tested with mocks / a scratch Postgres; **not yet applied to the Neon database**.
+- [~] One design for absent learners (`result_status`); interim `is_absent` converted and removed (migration `20261124150000`)
+- [~] Special-exam correction after publishing (`POST /api/assessments/[id]/special-exam`), audited
+- [~] Max marks required for CAT / exam / assignment
+- [~] Parent averages: not-entered ≠ 0, absent = 0, terms bucketed by term number; locked results stay visible
+- [ ] My Class card shows real data (today's attendance) — replaces hard-coded `n/n` and `Pending Work 0`
+- [ ] Class-teacher attendance analytics per learner (own stream only); "View Report" → "Write term report"
+- [ ] Sidebar "Results": enter marks / subject analytics / whole class (class teacher only) — JSS rankings
+- [ ] Confirm the 8-level scale with KNEC / the school before go-live
+
 **Phase 3 Sign-off Criteria:**
 ```
 ✓ Teacher enters CBC rubric scores for a class — parent sees them after publish
