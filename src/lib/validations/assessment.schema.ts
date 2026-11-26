@@ -14,17 +14,20 @@ export const assessmentTypeSchema = z.enum([
 export const MARK_BASED_TYPES = ['cat', 'exam', 'assignment'] as const;
 
 const createAssessmentBase = z.object({
-  title: z.string().min(3, 'Title must be at least 3 characters').max(200),
+  title: z
+    .string({ required_error: 'Give the assessment a title (at least 3 characters). Example: Term 1 Maths CAT' })
+    .min(3, 'Give the assessment a title (at least 3 characters). Example: Term 1 Maths CAT')
+    .max(200),
   type: assessmentTypeSchema,
-  assessmentDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
-    message: 'Invalid date format',
+  assessmentDate: z.string({ required_error: 'Choose the date of the assessment' }).refine((val) => !isNaN(Date.parse(val)), {
+    message: 'Choose a valid date',
   }),
   // dueDate is intentionally absent: the database has no due_date column yet (design: SCH-03).
   maxMarks: z.coerce.number().min(1).optional(),
   weightPercent: z.coerce.number().min(0).max(100).optional(),
-  streamId: z.string().uuid('Invalid stream ID'),
-  learningAreaId: z.string().uuid('Invalid learning area ID'),
-  termId: z.string().uuid('Invalid term ID'),
+  streamId: z.string({ required_error: 'Choose a class' }).uuid('Choose a class'),
+  learningAreaId: z.string({ required_error: 'Choose a subject' }).uuid('Choose a subject'),
+  termId: z.string({ required_error: 'Choose a term' }).uuid('Choose a term'),
   instructions: z.string().max(1000).optional(),
 });
 

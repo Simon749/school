@@ -463,6 +463,8 @@
 - [~] Special-exam correction after publishing (`POST /api/assessments/[id]/special-exam`), audited
 - [~] Max marks required for CAT / exam / assignment
 - [~] Parent averages: not-entered ≠ 0, absent = 0, terms bucketed by term number; locked results stay visible
+- [~] Create-assessment form: typed text now reaches the form (inputs forward their ref); class shown as "Grade 5 A"; only the term + class + subject the teacher is timetabled for are offered; labels linked to inputs; clear messages
+- [~] Class roster: a learner with no attendance record shows "Not marked", never "Absent"
 - [ ] My Class card shows real data (today's attendance) — replaces hard-coded `n/n` and `Pending Work 0`
 - [ ] Class-teacher attendance analytics per learner (own stream only); "View Report" → "Write term report"
 - [ ] Sidebar "Results": enter marks / subject analytics / whole class (class teacher only) — JSS rankings

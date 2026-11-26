@@ -1,11 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { forwardRef, useEffect, useId, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+
+import type {
+  ClassOption,
+  SubjectOption,
+  TeachingCombo,
+  TermOption,
+} from '@/lib/assessments/teaching-options';
 
 import {
   createAssessmentSchema,
@@ -38,10 +45,10 @@ interface Option {
 }
 
 interface CreateAssessmentDialogProps {
-  streams: Option[];
-  learningAreas: Option[];
-  terms: Option[];
-  onSuccess?: () => void;
+  combos: TeachingCombo[];
+  classes: ClassOption[];
+  learningAreas: SubjectOption[];
+  terms: TermOption[];
 }
 
 const TYPE_OPTIONS: { value: CreateAssessmentInput['type']; label: string }[] = [
@@ -118,7 +125,7 @@ function FormInput({
   );
 }
 
-export function CreateAssessmentDialog({ streams, learningAreas, terms, onSuccess }: CreateAssessmentDialogProps) {
+export function CreateAssessmentDialog({ combos, classes, learningAreas, terms }: CreateAssessmentDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
@@ -128,6 +135,8 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
     handleSubmit,
     control,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<CreateAssessmentInput>({
     resolver: zodResolver(createAssessmentSchema),
@@ -136,6 +145,48 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
       assessmentDate: new Date().toISOString().slice(0, 10), // required field, pre-filled with today
     },
   });
+
+  const termId = watch('termId');
+  const streamId = watch('streamId');
+  const learningAreaId = watch('learningAreaId');
+
+  const termItems = terms.filter((t) => combos.some((c) => c.termId === t.id));
+  const classItems = classes.filter((c) =>
+    combos.some((x) => x.termId === termId && x.streamId === c.id)
+  );
+  const areaItems = learningAreas.filter((a) =>
+    combos.some((x) => x.termId === termId && x.streamId === streamId && x.learningAreaId === a.id)
+  );
+
+  // Keep Term -> Class -> Subject consistent: a choice that is no longer valid is cleared, and when
+  // only one choice is left it is picked for the teacher (no pointless clicking).
+  useEffect(() => {
+    const valid = Array.from(new Set(combos.map((c) => c.termId)));
+    if (!valid.includes(termId ?? '')) {
+      const current = terms.find((t) => t.isCurrent && valid.includes(t.id));
+      setValue('termId', (current?.id ?? valid[0]) as string);
+    }
+  }, [combos, terms, termId, setValue]);
+
+  useEffect(() => {
+    const valid = Array.from(
+      new Set(combos.filter((c) => c.termId === termId).map((c) => c.streamId))
+    );
+    if (!valid.includes(streamId ?? '')) {
+      setValue('streamId', (valid.length === 1 ? valid[0] : undefined) as string);
+    }
+  }, [combos, termId, streamId, setValue]);
+
+  useEffect(() => {
+    const valid = combos
+      .filter((c) => c.termId === termId && c.streamId === streamId)
+      .map((c) => c.learningAreaId);
+    if (!valid.includes(learningAreaId ?? '')) {
+      setValue('learningAreaId', (valid.length === 1 ? valid[0] : undefined) as string);
+    }
+  }, [combos, termId, streamId, learningAreaId, setValue]);
+
+  const hasTimetable = combos.length > 0;
 
   const onSubmit = async (data: CreateAssessmentInput) => {
     setIsSubmitting(true);
@@ -147,15 +198,16 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to create assessment');
+        // 🔒 P0 FIX: Surface the real API error (e.g., the D20 timetable warning)
+        throw new Error(err.error || `Failed to create assessment: ${res.statusText}`);
       }
       toast.success('Assessment created as draft');
       setOpen(false);
       reset({ type: 'cat', assessmentDate: new Date().toISOString().slice(0, 10) });
-      onSuccess?.();
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Export failed');
+      // 🔒 P0 FIX: Removed the hardcoded 'Export failed' fallback
+      toast.error(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -164,14 +216,21 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button>+ New Assessment</Button>} />
-      {/* sm:max-w-2xl overrides the dialog base's sm:max-w-sm → no more horizontal scroll */}
+      {/* sm:max-w-2xl overrides the dialog base's sm:max-w-sm -> no more horizontal scroll */}
       <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Assessment</DialogTitle>
           <DialogDescription>
-            Set up a CBC assessment for a class and learning area you are timetabled to teach this term.
+            Set up a CBC assessment for a class and subject you are timetabled to teach.
           </DialogDescription>
         </DialogHeader>
+
+        {!hasTimetable && (
+          <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            You are not timetabled to teach any class yet, so there is nothing to set an assessment
+            for. Ask the school admin to add you to the timetable.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -210,7 +269,7 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
                   placeholder="Select term"
                   value={field.value ?? ''}
                   onChange={field.onChange}
-                  items={terms.map((t) => ({ value: t.id, label: t.name }))}
+                  items={termItems.map((t) => ({ value: t.id, label: t.name }))}
                   error={errors.termId?.message}
                 />
               )}
@@ -220,12 +279,12 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
               name="streamId"
               render={({ field }) => (
                 <FormSelect
-                  label="Stream"
+                  label="Class"
                   required
-                  placeholder="Select stream"
+                  placeholder="Select class"
                   value={field.value ?? ''}
                   onChange={field.onChange}
-                  items={streams.map((s) => ({ value: s.id, label: s.name }))}
+                  items={classItems.map((c) => ({ value: c.id, label: c.label }))}
                   error={errors.streamId?.message}
                 />
               )}
@@ -235,12 +294,12 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
               name="learningAreaId"
               render={({ field }) => (
                 <FormSelect
-                  label="Learning Area"
+                  label="Subject"
                   required
                   placeholder="Select subject"
                   value={field.value ?? ''}
                   onChange={field.onChange}
-                  items={learningAreas.map((la) => ({ value: la.id, label: la.name }))}
+                  items={areaItems.map((a) => ({ value: a.id, label: a.name }))}
                   error={errors.learningAreaId?.message}
                 />
               )}
@@ -277,7 +336,7 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
           <div className="space-y-1.5">
             <Label className="text-sm">Instructions (optional)</Label>
             <Textarea
-              placeholder="Instructions for students or grading notes…"
+              placeholder="Instructions for students or grading notes..."
               rows={3}
               {...register('instructions')}
             />
@@ -292,7 +351,7 @@ export function CreateAssessmentDialog({ streams, learningAreas, terms, onSucces
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="animate-spin" />}
-              {isSubmitting ? 'Creating…' : 'Create Draft'}
+              {isSubmitting ? 'Creating...' : 'Create Draft'}
             </Button>
           </DialogFooter>
         </form>

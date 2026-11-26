@@ -1,0 +1,79 @@
+diff a/src/app/(dashboard)/teacher/markbook/page.tsx b/src/app/(dashboard)/teacher/markbook/page.tsx	(rejected hunks)
+@@ -1,6 +1,7 @@
+ import { prisma } from '@/lib/db';
+ import { requirePageUser } from '@/lib/auth/current-user';
+ import { CreateAssessmentDialog } from '@/components/assessment/CreateAssessmentDialog';
++import { buildTeachingOptions } from '@/lib/assessments/teaching-options';
+ import { Badge } from '@/components/ui/badge';
+ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+ import {
+@@ -35,15 +36,7 @@ export default async function TeacherMarkbookPage() {
+   // Found by the INTERNAL user id and the caller's school (FEAT-01 / SEC-11).
+   const teacher = await prisma.teacher.findFirst({
+     where: { userId: user.id, schoolId: user.schoolId },
+-    include: {
+-      school: {
+-        include: {
+-          streams: { select: { id: true, name: true } },
+-          learningAreas: { select: { id: true, name: true } },
+-          terms: { select: { id: true, name: true } },
+-        },
+-      },
+-    },
++    select: { id: true, schoolId: true },
+   });
+ 
+   if (!teacher) {
+@@ -55,10 +48,25 @@ export default async function TeacherMarkbookPage() {
+     );
+   }
+ 
++  // Only the term + class + subject combinations this teacher is timetabled to teach: the server
++  // refuses anything else (D20), so the form must not offer it. Classes are shown as "Grade 5 A".
++  const slots = await prisma.timetableSlot.findMany({
++    where: { teacherId: teacher.id, schoolId: teacher.schoolId },
++    select: {
++      termId: true,
++      streamId: true,
++      learningAreaId: true,
++      term: { select: { id: true, name: true, isCurrent: true } },
++      stream: { select: { id: true, name: true, grade: { select: { name: true, level: true } } } },
++      learningArea: { select: { id: true, name: true } },
++    },
++  });
++  const options = buildTeachingOptions(slots);
++
+   const assessments = await prisma.assessment.findMany({
+     where: { teacherId: teacher.id, schoolId: teacher.schoolId },
+     include: {
+-      stream: { select: { name: true } },
++      stream: { select: { name: true, grade: { select: { name: true } } } },
+       learningArea: { select: { name: true } },
+       term: { select: { name: true } },
+     },
+@@ -74,12 +82,10 @@ export default async function TeacherMarkbookPage() {
+         </div>
+         {/* FIX: Removed the onSuccess prop to prevent Server -> Client function passing error */}
+         <CreateAssessmentDialog
+-          streams={teacher.school.streams}
+-          learningAreas={teacher.school.learningAreas}
+-          terms={teacher.school.terms.map((t) => ({
+-            id: t.id,
+-            name: t.name || 'Unnamed Term',
+-          }))}
++          terms={options.terms}
++          classes={options.classes}
++          learningAreas={options.learningAreas}
++          combos={options.combos}
+         />
+       </div>
+ 
+@@ -110,7 +116,7 @@ export default async function TeacherMarkbookPage() {
+                   <TableRow key={assessment.id}>
+                     <TableCell className="font-medium">{assessment.title}</TableCell>
+                     <TableCell>{assessment.learningArea.name}</TableCell>
+-                    <TableCell>{assessment.stream.name}</TableCell>
++                    <TableCell>{`${assessment.stream.grade.name} ${assessment.stream.name}`}</TableCell>
+                     <TableCell>{assessment.term.name || 'Unnamed Term'}</TableCell>
+                     <TableCell>
+                       {assessment.assessmentDate

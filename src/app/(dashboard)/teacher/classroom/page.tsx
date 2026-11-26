@@ -91,21 +91,27 @@ export default async function TeacherClassroomPage() {
 
   const attendanceMap = new Map(todayAttendance.map((a) => [a.studentId, a.status]));
 
+  // A learner with NO attendance record is "not marked yet", never "absent": nobody has said they
+  // were away, and calling 24 learners absent because attendance has not been taken is simply false.
   let presentCount = 0,
     absentCount = 0,
-    lateCount = 0;
+    lateCount = 0,
+    notMarkedCount = 0;
   students.forEach((s) => {
-    const status = attendanceMap.get(s.id) || 'absent';
-    if (status === 'present') presentCount++;
+    const status = attendanceMap.get(s.id);
+    if (!status) notMarkedCount++;
+    else if (status === 'present') presentCount++;
     else if (status === 'late') lateCount++;
     else absentCount++;
   });
 
   const getStatusBadge = (status: string | undefined) => {
-    const s = status || 'absent';
-    if (s === 'present')
+    if (!status) {
+      return <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">Not marked</Badge>;
+    }
+    if (status === 'present')
       return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Present</Badge>;
-    if (s === 'late')
+    if (status === 'late')
       return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Late</Badge>;
     return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Absent</Badge>;
   };
@@ -162,6 +168,9 @@ export default async function TeacherClassroomPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{absentCount}</div>
+            <p className="text-xs text-muted-foreground">
+              {notMarkedCount > 0 ? `${notMarkedCount} not marked yet` : 'Attendance taken for everyone'}
+            </p>
           </CardContent>
         </Card>
       </div>
