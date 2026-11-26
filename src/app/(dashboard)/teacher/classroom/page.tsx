@@ -133,6 +133,11 @@ export default async function TeacherClassroomPage() {
               <CheckCircle className="h-4 w-4" /> Take Attendance
             </Button>
           </Link>
+          <Link href="/teacher/classroom/analytics">
+            <Button variant="outline" className="gap-2">
+              Class analytics
+            </Button>
+          </Link>
           <Link href="/teacher/messages">
             <Button variant="outline" className="gap-2">
               <MessageSquare className="h-4 w-4" /> Message Class
@@ -206,12 +211,20 @@ export default async function TeacherClassroomPage() {
                       </TableCell>
                       <TableCell>{getStatusBadge(attendanceMap.get(student.id))}</TableCell>
                       <TableCell className="text-right">
-                        <Link
-                          href={`/teacher/reports/${student.id}`}
-                          className="text-sm text-blue-600 hover:underline font-medium"
-                        >
-                          View Report
-                        </Link>
+                        <div className="flex justify-end gap-4">
+                          <Link
+                            href={`/teacher/classroom/students/${student.id}`}
+                            className="text-sm text-blue-600 hover:underline font-medium"
+                          >
+                            Attendance
+                          </Link>
+                          <Link
+                            href={`/teacher/reports/${student.id}`}
+                            className="text-sm text-blue-600 hover:underline font-medium"
+                          >
+                            Term report
+                          </Link>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

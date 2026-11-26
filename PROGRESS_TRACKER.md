@@ -465,8 +465,9 @@
 - [~] Parent averages: not-entered ≠ 0, absent = 0, terms bucketed by term number; locked results stay visible
 - [~] Create-assessment form: typed text now reaches the form (inputs forward their ref); class shown as "Grade 5 A"; only the term + class + subject the teacher is timetabled for are offered; labels linked to inputs; clear messages
 - [~] Class roster: a learner with no attendance record shows "Not marked", never "Absent"
-- [ ] My Class card shows real data (today's attendance) — replaces hard-coded `n/n` and `Pending Work 0`
-- [ ] Class-teacher attendance analytics per learner (own stream only); "View Report" → "Write term report"
+- [~] My Class card shows real data (today's register; learners needing attention); class teachers only; no placeholder class
+- [~] Class-teacher attendance analytics: class page (`/teacher/classroom/analytics`) + per learner (`/teacher/classroom/students/[id]`), own stream only; roster links split into "Attendance" and "Term report"
+- [ ] Term report page: results by term + improvement (read-only). **No "Generate report card" button until the CBC report model (D13 / R6-03) is decided — owner decision 2026-11-24**
 - [ ] Sidebar "Results": enter marks / subject analytics / whole class (class teacher only) — JSS rankings
 - [ ] Confirm the 8-level scale with KNEC / the school before go-live
 

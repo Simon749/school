@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/db';
+import { getNairobiDateString } from '@/lib/time';
+import { todaySnapshot } from '@/lib/attendance/class-analytics';
 
 export async function GET() {
   const { userId: clerkId } = await auth();
@@ -26,6 +28,8 @@ export async function GET() {
   let classTeacherPanel: {
     stream: { id: string; name: string; grade: string };
     studentCount: number;
+    /** Today's register: "not marked" is NOT absent (nobody has said the learner was away). */
+    today: { total: number; present: number; late: number; absent: number; other: number; notMarked: number };
     attendanceTrend: { date: string; pct: number | null }[];
     flaggedStudents: { studentId: string; name: string; absences: number }[];
   } | null = null;
@@ -35,8 +39,8 @@ export async function GET() {
   // naming convention (teacherAttendance, timetableSlot, etc.), not
   // verified against your actual schema.prisma. Flag if these differ.
   if (teacher.isClassTeacher && teacher.classTeacherStreamId) {
-    const stream = await prisma.stream.findUnique({
-      where: { id: teacher.classTeacherStreamId },
+    const stream = await prisma.stream.findFirst({
+      where: { id: teacher.classTeacherStreamId, schoolId: user.schoolId },
       include: { grade: { select: { name: true } } },
     });
 
@@ -53,7 +57,11 @@ export async function GET() {
 
       const attendanceRecords = studentIds.length
         ? await prisma.studentDailyAttendance.findMany({
-            where: { studentId: { in: studentIds }, date: { gte: windowStart } },
+            where: {
+              studentId: { in: studentIds },
+              schoolId: user.schoolId,
+              date: { gte: windowStart },
+            },
             select: { studentId: true, date: true, status: true },
           })
         : [];
@@ -96,6 +104,7 @@ export async function GET() {
       classTeacherPanel = {
         stream: { id: stream.id, name: stream.name, grade: stream.grade.name },
         studentCount: students.length,
+        today: todaySnapshot(studentIds, attendanceRecords, getNairobiDateString()),
         attendanceTrend,
         flaggedStudents,
       };

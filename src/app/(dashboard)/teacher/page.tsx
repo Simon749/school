@@ -37,6 +37,10 @@ interface MyClassData {
   streamName: string;
   gradeName: string;
   studentCount: number;
+  /** Today's register. "Not marked" is NOT absent: nobody has said the learner was away. */
+  today: { total: number; present: number; late: number; absent: number; other: number; notMarked: number };
+  /** Learners with 2 or more recorded absences in the last 7 days. */
+  needsAttention: number;
 }
 
 type Step = 'geo' | 'qr' | 'notes' | 'submitting' | 'done' | 'error';
@@ -50,15 +54,11 @@ export default function TeacherTodayPage() {
     isWeekend?: boolean;
     myClass?: MyClassData;
   }>({
-    // Hardcoded fallback data based on Image 1 if API returns empty/undefined
     school: null,
     slots: [],
     date: '',
-    myClass: {
-      gradeName: 'Grade 5',
-      streamName: 'A',
-      studentCount: 24,
-    },
+    // No placeholder class: only a class teacher has a "My Class" card, and only with real data.
+    myClass: undefined,
   });
   const [loading, setLoading] = useState(true);
 
@@ -82,8 +82,10 @@ export default function TeacherTodayPage() {
               gradeName: d.classTeacherPanel.stream.grade,
               streamName: d.classTeacherPanel.stream.name,
               studentCount: d.classTeacherPanel.studentCount,
+              today: d.classTeacherPanel.today,
+              needsAttention: d.classTeacherPanel.flaggedStudents?.length ?? 0,
             }
-            : prev.myClass; // Keep fallback if not a class teacher
+            : undefined; // not a class teacher: no My Class card
 
           return {
             ...prev,
@@ -287,7 +289,7 @@ export default function TeacherTodayPage() {
     );
   }
 
-  const myClassData = data?.myClass || { gradeName: 'My', streamName: 'Class', studentCount: 0 };
+  const myClassData = data?.myClass ?? null;
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto bg-slate-50/50 min-h-screen">
@@ -388,44 +390,68 @@ export default function TeacherTodayPage() {
 
         {/* Right Column - My Class + Quick Actions */}
         <div className="space-y-6">
-          {/* MY CLASS Card */}
-          <div className="rounded-xl border border-blue-200 bg-blue-50/20 p-5 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-blue-900 font-bold text-xs tracking-wider uppercase">
-              <Users className="h-4 w-4 text-blue-800" />
-              <span>MY CLASS</span>
-            </div>
+          {/* MY CLASS Card: class teachers only, real data only */}
+          {myClassData && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50/20 p-5 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-blue-900 font-bold text-xs tracking-wider uppercase">
+                <Users className="h-4 w-4 text-blue-800" />
+                <span>MY CLASS</span>
+              </div>
 
-            <div>
-              <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
-                {myClassData.gradeName} {myClassData.streamName}
-              </h3>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                {myClassData.studentCount} learners
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white rounded-lg p-3 border border-slate-200 shadow-2xs">
-                <p className="text-xs text-slate-500 font-medium">Attendance</p>
-                <p className="text-lg font-bold text-slate-900 mt-1">
-                  {myClassData.studentCount}/{myClassData.studentCount}
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
+                  {myClassData.gradeName} {myClassData.streamName}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  {myClassData.studentCount} learners
                 </p>
               </div>
-              <div className="bg-white rounded-lg p-3 border border-slate-200 shadow-2xs">
-                <p className="text-xs text-slate-500 font-medium">Pending Work</p>
-                <p className="text-lg font-bold text-slate-900 mt-1">0</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white rounded-lg p-3 border border-slate-200 shadow-2xs">
+                  <p className="text-xs text-slate-500 font-medium">Attendance today</p>
+                  {myClassData.today.notMarked === myClassData.today.total ? (
+                    <p className="text-sm font-semibold text-slate-600 mt-1">Not taken yet</p>
+                  ) : (
+                    <>
+                      <p className="text-lg font-bold text-slate-900 mt-1">
+                        {myClassData.today.present + myClassData.today.late}/{myClassData.today.total}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        {myClassData.today.absent} absent
+                        {myClassData.today.notMarked > 0
+                          ? ` · ${myClassData.today.notMarked} not marked`
+                          : ''}
+                      </p>
+                    </>
+                  )}
+                </div>
+                <div className="bg-white rounded-lg p-3 border border-slate-200 shadow-2xs">
+                  <p className="text-xs text-slate-500 font-medium">Needs attention</p>
+                  <p className="text-lg font-bold text-slate-900 mt-1">{myClassData.needsAttention}</p>
+                  <p className="text-[11px] text-slate-500">2+ absences this week</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="border-blue-300 text-blue-700 hover:bg-blue-100/50 bg-white font-medium text-xs py-2.5 h-auto rounded-lg"
+                  onClick={() => router.push('/teacher/classroom')}
+                >
+                  Open Class
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-blue-300 text-blue-700 hover:bg-blue-100/50 bg-white font-medium text-xs py-2.5 h-auto rounded-lg flex items-center justify-center gap-1.5"
+                  onClick={() => router.push('/teacher/classroom/analytics')}
+                >
+                  Class analytics
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
-
-            <Button
-              variant="outline"
-              className="w-full border-blue-300 text-blue-700 hover:bg-blue-100/50 bg-white font-medium text-xs py-2.5 h-auto rounded-lg flex items-center justify-center gap-2"
-              onClick={() => router.push('/teacher/classroom')}
-            >
-              Open Class
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          )}
 
           {/* Quick Actions Card */}
           <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm space-y-4">

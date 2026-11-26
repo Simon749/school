@@ -66,6 +66,8 @@ rankings here are an internal, staff-only school tool and are never shown to par
 
 ## Still open
 
+* **CBC report-card model (D13 / R6-03): the "Generate report card" button is deliberately NOT built** until it is decided (owner, 2026-11-24). The existing generator pools one percentage across all subjects, which the code itself flags as not CBC.
+
 * Confirm the scale and the level-lookup rule against KNEC's own publication before go-live.
 * Should a parent be notified when a special exam changes a published absent result? Not built.
 * The CBC rubric (`EE/ME/AE/BE` per sub-strand) cannot be used today: nothing creates strands or
