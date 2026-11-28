@@ -39,16 +39,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-interface Option {
-  id: string;
-  name: string;
-}
-
 interface CreateAssessmentDialogProps {
-  combos: TeachingCombo[];
+  terms: TermOption[];
+  /** Classes as "Grade 5 A": the grade AND the stream. */
   classes: ClassOption[];
   learningAreas: SubjectOption[];
-  terms: TermOption[];
+  /** Exactly the term + class + subject combinations this teacher is timetabled to teach. */
+  combos: TeachingCombo[];
+  onSuccess?: () => void;
 }
 
 const TYPE_OPTIONS: { value: CreateAssessmentInput['type']; label: string }[] = [
@@ -107,25 +105,41 @@ function FormControlledTrigger({ children }: { children: React.ReactNode }) {
   return <SelectTrigger className="w-full">{children}</SelectTrigger>;
 }
 
-function FormInput({
-  label,
-  required,
-  error,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { label: string; required?: boolean; error?: string }) {
+const FormInput = forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement> & { label: string; required?: boolean; error?: string }
+>(function FormInput({ label, required, error, ...props }, ref) {
+  // The label is tied to its input (screen readers, and clicking the label focuses the field).
+  const id = useId();
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm">
+      <Label htmlFor={id} className="text-sm">
         {label}
         {required && <span className="ml-0.5 text-destructive">*</span>}
       </Label>
-      <Input {...props} />
-      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+      <Input
+        id={id}
+        ref={ref}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        {...props}
+      />
+      {error && (
+        <p id={`${id}-error`} className="text-xs font-medium text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
-}
+});
 
-export function CreateAssessmentDialog({ combos, classes, learningAreas, terms }: CreateAssessmentDialogProps) {
+export function CreateAssessmentDialog({
+  terms,
+  classes,
+  learningAreas,
+  combos,
+  onSuccess,
+}: CreateAssessmentDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
@@ -198,16 +212,19 @@ export function CreateAssessmentDialog({ combos, classes, learningAreas, terms }
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        // 🔒 P0 FIX: Surface the real API error (e.g., the D20 timetable warning)
-        throw new Error(err.error || `Failed to create assessment: ${res.statusText}`);
+        const detail =
+          Array.isArray(err.details) && err.details.length > 0
+            ? err.details.map((d: { message?: string }) => d.message).filter(Boolean).join(' ')
+            : '';
+        throw new Error(detail || err.error || 'Could not create the assessment.');
       }
       toast.success('Assessment created as draft');
       setOpen(false);
       reset({ type: 'cat', assessmentDate: new Date().toISOString().slice(0, 10) });
+      onSuccess?.();
       router.refresh();
     } catch (error) {
-      // 🔒 P0 FIX: Removed the hardcoded 'Export failed' fallback
-      toast.error(error instanceof Error ? error.message : 'An unexpected error occurred');
+      toast.error(error instanceof Error ? error.message : 'Could not create the assessment.');
     } finally {
       setIsSubmitting(false);
     }
@@ -216,7 +233,7 @@ export function CreateAssessmentDialog({ combos, classes, learningAreas, terms }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button>+ New Assessment</Button>} />
-      {/* sm:max-w-2xl overrides the dialog base's sm:max-w-sm -> no more horizontal scroll */}
+      {/* sm:max-w-2xl overrides the dialog base's sm:max-w-sm → no more horizontal scroll */}
       <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Assessment</DialogTitle>
@@ -336,7 +353,7 @@ export function CreateAssessmentDialog({ combos, classes, learningAreas, terms }
           <div className="space-y-1.5">
             <Label className="text-sm">Instructions (optional)</Label>
             <Textarea
-              placeholder="Instructions for students or grading notes..."
+              placeholder="Instructions for students or grading notes…"
               rows={3}
               {...register('instructions')}
             />
@@ -349,9 +366,9 @@ export function CreateAssessmentDialog({ combos, classes, learningAreas, terms }
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || !hasTimetable}>
               {isSubmitting && <Loader2 className="animate-spin" />}
-              {isSubmitting ? 'Creating...' : 'Create Draft'}
+              {isSubmitting ? 'Creating…' : 'Create Draft'}
             </Button>
           </DialogFooter>
         </form>

@@ -919,10 +919,9 @@ model AssessmentResult {
   assessmentId   String       @map("assessment_id")
   studentId      String       @map("student_id")
   marksObtained  Decimal?     @map("marks_obtained") @db.Decimal(5, 2)
-  // Explicit "did not sit" (decision: counts as zero in rankings). Distinct from marksObtained
-  // = null, which means "not entered yet" and blocks publishing. The database refuses a row
-  // that is both absent and has marks (CHECK in migration 20261123090000).
-  isAbsent       Boolean      @default(false) @map("is_absent")
+  // resultStatus is the ONE representation of "did not sit": 'absent' is stored with marksObtained = 0
+  // (counts as zero in rankings). 'not_entered' is NOT zero and blocks publishing. The database refuses
+  // an absent row whose mark is not zero (CHECK in migration 20261126090000).
   teacherComment String?      @map("teacher_comment")
   submittedAt    DateTime?    @map("submitted_at")
   isLocked       Boolean      @default(false) @map("is_locked")

@@ -18,7 +18,7 @@ never silently.
 
 | # | Question | Decision |
 |---|---|---|
-| R0 | How "absent" is stored | **GitHub's `result_status`** ('scored' / 'absent' / 'not_entered'); an absent learner is stored as marks = 0. |
+| R0 | How "absent" is stored | **`result_status`** ('scored' / 'absent' / 'not_entered'), stored as a Postgres enum; an absent learner is stored as marks = 0, enforced by a database CHECK (migration `20261126090000`). The interim `is_absent` flag is gone. |
 | R1 | Ranking basis | **CBC performance levels → points.** Teachers keep entering marks out of the maximum; the system converts marks → % → level → points. |
 | R3 | Absent learners | Counted as **zero** and ranked. **Not entered blocks publishing** and is never a silent zero. |
 | R3a | 0 / absent vs the scale | The scale has no band for 0%. **Absent and 0% = 0 points**, below BE2's 1 point, shown as ABS. |
